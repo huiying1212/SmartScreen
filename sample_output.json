@@ -1,0 +1,88 @@
+{
+  "context_data": {
+    "timestamp": 1703123456789,
+    "date_time": "2024-12-21 14:30:45",
+    "day_of_week": "星期四",
+    "location": {
+      "latitude": 39.9042,
+      "longitude": 116.4074,
+      "accuracy": 10.0,
+      "altitude": 45.2,
+      "readable_address": "北京市朝阳区某大厦"
+    },
+    "activity": {
+      "activity": "walking",
+      "confidence": 0.85,
+      "timestamp": 1703123456789
+    },
+    "bluetooth_devices": [
+      {
+        "name": "AirPods Pro",
+        "address": "AA:BB:CC:DD:EE:FF",
+        "type": 1,
+        "bond_state": 12
+      },
+      {
+        "name": "小米手环7",
+        "address": "11:22:33:44:55:66",
+        "type": 2,
+        "bond_state": 12
+      }
+    ],
+    "wifi_info": {
+      "ssid": "\"Office_WiFi_5G\"",
+      "bssid": "00:11:22:33:44:55",
+      "rssi": -45,
+      "link_speed": 150,
+      "frequency": 5180
+    },
+    "calendar_events": [
+      {
+        "title": "团队会议",
+        "start_time": 1703140800000,
+        "end_time": 1703144400000,
+        "description": "讨论Q4项目进展和下季度规划",
+        "location": "会议室A"
+      },
+      {
+        "title": "午餐约会",
+        "start_time": 1703149200000,
+        "end_time": 1703152800000,
+        "description": "与客户讨论合作事宜",
+        "location": "中关村某餐厅"
+      },
+      {
+        "title": "健身",
+        "start_time": 1703170800000,
+        "end_time": 1703174400000,
+        "description": "下班后去健身房锻炼",
+        "location": "附近健身房"
+      }
+    ],
+    "screen_content": [
+      {
+        "timestamp": 1703123400000,
+        "type": "chat",
+        "content": "小王: 今天的会议时间改到3点了\n我: 好的，收到\n小王: 记得带上项目文档\n我: 没问题",
+        "app_package": "com.tencent.mm"
+      },
+      {
+        "timestamp": 1703123430000,
+        "type": "screen",
+        "content": "微信 通讯录 发现 我 设置 搜索 扫一扫 添加朋友 发起群聊",
+        "app_package": "com.tencent.mm"
+      },
+      {
+        "timestamp": 1703123450000,
+        "type": "screen",
+        "content": "天气 北京 多云 15°C 东北风3级 空气质量良 PM2.5: 68 今日: 8°C~16°C 明日: 5°C~13°C",
+        "app_package": "com.miui.weather2"
+      }
+    ],
+    "current_app": {
+      "package_name": "com.tencent.mm",
+      "importance": 100
+    }
+  },
+  "collection_time": 1703123456789
+} 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">数据收集器</string>
+    <string name="permission_required">需要权限</string>
+    <string name="location_permission">位置权限用于收集位置信息</string>
+    <string name="calendar_permission">日历权限用于收集日程信息</string>
+    <string name="storage_permission">存储权限用于保存数据</string>
+    <string name="accessibility_service_description">屏幕内容收集服务</string>
+    <string name="data_collection_started">数据收集已开始</string>
+    <string name="data_collection_stopped">数据收集已停止</string>
+</resources> 
