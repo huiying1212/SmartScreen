@@ -1,9 +1,11 @@
 package com.datacollector.android;
 
 import android.accessibilityservice.AccessibilityService;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -14,13 +16,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.List;
 
 /**
  * 屏幕内容收集器
  * 基于Android Accessibility Service收集屏幕文本内容
  * 实现类似CATIA论文中描述的屏幕内容队列管理
  */
-public class ScreenContentCollector {
+public class ScreenContentCollector implements AccessibilityDataService.ScreenContentCallback {
     
     private static final String TAG = "ScreenContentCollector";
     private static final int QUEUE_MAX_SIZE = 20; // 最大保留的屏幕数量
@@ -37,12 +40,16 @@ public class ScreenContentCollector {
     // 屏幕稳定性检测
     private String lastScreenContent = "";
     private long lastContentChangeTime = 0;
+    private String currentAppPackage = "unknown.app";
     
     public ScreenContentCollector(Context context) {
         this.context = context;
         this.screenQueue = new ConcurrentLinkedQueue<>();
         this.screenHandler = new Handler(Looper.getMainLooper());
         initializeScreenMonitor();
+        
+        // 设置回调
+        AccessibilityDataService.setScreenContentCallback(this);
     }
     
     /**
@@ -66,6 +73,13 @@ public class ScreenContentCollector {
     public void startCollection() {
         if (!isCollecting) {
             isCollecting = true;
+            
+            // 检查无障碍服务是否可用
+            if (!AccessibilityDataService.isServiceConnected()) {
+                Log.w(TAG, "无障碍服务未连接，请在设置中启用");
+            }
+            
+            // 启动备用的轮询监控（防止回调失效）
             screenHandler.post(screenMonitorRunnable);
             Log.d(TAG, "Started screen content collection");
         }
@@ -131,10 +145,8 @@ public class ScreenContentCollector {
      * 获取根节点（需要Accessibility Service支持）
      */
     private AccessibilityNodeInfo getRootNode() {
-        // 这里需要从Accessibility Service获取根节点
-        // 由于示例限制，返回null
-        // 在实际应用中，需要通过AccessibilityService.getRootInActiveWindow()获取
-        return null;
+        // 从AccessibilityDataService获取根节点
+        return AccessibilityDataService.getRootNodeInfo();
     }
     
     /**
@@ -212,9 +224,45 @@ public class ScreenContentCollector {
      * 获取当前应用包名
      */
     private String getCurrentAppPackage() {
-        // 这里需要通过系统服务获取当前前台应用
-        // 由于权限限制，返回默认值
-        return "unknown.app";
+        // 优先使用回调中获取的包名
+        if (currentAppPackage != null && !currentAppPackage.equals("unknown.app") && !currentAppPackage.equals("unknown")) {
+            return currentAppPackage;
+        }
+        
+        try {
+            // 尝试通过ActivityManager获取前台应用
+            ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            if (activityManager != null) {
+                List<ActivityManager.RunningTaskInfo> tasks = activityManager.getRunningTasks(1);
+                if (tasks != null && !tasks.isEmpty()) {
+                    ActivityManager.RunningTaskInfo task = tasks.get(0);
+                    if (task.topActivity != null) {
+                        String packageName = task.topActivity.getPackageName();
+                        currentAppPackage = packageName; // 缓存结果
+                        return packageName;
+                    }
+                }
+                
+                // Android 5.0+ 使用UsageStats API（需要权限）
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    List<ActivityManager.RunningAppProcessInfo> processes = activityManager.getRunningAppProcesses();
+                    if (processes != null && !processes.isEmpty()) {
+                        for (ActivityManager.RunningAppProcessInfo process : processes) {
+                            if (process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+                                currentAppPackage = process.processName; // 缓存结果
+                                return process.processName;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SecurityException e) {
+            Log.w(TAG, "无法获取当前应用包名，权限不足: " + e.getMessage());
+        } catch (Exception e) {
+            Log.e(TAG, "获取当前应用包名时出错: " + e.getMessage());
+        }
+        
+        return currentAppPackage; // 返回缓存的值或默认值
     }
     
     /**
@@ -371,5 +419,27 @@ public class ScreenContentCollector {
         // 对聊天内容进行特殊处理，识别发送者和消息
         // 这里可以实现论文中提到的chat recognition algorithm
         return content;
+    }
+
+    /**
+     * 实现AccessibilityDataService回调接口
+     */
+    @Override
+    public void onScreenContentChanged(String content, String packageName) {
+        if (!isCollecting) return;
+        
+        currentAppPackage = packageName;
+        
+        // 检查屏幕稳定性
+        if (isScreenStable(content)) {
+            // 创建屏幕内容数据
+            ScreenContentData screenData = createScreenContentData(content);
+            
+            // 检查是否与队列中最新内容相似
+            if (!isDuplicateContent(screenData)) {
+                addToQueue(screenData);
+                Log.d(TAG, "New screen content added from: " + packageName);
+            }
+        }
     }
 } 
