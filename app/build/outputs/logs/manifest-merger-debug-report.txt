@@ -181,32 +181,32 @@ category#android.intent.category.LAUNCHER
 ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:53:17-77
 	android:name
 		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:53:27-74
-service#com.datacollector.android.AccessibilityDataService
-ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:58:9-68:19
+service#com.datacollector.android.DataCollectionService
+ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:58:9-60:40
 	android:exported
 		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:60:13-37
-	android:permission
-		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:61:13-79
 	android:name
-		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:59:13-53
-intent-filter#action:name:android.accessibilityservice.AccessibilityService
-ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:62:13-64:29
-action#android.accessibilityservice.AccessibilityService
-ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:63:17-92
-	android:name
-		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:63:25-89
-meta-data#android.accessibilityservice
-ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:65:13-67:72
-	android:resource
-		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:67:17-69
-	android:name
-		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:66:17-60
-service#com.datacollector.android.DataCollectionService
-ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:71:9-73:40
+		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:59:13-50
+service#com.datacollector.android.AccessibilityDataService
+ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:63:9-73:19
 	android:exported
-		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:73:13-37
+		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:65:13-37
+	android:permission
+		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:66:13-79
 	android:name
-		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:72:13-50
+		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:64:13-53
+intent-filter#action:name:android.accessibilityservice.AccessibilityService
+ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:67:13-69:29
+action#android.accessibilityservice.AccessibilityService
+ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:68:17-92
+	android:name
+		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:68:25-89
+meta-data#android.accessibilityservice
+ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:70:13-72:72
+	android:resource
+		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:72:17-69
+	android:name
+		ADDED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:71:17-60
 uses-sdk
 INJECTED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml

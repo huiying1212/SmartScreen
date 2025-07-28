@@ -71,6 +71,11 @@
             </intent-filter>
         </activity>
 
+        <!-- 数据收集服务 -->
+        <service
+            android:name="com.datacollector.android.DataCollectionService"
+            android:exported="false" />
+
         <!-- 无障碍服务 -->
         <service
             android:name="com.datacollector.android.AccessibilityDataService"
@@ -84,11 +89,6 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
-
-        <!-- 数据收集服务 -->
-        <service
-            android:name="com.datacollector.android.DataCollectionService"
-            android:exported="false" />
 
         <provider
             android:name="androidx.startup.InitializationProvider"

@@ -131,37 +131,37 @@
 71            </intent-filter>
 72        </activity>
 73
-74        <!-- 无障碍服务 -->
+74        <!-- 数据收集服务 -->
 75        <service
-75-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:58:9-68:19
-76            android:name="com.datacollector.android.AccessibilityDataService"
-76-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:59:13-53
-77            android:exported="false"
+75-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:58:9-60:40
+76            android:name="com.datacollector.android.DataCollectionService"
+76-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:59:13-50
+77            android:exported="false" />
 77-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:60:13-37
-78            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
-78-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:61:13-79
-79            <intent-filter>
-79-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:62:13-64:29
-80                <action android:name="android.accessibilityservice.AccessibilityService" />
-80-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:63:17-92
-80-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:63:25-89
-81            </intent-filter>
-82
-83            <meta-data
-83-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:65:13-67:72
-84                android:name="android.accessibilityservice"
-84-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:66:17-60
-85                android:resource="@xml/accessibility_service_config" />
-85-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:67:17-69
-86        </service>
+78
+79        <!-- 无障碍服务 -->
+80        <service
+80-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:63:9-73:19
+81            android:name="com.datacollector.android.AccessibilityDataService"
+81-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:64:13-53
+82            android:exported="false"
+82-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:65:13-37
+83            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
+83-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:66:13-79
+84            <intent-filter>
+84-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:67:13-69:29
+85                <action android:name="android.accessibilityservice.AccessibilityService" />
+85-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:68:17-92
+85-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:68:25-89
+86            </intent-filter>
 87
-88        <!-- 数据收集服务 -->
-89        <service
-89-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:71:9-73:40
-90            android:name="com.datacollector.android.DataCollectionService"
-90-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:72:13-50
-91            android:exported="false" />
-91-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:73:13-37
+88            <meta-data
+88-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:70:13-72:72
+89                android:name="android.accessibilityservice"
+89-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:71:17-60
+90                android:resource="@xml/accessibility_service_config" />
+90-->C:\Users\Kate\Desktop\CATIA3\app\src\main\AndroidManifest.xml:72:17-69
+91        </service>
 92
 93        <provider
 93-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
