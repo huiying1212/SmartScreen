@@ -16,6 +16,8 @@ import android.widget.Toast;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.datacollector.android.managers.DataCollectorManager;
+
 import org.json.JSONObject;
 
 /**
@@ -32,6 +34,7 @@ public class AndroidDataCollector extends Activity {
     private Button startButton;
     private Button stopButton;
     private Button getDataButton;
+    private Button statusButton;  // 添加状态按钮引用
     private TextView statusTextView;
     private TextView dataDisplayTextView;
     
@@ -82,7 +85,7 @@ public class AndroidDataCollector extends Activity {
         
         // 标题
         TextView titleTextView = new TextView(this);
-        titleTextView.setText("Android数据收集器");
+        titleTextView.setText("Android数据收集器 (重构版)");
         titleTextView.setTextSize(24);
         titleTextView.setPadding(0, 0, 0, 30);
         layout.addView(titleTextView);
@@ -114,12 +117,19 @@ public class AndroidDataCollector extends Activity {
         getDataButton.setEnabled(false);
         layout.addView(getDataButton);
         
+        // 查看状态按钮
+        statusButton = new Button(this);
+        statusButton.setText("查看收集器状态");
+        statusButton.setOnClickListener(v -> getCollectorStatus());
+        statusButton.setEnabled(false);
+        layout.addView(statusButton);
+        
         // 数据显示区域
         dataDisplayTextView = new TextView(this);
         dataDisplayTextView.setText("数据将在这里显示...");
         dataDisplayTextView.setTextSize(12);
         dataDisplayTextView.setPadding(0, 20, 0, 0);
-        dataDisplayTextView.setMaxLines(20);
+        dataDisplayTextView.setMaxLines(30);
         layout.addView(dataDisplayTextView);
         
         setContentView(layout);
@@ -234,6 +244,43 @@ public class AndroidDataCollector extends Activity {
     }
     
     /**
+     * 获取收集器状态信息
+     */
+    private void getCollectorStatus() {
+        if (isServiceBound && dataCollectionService != null) {
+            new Thread(() -> {
+                try {
+                    // 通过Service获取DataCollectorManager - 修复var兼容性问题
+                    DataCollectorManager collectorManager = dataCollectionService.getCollectorManager();
+                    if (collectorManager != null) {
+                        JSONObject status = collectorManager.getCollectorsStatus();
+                        runOnUiThread(() -> {
+                            if (status != null) {
+                                try {
+                                    String statusText = "收集器状态信息:\n" + status.toString(2);
+                                    dataDisplayTextView.setText(statusText);
+                                    updateStatus("状态获取成功");
+                                } catch (Exception e) {
+                                    dataDisplayTextView.setText("状态格式化错误: " + e.getMessage());
+                                }
+                            } else {
+                                dataDisplayTextView.setText("未获取到状态信息");
+                            }
+                        });
+                    }
+                } catch (Exception e) {
+                    runOnUiThread(() -> {
+                        dataDisplayTextView.setText("获取状态出错: " + e.getMessage());
+                        updateStatus("状态获取失败");
+                    });
+                }
+            }).start();
+        } else {
+            Toast.makeText(this, "服务未连接", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
      * 检查权限是否已获取
      */
     private boolean checkPermissions() {
@@ -259,6 +306,7 @@ public class AndroidDataCollector extends Activity {
             startButton.setEnabled(!isServiceBound);
             stopButton.setEnabled(isServiceBound);
             getDataButton.setEnabled(isServiceBound);
+            statusButton.setEnabled(isServiceBound);
         });
     }
     

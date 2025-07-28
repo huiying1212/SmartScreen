@@ -1,33 +1,17 @@
 package com.datacollector.android;
 
-import android.Manifest;
 import android.app.Service;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.database.Cursor;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Binder;
-import android.os.Build;
-import android.os.Bundle;
 import android.os.IBinder;
-import android.provider.CalendarContract;
-import android.app.ActivityManager;
-import androidx.core.app.ActivityCompat;
+import android.util.Log;
 
-import org.json.JSONArray;
+import com.datacollector.android.collectors.ActivityRecognitionCollector;
+import com.datacollector.android.collectors.BluetoothDataCollector;
+import com.datacollector.android.collectors.LocationDataCollector;
+import com.datacollector.android.collectors.WiFiDataCollector;
+import com.datacollector.android.managers.DataCollectorManager;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -35,38 +19,27 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * 数据收集服务
- * 负责收集各种上下文信息，包括传感器数据、位置、蓝牙/WiFi、日历等
+ * 重构后的数据收集服务
+ * 使用新的接口抽象架构，通过DataCollectorManager管理所有数据收集器
  */
-public class DataCollectionService extends Service implements SensorEventListener, LocationListener {
+public class DataCollectionService extends Service implements DataCollectorManager.DataCollectionCallback {
     
     private static final String TAG = "DataCollectionService";
     
-    // 传感器和位置管理器
-    private SensorManager sensorManager;
-    private LocationManager locationManager;
-    private WifiManager wifiManager;
-    private BluetoothAdapter bluetoothAdapter;
-    private ActivityManager activityManager;
+    // 数据收集器管理器
+    private DataCollectorManager collectorManager;
+    
+    // 屏幕内容收集器（暂时保持原有实现）
+    private ScreenContentCollector screenCollector;
     
     // 数据存储
-    private ConcurrentLinkedQueue<ScreenContentData> screenContentQueue;
     private JSONObject currentContextData;
     private Timer dataCollectionTimer;
-    
-    // 活动识别
-    private ActivityRecognizer activityRecognizer;
-    
-    // 屏幕内容收集
-    private ScreenContentCollector screenCollector;
     
     // Binder类用于与Activity通信
     public class DataCollectionBinder extends Binder {
@@ -85,7 +58,7 @@ public class DataCollectionService extends Service implements SensorEventListene
     @Override
     public void onCreate() {
         super.onCreate();
-        initializeComponents();
+        initializeCollectors();
         startDataCollection();
     }
     
@@ -95,95 +68,44 @@ public class DataCollectionService extends Service implements SensorEventListene
     }
     
     /**
-     * 初始化各种组件和服务
+     * 初始化数据收集器
      */
-    private void initializeComponents() {
-        // 初始化传感器管理器
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+    private void initializeCollectors() {
+        // 创建数据收集器管理器
+        collectorManager = new DataCollectorManager(this);
+        collectorManager.setCallback(this);
+        
+        // 注册各种数据收集器
+        collectorManager.registerCollector(new LocationDataCollector(this));
+        collectorManager.registerCollector(new BluetoothDataCollector(this));
+        collectorManager.registerCollector(new WiFiDataCollector(this));
+        collectorManager.registerCollector(new ActivityRecognitionCollector(this));
+        
+        // 初始化屏幕内容收集器（保持原有实现）
+        screenCollector = new ScreenContentCollector(this);
         
         // 初始化数据结构
-        screenContentQueue = new ConcurrentLinkedQueue<>();
         currentContextData = new JSONObject();
         
-        // 初始化活动识别器
-        activityRecognizer = new ActivityRecognizer(this);
-        
-        // 初始化屏幕内容收集器
-        screenCollector = new ScreenContentCollector(this);
+        Log.i(TAG, "Initialized " + collectorManager.getCollectorIds().size() + " data collectors");
     }
     
     /**
      * 开始数据收集
      */
     private void startDataCollection() {
-        // 注册传感器监听器
-        registerSensorListeners();
+        // 启动所有收集器
+        collectorManager.startAllCollectors();
         
-        // 注册位置监听器
-        registerLocationListener();
-        
-        // 注册蓝牙和WiFi监听器
-        registerConnectivityListeners();
+        // 启动屏幕内容收集
+        if (screenCollector != null) {
+            screenCollector.startCollection();
+        }
         
         // 启动定时数据收集
         startPeriodicDataCollection();
         
-        // 启动屏幕内容收集
-        screenCollector.startCollection();
-    }
-    
-    /**
-     * 注册传感器监听器
-     */
-    private void registerSensorListeners() {
-        // 加速度计用于活动识别
-        Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        if (accelerometer != null) {
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        }
-        
-        // 陀螺仪
-        Sensor gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        if (gyroscope != null) {
-            sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
-        }
-    }
-    
-    /**
-     * 注册位置监听器
-     */
-    private void registerLocationListener() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-            == PackageManager.PERMISSION_GRANTED) {
-            locationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER, 
-                60000, // 1分钟更新一次
-                10,    // 10米距离变化
-                this
-            );
-        }
-    }
-    
-    /**
-     * 注册连接性监听器（WiFi和蓝牙）
-     */
-    private void registerConnectivityListeners() {
-        // WiFi状态变化监听器
-        IntentFilter wifiFilter = new IntentFilter();
-        wifiFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
-        wifiFilter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
-        registerReceiver(wifiReceiver, wifiFilter);
-        
-        // 蓝牙状态变化监听器
-        IntentFilter bluetoothFilter = new IntentFilter();
-        bluetoothFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
-        bluetoothFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
-        bluetoothFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
-        registerReceiver(bluetoothReceiver, bluetoothFilter);
+        Log.i(TAG, "Started data collection");
     }
     
     /**
@@ -206,39 +128,59 @@ public class DataCollectionService extends Service implements SensorEventListene
         try {
             JSONObject contextData = new JSONObject();
             
-            // 时间信息
+            // 添加时间信息
             contextData.put("timestamp", System.currentTimeMillis());
             contextData.put("date_time", getCurrentDateTime());
             contextData.put("day_of_week", getCurrentDayOfWeek());
             
-            // 位置信息
-            JSONObject locationData = getLocationData();
-            if (locationData != null) {
-                contextData.put("location", locationData);
+            // 从所有数据收集器收集数据
+            JSONObject collectorData = collectorManager.collectAllData();
+            
+            // 合并收集器数据到上下文数据
+            if (collectorData != null) {
+                // 将各个收集器的数据按原有格式放置
+                mergeCollectorData(contextData, collectorData);
             }
             
-            // 活动信息
-            contextData.put("activity", activityRecognizer.getCurrentActivity());
+            // 添加屏幕内容（保持原有实现）
+            if (screenCollector != null) {
+                contextData.put("screen_content", screenCollector.getRecentScreenContent());
+            }
             
-            // 连接设备信息
-            contextData.put("bluetooth_devices", getBluetoothDevices());
-            contextData.put("wifi_info", getWifiInfo());
-            
-            // 日历事件
-            contextData.put("calendar_events", getCalendarEvents());
-            
-            // 屏幕内容
-            contextData.put("screen_content", getScreenContent());
-            
-            // 当前应用信息
+            // 添加当前应用信息
             contextData.put("current_app", getCurrentAppInfo());
             
             // 保存数据
             saveContextData(contextData);
             
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error collecting context data", e);
         }
+    }
+    
+    /**
+     * 合并收集器数据到上下文数据中
+     */
+    private void mergeCollectorData(JSONObject contextData, JSONObject collectorData) throws JSONException {
+        // 映射新的收集器数据到原有的数据格式
+        if (collectorData.has("location")) {
+            contextData.put("location", collectorData.get("location"));
+        }
+        
+        if (collectorData.has("bluetooth")) {
+            contextData.put("bluetooth_devices", collectorData.get("bluetooth"));
+        }
+        
+        if (collectorData.has("wifi")) {
+            contextData.put("wifi_info", collectorData.get("wifi"));
+        }
+        
+        if (collectorData.has("activity_recognition")) {
+            contextData.put("activity", collectorData.get("activity_recognition"));
+        }
+        
+        // 添加收集器状态信息
+        contextData.put("collectors_status", collectorManager.getCollectorsStatus());
     }
     
     /**
@@ -258,180 +200,16 @@ public class DataCollectionService extends Service implements SensorEventListene
     }
     
     /**
-     * 获取位置数据
-     */
-    private JSONObject getLocationData() {
-        try {
-            JSONObject locationData = new JSONObject();
-            
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-                == PackageManager.PERMISSION_GRANTED) {
-                
-                Location lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                if (lastKnownLocation != null) {
-                    locationData.put("latitude", lastKnownLocation.getLatitude());
-                    locationData.put("longitude", lastKnownLocation.getLongitude());
-                    locationData.put("accuracy", lastKnownLocation.getAccuracy());
-                    locationData.put("altitude", lastKnownLocation.getAltitude());
-                    
-                    // 这里可以添加地理编码将坐标转换为可读地址
-                    String readableLocation = getReadableLocation(lastKnownLocation);
-                    locationData.put("readable_address", readableLocation);
-                }
-            }
-            
-            return locationData;
-        } catch (JSONException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-    
-    /**
-     * 将GPS坐标转换为可读地址
-     */
-    private String getReadableLocation(Location location) {
-        // 这里应该使用Geocoder或其他地理编码服务
-        // 为简化示例，返回坐标字符串
-        return String.format(Locale.getDefault(), "%.6f, %.6f", 
-                           location.getLatitude(), location.getLongitude());
-    }
-    
-    /**
-     * 获取蓝牙设备列表
-     */
-    private JSONArray getBluetoothDevices() {
-        JSONArray devices = new JSONArray();
-        
-        if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) 
-                == PackageManager.PERMISSION_GRANTED) {
-                
-                Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
-                for (BluetoothDevice device : pairedDevices) {
-                    try {
-                        JSONObject deviceInfo = new JSONObject();
-                        deviceInfo.put("name", device.getName());
-                        deviceInfo.put("address", device.getAddress());
-                        deviceInfo.put("type", device.getType());
-                        devices.put(deviceInfo);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-        
-        return devices;
-    }
-    
-    /**
-     * 获取WiFi信息
-     */
-    private JSONObject getWifiInfo() {
-        try {
-            JSONObject wifiInfo = new JSONObject();
-            
-            if (wifiManager != null && wifiManager.isWifiEnabled()) {
-                WifiInfo connectionInfo = wifiManager.getConnectionInfo();
-                if (connectionInfo != null) {
-                    wifiInfo.put("ssid", connectionInfo.getSSID());
-                    wifiInfo.put("bssid", connectionInfo.getBSSID());
-                    wifiInfo.put("rssi", connectionInfo.getRssi());
-                    wifiInfo.put("link_speed", connectionInfo.getLinkSpeed());
-                    wifiInfo.put("frequency", connectionInfo.getFrequency());
-                }
-            }
-            
-            return wifiInfo;
-        } catch (JSONException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-    
-    /**
-     * 获取日历事件
-     */
-    private JSONArray getCalendarEvents() {
-        JSONArray events = new JSONArray();
-        
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) 
-            == PackageManager.PERMISSION_GRANTED) {
-            
-            // 查询过去3天到未来3天的日历事件
-            long startTime = System.currentTimeMillis() - (3 * 24 * 60 * 60 * 1000);
-            long endTime = System.currentTimeMillis() + (3 * 24 * 60 * 60 * 1000);
-            
-            String[] projection = {
-                CalendarContract.Events.TITLE,
-                CalendarContract.Events.DTSTART,
-                CalendarContract.Events.DTEND,
-                CalendarContract.Events.DESCRIPTION,
-                CalendarContract.Events.EVENT_LOCATION
-            };
-            
-            String selection = CalendarContract.Events.DTSTART + " >= ? AND " + 
-                              CalendarContract.Events.DTSTART + " <= ?";
-            String[] selectionArgs = { String.valueOf(startTime), String.valueOf(endTime) };
-            
-            Cursor cursor = getContentResolver().query(
-                CalendarContract.Events.CONTENT_URI,
-                projection,
-                selection,
-                selectionArgs,
-                CalendarContract.Events.DTSTART + " ASC"
-            );
-            
-            if (cursor != null) {
-                while (cursor.moveToNext()) {
-                    try {
-                        JSONObject event = new JSONObject();
-                        event.put("title", cursor.getString(0));
-                        event.put("start_time", cursor.getLong(1));
-                        event.put("end_time", cursor.getLong(2));
-                        event.put("description", cursor.getString(3));
-                        event.put("location", cursor.getString(4));
-                        events.put(event);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
-                cursor.close();
-            }
-        }
-        
-        return events;
-    }
-    
-    /**
-     * 获取屏幕内容
-     */
-    private JSONArray getScreenContent() {
-        return screenCollector.getRecentScreenContent();
-    }
-    
-    /**
      * 获取当前应用信息
      */
     private JSONObject getCurrentAppInfo() {
         try {
             JSONObject appInfo = new JSONObject();
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                List<ActivityManager.RunningAppProcessInfo> runningApps = 
-                    activityManager.getRunningAppProcesses();
-                
-                if (runningApps != null && !runningApps.isEmpty()) {
-                    ActivityManager.RunningAppProcessInfo frontApp = runningApps.get(0);
-                    appInfo.put("package_name", frontApp.processName);
-                    appInfo.put("importance", frontApp.importance);
-                }
-            }
-            
+            appInfo.put("package_name", getPackageName());
+            appInfo.put("service_name", TAG);
             return appInfo;
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error getting app info", e);
             return null;
         }
     }
@@ -455,8 +233,10 @@ public class DataCollectionService extends Service implements SensorEventListene
             // 同时保存到实时数据结构
             this.currentContextData = outputData;
             
+            Log.d(TAG, "Saved context data to: " + fileName);
+            
         } catch (IOException | JSONException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error saving context data", e);
         }
     }
     
@@ -468,52 +248,25 @@ public class DataCollectionService extends Service implements SensorEventListene
         return currentContextData;
     }
     
-    // WiFi状态广播接收器
-    private BroadcastReceiver wifiReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            // WiFi状态变化时的处理
-            collectCurrentContextData();
-        }
-    };
+    /**
+     * 获取数据收集器管理器（用于外部配置）
+     */
+    public DataCollectorManager getCollectorManager() {
+        return collectorManager;
+    }
     
-    // 蓝牙状态广播接收器
-    private BroadcastReceiver bluetoothReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            // 蓝牙状态变化时的处理
-            collectCurrentContextData();
-        }
-    };
-    
-    // 传感器事件监听器实现
+    // DataCollectionCallback 接口实现
     @Override
-    public void onSensorChanged(SensorEvent event) {
-        if (activityRecognizer != null) {
-            activityRecognizer.processSensorData(event);
-        }
+    public void onDataCollected(String collectorId, Object data) {
+        Log.d(TAG, "Data collected from: " + collectorId);
+        // 可以在这里处理实时数据回调
     }
     
     @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        // 传感器精度变化处理
+    public void onCollectionError(String collectorId, Exception error) {
+        Log.e(TAG, "Collection error from: " + collectorId, error);
+        // 可以在这里处理收集错误
     }
-    
-    // 位置监听器实现
-    @Override
-    public void onLocationChanged(Location location) {
-        // 位置变化时更新上下文数据
-        collectCurrentContextData();
-    }
-    
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {}
-    
-    @Override
-    public void onProviderEnabled(String provider) {}
-    
-    @Override
-    public void onProviderDisabled(String provider) {}
     
     @Override
     public void onDestroy() {
@@ -524,23 +277,14 @@ public class DataCollectionService extends Service implements SensorEventListene
             dataCollectionTimer.cancel();
         }
         
-        if (sensorManager != null) {
-            sensorManager.unregisterListener(this);
-        }
-        
-        if (locationManager != null) {
-            locationManager.removeUpdates(this);
-        }
-        
-        try {
-            unregisterReceiver(wifiReceiver);
-            unregisterReceiver(bluetoothReceiver);
-        } catch (IllegalArgumentException e) {
-            // 接收器可能未注册
+        if (collectorManager != null) {
+            collectorManager.shutdown();
         }
         
         if (screenCollector != null) {
             screenCollector.stopCollection();
         }
+        
+        Log.i(TAG, "DataCollectionService destroyed");
     }
 } 
