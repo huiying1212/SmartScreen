@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/launcher_background"
+    android:padding="8dp">
+
+    <!-- 顶部状态栏 -->
+    <LinearLayout
+        android:id="@+id/top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:background="@color/launcher_top_bar">
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="CATIA3 Launcher"
+            android:textColor="@color/launcher_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/time_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="12:00"
+            android:textColor="@color/launcher_text_secondary"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- 应用网格 -->
+    <GridView
+        android:id="@+id/apps_grid"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/top_bar"
+        android:layout_above="@id/bottom_bar"
+        android:layout_margin="8dp"
+        android:numColumns="4"
+        android:verticalSpacing="16dp"
+        android:horizontalSpacing="8dp"
+        android:stretchMode="columnWidth"
+        android:gravity="center" />
+
+    <!-- 底部工具栏 -->
+    <LinearLayout
+        android:id="@+id/bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="@color/launcher_bottom_bar"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/settings_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:background="@drawable/launcher_button_bg"
+            android:drawableTop="@android:drawable/ic_menu_preferences"
+            android:padding="8dp"
+            android:text="设置"
+            android:textColor="@color/launcher_text_primary"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/apps_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:background="@drawable/launcher_button_bg"
+            android:drawableTop="@android:drawable/ic_menu_sort_by_size"
+            android:padding="8dp"
+            android:text="应用"
+            android:textColor="@color/launcher_text_primary"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/data_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:background="@drawable/launcher_button_bg"
+            android:drawableTop="@android:drawable/ic_menu_info_details"
+            android:padding="8dp"
+            android:text="数据"
+            android:textColor="@color/launcher_text_primary"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/exit_launcher_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:background="@drawable/launcher_exit_button_bg"
+            android:drawableTop="@android:drawable/ic_menu_revert"
+            android:padding="8dp"
+            android:text="退出"
+            android:textColor="@color/launcher_exit_text"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+</RelativeLayout> 

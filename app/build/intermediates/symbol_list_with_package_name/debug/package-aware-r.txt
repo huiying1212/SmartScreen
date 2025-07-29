@@ -1300,6 +1300,8 @@ color accent_material_dark
 color accent_material_light
 color androidx_core_ripple_material_light
 color androidx_core_secondary_text_default_material_light
+color app_item_bg
+color app_item_pressed
 color background_floating_material_dark
 color background_floating_material_light
 color background_material_dark
@@ -1368,6 +1370,16 @@ color foreground_material_dark
 color foreground_material_light
 color highlighted_text_material_dark
 color highlighted_text_material_light
+color launcher_background
+color launcher_bottom_bar
+color launcher_button_bg
+color launcher_button_pressed
+color launcher_exit_bg
+color launcher_exit_pressed
+color launcher_exit_text
+color launcher_text_primary
+color launcher_text_secondary
+color launcher_top_bar
 color m3_appbar_overlay_color
 color m3_assist_chip_icon_tint_color
 color m3_assist_chip_stroke_color
@@ -2698,6 +2710,7 @@ drawable abc_textfield_search_activated_mtrl_alpha
 drawable abc_textfield_search_default_mtrl_alpha
 drawable abc_textfield_search_material
 drawable abc_vector_test
+drawable app_item_bg
 drawable avd_hide_password
 drawable avd_show_password
 drawable btn_checkbox_checked_mtrl
@@ -2727,6 +2740,8 @@ drawable ic_mtrl_chip_checked_black
 drawable ic_mtrl_chip_checked_circle
 drawable ic_mtrl_chip_close_circle
 drawable ic_search_black_24
+drawable launcher_button_bg
+drawable launcher_exit_button_bg
 drawable m3_appbar_background
 drawable m3_avd_hide_password
 drawable m3_avd_show_password
@@ -2881,6 +2896,10 @@ id animateToEnd
 id animateToStart
 id antiClockwise
 id anticipate
+id app_icon
+id app_label
+id apps_button
+id apps_grid
 id arc
 id asConfigured
 id async
@@ -2895,6 +2914,7 @@ id beginning
 id bestChoice
 id blocking
 id bottom
+id bottom_bar
 id bounce
 id bounceBoth
 id bounceEnd
@@ -2943,6 +2963,7 @@ id currentState
 id custom
 id customPanel
 id cut
+id data_button
 id date_picker_actions
 id decelerate
 id decelerateAndComplete
@@ -2984,6 +3005,7 @@ id endToStart
 id enterAlways
 id enterAlwaysCollapsed
 id exitUntilCollapsed
+id exit_launcher_button
 id expand_activities_button
 id expanded_menu
 id fade
@@ -3191,6 +3213,7 @@ id search_voice_btn
 id select_dialog_listview
 id selected
 id selection_type
+id settings_button
 id sharedValueSet
 id sharedValueUnset
 id shortcut
@@ -3224,6 +3247,7 @@ id startToEnd
 id startVertical
 id staticLayout
 id staticPostLayout
+id status_text
 id stop
 id stretch
 id submenuarrow
@@ -3260,12 +3284,14 @@ id textinput_placeholder
 id textinput_prefix_text
 id textinput_suffix_text
 id time
+id time_text
 id title
 id titleDividerNoCustom
 id title_template
 id toggle
 id top
 id topPanel
+id top_bar
 id touch_outside
 id transitionToEnd
 id transitionToStart
@@ -3406,7 +3432,9 @@ layout abc_search_dropdown_item_icons_2line
 layout abc_search_view
 layout abc_select_dialog_material
 layout abc_tooltip
+layout activity_launcher
 layout activity_main
+layout app_item
 layout custom_dialog
 layout design_bottom_navigation_item
 layout design_bottom_sheet_dialog
@@ -3934,6 +3962,7 @@ style Base_Widget_MaterialComponents_TextView
 style CardView
 style CardView_Dark
 style CardView_Light
+style LauncherTheme
 style MaterialAlertDialog_Material3
 style MaterialAlertDialog_Material3_Animation
 style MaterialAlertDialog_Material3_Body_Text
