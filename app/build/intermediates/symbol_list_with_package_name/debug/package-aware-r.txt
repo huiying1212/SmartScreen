@@ -2899,6 +2899,8 @@ id bounce
 id bounceBoth
 id bounceEnd
 id bounceStart
+id btn_call_deepseek
+id btn_call_gemini
 id btn_start_collection
 id btn_stop_collection
 id btn_view_data

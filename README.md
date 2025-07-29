@@ -282,3 +282,37 @@ JSONObject contextData = collector.getCompleteContextData();
 ## 参考文献
 
 基于论文《Investigating Context-Aware Collaborative Text Entry on Smartphones using Large Language Models》的设计理念和技术方案。 
+
+# 配置Gemini API
+
+## 获取API密钥
+
+1. 访问 [Google AI Studio](https://aistudio.google.com/)
+2. 创建或登录您的Google账户
+3. 获取Gemini API密钥
+
+## 配置API密钥
+
+在 `app/src/main/java/com/datacollector/android/GeminiApiClient.java` 文件中：
+
+```java
+private static final String API_KEY = "YOUR_API_KEY_HERE"; // 请替换为您的Gemini API密钥
+```
+
+将 `YOUR_API_KEY_HERE` 替换为您从Google AI Studio获取的实际API密钥。
+
+## 使用方法
+
+1. 启动应用
+2. 点击"启动数据收集"开始收集用户行为数据
+3. 等待数据收集一段时间
+4. 点击"调用Gemini AI分析"按钮
+5. 系统将自动使用最新收集的数据文件和prompt.txt进行AI分析
+6. 分析结果将显示在屏幕上
+
+## 注意事项
+
+- 确保设备有网络连接
+- API调用可能需要几秒钟时间
+- 确保您的API密钥有足够的配额
+- prompt.txt文件已包含在应用的assets目录中 

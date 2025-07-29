@@ -35,6 +35,20 @@
         android:text="查看收集的数据"
         android:layout_marginBottom="16dp" />
 
+    <Button
+        android:id="@+id/btn_call_gemini"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="调用Gemini AI分析"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btn_call_deepseek"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="调用DeepSeek AI分析"
+        android:layout_marginBottom="16dp" />
+
     <TextView
         android:id="@+id/tv_status"
         android:layout_width="match_parent"

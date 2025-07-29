@@ -35,12 +35,20 @@ public class AndroidDataCollector extends Activity {
     private Button stopButton;
     private Button getDataButton;
     private Button statusButton;  // 添加状态按钮引用
+    private Button geminiButton;  // 添加Gemini API按钮
+    private Button deepSeekButton;  // 添加DeepSeek API按钮
     private TextView statusTextView;
     private TextView dataDisplayTextView;
     
     // 数据收集服务
     private DataCollectionService dataCollectionService;
     private boolean isServiceBound = false;
+    
+    // Gemini API客户端
+    private GeminiApiClient geminiApiClient;
+    
+    // DeepSeek API客户端
+    private DeepSeekApiClient deepSeekApiClient;
     
     // 服务连接
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -66,6 +74,12 @@ public class AndroidDataCollector extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // 初始化Gemini API客户端
+        geminiApiClient = new GeminiApiClient(this);
+        
+        // 初始化DeepSeek API客户端
+        deepSeekApiClient = new DeepSeekApiClient(this);
         
         // 创建简单的UI布局
         createUI();
@@ -124,13 +138,41 @@ public class AndroidDataCollector extends Activity {
         statusButton.setEnabled(false);
         layout.addView(statusButton);
         
+        // Gemini API按钮
+        geminiButton = new Button(this);
+        geminiButton.setText("调用Gemini AI分析");
+        geminiButton.setOnClickListener(v -> callGeminiApi());
+        geminiButton.setEnabled(false);
+        layout.addView(geminiButton);
+        
+        // DeepSeek API按钮
+        deepSeekButton = new Button(this);
+        deepSeekButton.setText("调用DeepSeek AI分析");
+        deepSeekButton.setOnClickListener(v -> callDeepSeekApi());
+        deepSeekButton.setEnabled(false);
+        layout.addView(deepSeekButton);
+        
         // 数据显示区域
         dataDisplayTextView = new TextView(this);
         dataDisplayTextView.setText("数据将在这里显示...");
         dataDisplayTextView.setTextSize(12);
-        dataDisplayTextView.setPadding(0, 20, 0, 0);
-        dataDisplayTextView.setMaxLines(30);
-        layout.addView(dataDisplayTextView);
+        dataDisplayTextView.setPadding(16, 16, 16, 16); // 增加内边距
+        dataDisplayTextView.setMaxLines(Integer.MAX_VALUE); // 移除行数限制
+        dataDisplayTextView.setTextIsSelectable(true); // 允许选择文本
+        dataDisplayTextView.setBackgroundColor(0xFFF5F5F5); // 设置浅灰色背景
+        dataDisplayTextView.setTypeface(android.graphics.Typeface.MONOSPACE); // 使用等宽字体
+        
+        // 添加ScrollView包装数据显示区域
+        android.widget.ScrollView scrollView = new android.widget.ScrollView(this);
+        android.widget.LinearLayout.LayoutParams scrollParams = new android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+            0,
+            1.0f  // 权重为1，占用剩余空间
+        );
+        scrollParams.topMargin = 20; // 添加上边距
+        scrollView.setLayoutParams(scrollParams);
+        scrollView.addView(dataDisplayTextView);
+        layout.addView(scrollView);
         
         setContentView(layout);
     }
@@ -281,6 +323,98 @@ public class AndroidDataCollector extends Activity {
     }
     
     /**
+     * 调用Gemini API进行数据分析
+     */
+    private void callGeminiApi() {
+        if (!isServiceBound || dataCollectionService == null) {
+            Toast.makeText(this, "数据收集服务未连接", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        updateStatus("正在调用Gemini API分析...");
+        dataDisplayTextView.setText("正在分析数据，请稍候...");
+        
+        // 禁用按钮防止重复点击
+        geminiButton.setEnabled(false);
+        
+        geminiApiClient.callGeminiWithLatestData(new GeminiApiClient.GeminiApiCallback() {
+            @Override
+            public void onSuccess(String response) {
+                runOnUiThread(() -> {
+                    try {
+                        // 尝试格式化JSON响应
+                        JSONObject responseJson = new JSONObject(response);
+                        String formattedResponse = "Gemini AI分析结果:\n" + responseJson.toString(2);
+                        dataDisplayTextView.setText(formattedResponse);
+                        updateStatus("Gemini API调用成功");
+                    } catch (Exception e) {
+                        // 如果不是JSON格式，直接显示原始响应
+                        String displayText = "Gemini AI分析结果:\n" + response;
+                        dataDisplayTextView.setText(displayText);
+                        updateStatus("Gemini API调用成功");
+                    }
+                    geminiButton.setEnabled(true);
+                });
+            }
+            
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    dataDisplayTextView.setText("Gemini API调用失败:\n" + error);
+                    updateStatus("Gemini API调用失败");
+                    geminiButton.setEnabled(true);
+                });
+            }
+        });
+    }
+    
+    /**
+     * 调用DeepSeek API进行数据分析
+     */
+    private void callDeepSeekApi() {
+        if (!isServiceBound || dataCollectionService == null) {
+            Toast.makeText(this, "数据收集服务未连接", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        updateStatus("正在调用DeepSeek API分析...");
+        dataDisplayTextView.setText("正在分析数据，请稍候...");
+
+        // 禁用按钮防止重复点击
+        deepSeekButton.setEnabled(false);
+
+        deepSeekApiClient.callDeepSeekWithLatestData(new DeepSeekApiClient.DeepSeekApiCallback() {
+            @Override
+            public void onSuccess(String response) {
+                runOnUiThread(() -> {
+                    try {
+                        // 尝试格式化JSON响应
+                        JSONObject responseJson = new JSONObject(response);
+                        String formattedResponse = "DeepSeek AI分析结果:\n" + responseJson.toString(2);
+                        dataDisplayTextView.setText(formattedResponse);
+                        updateStatus("DeepSeek API调用成功");
+                    } catch (Exception e) {
+                        // 如果不是JSON格式，直接显示原始响应
+                        String displayText = "DeepSeek AI分析结果:\n" + response;
+                        dataDisplayTextView.setText(displayText);
+                        updateStatus("DeepSeek API调用成功");
+                    }
+                    deepSeekButton.setEnabled(true);
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    dataDisplayTextView.setText("DeepSeek API调用失败:\n" + error);
+                    updateStatus("DeepSeek API调用失败");
+                    deepSeekButton.setEnabled(true);
+                });
+            }
+        });
+    }
+    
+    /**
      * 检查权限是否已获取
      */
     private boolean checkPermissions() {
@@ -307,6 +441,8 @@ public class AndroidDataCollector extends Activity {
             stopButton.setEnabled(isServiceBound);
             getDataButton.setEnabled(isServiceBound);
             statusButton.setEnabled(isServiceBound);
+            geminiButton.setEnabled(isServiceBound); // 更新Gemini按钮状态
+            deepSeekButton.setEnabled(isServiceBound); // 更新DeepSeek按钮状态
         });
     }
     
