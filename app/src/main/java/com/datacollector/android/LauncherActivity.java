@@ -18,7 +18,13 @@ import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.Toast;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONArray;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -36,18 +42,32 @@ public class LauncherActivity extends Activity {
     
     private static final String TAG = "LauncherActivity";
     
-    private GridView appsGridView;
-    private List<AppInfo> installedApps;
-    private AppsAdapter appsAdapter;
-    private Button settingsButton;
-    private Button appsButton;
-    private Button dataButton;
-    private Button exitLauncherButton;
-    private TextView statusTextView;
+    // UI组件
+    private ImageButton settingsButton;
+    private ImageButton exitLauncherButton;
     private TextView timeTextView;
+    private TextView dateTextView;
+    private TextView deepseekResultTextView;
+    private Button refreshDeepseekButton;
+    private TextView dataStatusTextView;
+    private TextView appsCountTextView;
     
+    // 底部四个app快捷方式
+    private LinearLayout[] appShortcuts = new LinearLayout[4];
+    private ImageView[] appIcons = new ImageView[4];
+    private TextView[] appNames = new TextView[4];
+    private AppInfo[] shortcutApps = new AppInfo[4];
+    
+    // Widget区域
+    private LinearLayout dataStatusWidget;
+    private LinearLayout appsStatsWidget;
+    private LinearLayout allAppsWidget;
+    
+    // 数据相关
+    private List<AppInfo> installedApps;
     private Handler timeHandler;
     private Runnable timeRunnable;
+    private DeepSeekApiClient deepSeekApiClient;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,45 +75,61 @@ public class LauncherActivity extends Activity {
         setContentView(R.layout.activity_launcher);
         
         initViews();
-        loadInstalledApps();
-        setupAppsGrid();
+        initializeData();
+        setupEventListeners();
         startTimeUpdater();
+        loadInstalledApps();
+        setupDefaultShortcuts();
     }
     
     private void initViews() {
-        appsGridView = findViewById(R.id.apps_grid);
+        // 左上角控制按钮
         settingsButton = findViewById(R.id.settings_button);
-        appsButton = findViewById(R.id.apps_button);
-        dataButton = findViewById(R.id.data_button);
         exitLauncherButton = findViewById(R.id.exit_launcher_button);
-        statusTextView = findViewById(R.id.status_text);
-        timeTextView = findViewById(R.id.time_text);
         
+        // DeepSeek区域
+        deepseekResultTextView = findViewById(R.id.deepseek_result_text);
+        refreshDeepseekButton = findViewById(R.id.refresh_deepseek_button);
+        
+        // Widgets区域
+        timeTextView = findViewById(R.id.time_text);
+        dateTextView = findViewById(R.id.date_text);
+        dataStatusTextView = findViewById(R.id.data_status_text);
+        appsCountTextView = findViewById(R.id.apps_count_text);
+        
+        dataStatusWidget = findViewById(R.id.data_status_widget);
+        appsStatsWidget = findViewById(R.id.apps_stats_widget);
+        allAppsWidget = findViewById(R.id.all_apps_widget);
+        
+        // 底部四个app快捷方式
+        appShortcuts[0] = findViewById(R.id.app_shortcut_1);
+        appShortcuts[1] = findViewById(R.id.app_shortcut_2);
+        appShortcuts[2] = findViewById(R.id.app_shortcut_3);
+        appShortcuts[3] = findViewById(R.id.app_shortcut_4);
+        
+        appIcons[0] = findViewById(R.id.app_icon_1);
+        appIcons[1] = findViewById(R.id.app_icon_2);
+        appIcons[2] = findViewById(R.id.app_icon_3);
+        appIcons[3] = findViewById(R.id.app_icon_4);
+        
+        appNames[0] = findViewById(R.id.app_name_1);
+        appNames[1] = findViewById(R.id.app_name_2);
+        appNames[2] = findViewById(R.id.app_name_3);
+        appNames[3] = findViewById(R.id.app_name_4);
+    }
+    
+    private void initializeData() {
+        deepSeekApiClient = new DeepSeekApiClient(this);
+        installedApps = new ArrayList<>();
+    }
+    
+    private void setupEventListeners() {
         // 设置按钮点击事件 - 跳转到原来的数据收集界面
         settingsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(LauncherActivity.this, AndroidDataCollector.class);
                 startActivity(intent);
-            }
-        });
-        
-        // 应用按钮点击事件 - 刷新应用列表
-        appsButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                loadInstalledApps();
-                if (appsAdapter != null) {
-                    appsAdapter.notifyDataSetChanged();
-                }
-            }
-        });
-        
-        // 数据按钮点击事件 - 查看数据收集状态
-        dataButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showDataStatus();
             }
         });
         
@@ -105,8 +141,211 @@ public class LauncherActivity extends Activity {
             }
         });
         
-        // 更新状态文本
-        statusTextView.setText("CATIA3 Launcher - 上下文感知启动器");
+        // DeepSeek刷新按钮
+        refreshDeepseekButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                callDeepSeekApi();
+            }
+        });
+        
+        // 数据状态widget点击事件
+        dataStatusWidget.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showDataStatus();
+            }
+        });
+        
+        // 应用统计widget点击事件
+        appsStatsWidget.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loadInstalledApps();
+                updateAppsCount();
+                Toast.makeText(LauncherActivity.this, "应用列表已刷新", Toast.LENGTH_SHORT).show();
+            }
+        });
+        
+        // 所有应用widget点击事件
+        allAppsWidget.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showAllAppsDialog();
+            }
+        });
+        
+        // 底部app快捷方式点击事件
+        for (int i = 0; i < 4; i++) {
+            final int index = i;
+            appShortcuts[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (shortcutApps[index] != null) {
+                        launchApp(shortcutApps[index]);
+                    } else {
+                        selectAppForShortcut(index);
+                    }
+                }
+            });
+            
+            // 长按设置快捷方式
+            appShortcuts[i].setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    selectAppForShortcut(index);
+                    return true;
+                }
+            });
+        }
+    }
+    
+    /**
+     * 调用DeepSeek API进行数据分析
+     */
+    private void callDeepSeekApi() {
+        refreshDeepseekButton.setEnabled(false);
+        deepseekResultTextView.setText("正在调用AI分析，请稍候...");
+        
+        deepSeekApiClient.callDeepSeekWithLatestData(new DeepSeekApiClient.DeepSeekApiCallback() {
+            @Override
+            public void onSuccess(String response) {
+                runOnUiThread(() -> {
+                    try {
+                        // 尝试解析JSON响应，提取notification_text字段
+                        org.json.JSONObject jsonResponse = new org.json.JSONObject(response);
+                        
+                        String notificationText = null;
+                        
+                        // 尝试直接获取notification_text
+                        if (jsonResponse.has("notification_text")) {
+                            notificationText = jsonResponse.getString("notification_text");
+                        }
+                        // 如果没有找到，可能在嵌套的对象中
+                        else if (jsonResponse.has("data") && jsonResponse.getJSONObject("data").has("notification_text")) {
+                            notificationText = jsonResponse.getJSONObject("data").getString("notification_text");
+                        }
+                        // 如果还没找到，尝试在choices数组中查找（OpenAI格式）
+                        else if (jsonResponse.has("choices")) {
+                            org.json.JSONArray choices = jsonResponse.getJSONArray("choices");
+                            if (choices.length() > 0) {
+                                org.json.JSONObject choice = choices.getJSONObject(0);
+                                if (choice.has("message")) {
+                                    org.json.JSONObject message = choice.getJSONObject("message");
+                                    String content = message.getString("content");
+                                    
+                                    // 尝试解析content中的JSON
+                                    try {
+                                        org.json.JSONObject contentJson = new org.json.JSONObject(content);
+                                        if (contentJson.has("notification_text")) {
+                                            notificationText = contentJson.getString("notification_text");
+                                        }
+                                    } catch (org.json.JSONException e) {
+                                        // 如果content不是JSON，直接使用content
+                                        notificationText = content;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // 如果找到了notification_text，显示它
+                        if (notificationText != null && !notificationText.trim().isEmpty()) {
+                            deepseekResultTextView.setText(notificationText);
+                        } else {
+                            // 如果没有找到notification_text字段，显示原始响应
+                            deepseekResultTextView.setText("AI分析结果:\n" + response);
+                        }
+                        
+                    } catch (org.json.JSONException e) {
+                        // 如果解析JSON失败，显示原始响应
+                        deepseekResultTextView.setText("AI分析结果:\n" + response);
+                    }
+                    refreshDeepseekButton.setEnabled(true);
+                });
+            }
+            
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    deepseekResultTextView.setText("AI分析失败: " + error);
+                    refreshDeepseekButton.setEnabled(true);
+                });
+            }
+        });
+    }
+    
+    /**
+     * 显示所有应用的对话框
+     */
+    private void showAllAppsDialog() {
+        Intent intent = new Intent(this, AllAppsActivity.class);
+        startActivity(intent);
+    }
+    
+    /**
+     * 选择应用作为快捷方式
+     */
+    private void selectAppForShortcut(int index) {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        
+        // 创建应用列表
+        String[] appNames = new String[installedApps.size()];
+        for (int i = 0; i < installedApps.size(); i++) {
+            appNames[i] = installedApps.get(i).label;
+        }
+        
+        builder.setTitle("选择应用作为快捷方式 " + (index + 1))
+               .setItems(appNames, (dialog, which) -> {
+                   AppInfo selectedApp = installedApps.get(which);
+                   setShortcutApp(index, selectedApp);
+               })
+               .setNegativeButton("取消", null)
+               .show();
+    }
+    
+    /**
+     * 设置快捷方式应用
+     */
+    private void setShortcutApp(int index, AppInfo appInfo) {
+        shortcutApps[index] = appInfo;
+        appIcons[index].setImageDrawable(appInfo.icon);
+        appNames[index].setText(appInfo.label);
+        
+        Toast.makeText(this, "快捷方式 " + (index + 1) + " 已设置为: " + appInfo.label, 
+                      Toast.LENGTH_SHORT).show();
+    }
+    
+    /**
+     * 设置默认快捷方式
+     */
+    private void setupDefaultShortcuts() {
+        // 等待应用加载完成后设置默认快捷方式
+        new Handler().postDelayed(() -> {
+            if (installedApps.size() > 0) {
+                // 尝试设置一些常用应用作为默认快捷方式
+                setDefaultShortcutApp(0, "com.android.settings", "设置");
+                setDefaultShortcutApp(1, "com.android.camera", "相机");
+                setDefaultShortcutApp(2, "com.android.contacts", "联系人");
+                setDefaultShortcutApp(3, "com.android.chrome", "浏览器");
+            }
+        }, 1000);
+    }
+    
+    private void setDefaultShortcutApp(int index, String packageName, String defaultName) {
+        for (AppInfo app : installedApps) {
+            if (app.packageName.equals(packageName)) {
+                setShortcutApp(index, app);
+                return;
+            }
+        }
+        // 如果没找到指定应用，设置为第一个可用应用
+        if (installedApps.size() > index) {
+            setShortcutApp(index, installedApps.get(index));
+        }
+    }
+    
+    private void updateAppsCount() {
+        appsCountTextView.setText("已安装 " + installedApps.size() + " 个应用");
     }
     
     private void showExitLauncherDialog() {
@@ -188,9 +427,12 @@ public class LauncherActivity extends Activity {
     }
     
     private void updateTime() {
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        String currentTime = sdf.format(new Date());
-        timeTextView.setText(currentTime);
+        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault());
+        
+        Date now = new Date();
+        timeTextView.setText(timeFormat.format(now));
+        dateTextView.setText(dateFormat.format(now));
     }
     
     private void showDataStatus() {
@@ -236,6 +478,14 @@ public class LauncherActivity extends Activity {
                 return app1.label.compareToIgnoreCase(app2.label);
             }
         });
+        
+        // 更新应用计数显示
+        updateAppsCount();
+        updateDataStatus();
+    }
+    
+    private void updateDataStatus() {
+        dataStatusTextView.setText("运行中 - " + installedApps.size() + " 个应用");
     }
     
     private boolean isSystemApp(ApplicationInfo applicationInfo) {
@@ -259,19 +509,6 @@ public class LauncherActivity extends Activity {
                packageName.equals("com.tencent.mm");
     }
     
-    private void setupAppsGrid() {
-        appsAdapter = new AppsAdapter(this, installedApps);
-        appsGridView.setAdapter(appsAdapter);
-        
-        appsGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                AppInfo appInfo = installedApps.get(position);
-                launchApp(appInfo);
-            }
-        });
-    }
-    
     private void launchApp(AppInfo appInfo) {
         try {
             Intent intent = new Intent();
@@ -289,6 +526,8 @@ public class LauncherActivity extends Activity {
             if (launchIntent != null) {
                 startActivity(launchIntent);
                 collectAppLaunchData(appInfo);
+            } else {
+                Toast.makeText(this, "无法启动应用: " + appInfo.label, Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -315,11 +554,9 @@ public class LauncherActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 每次回到主屏幕时刷新应用列表
+        // 每次回到主屏幕时刷新应用列表和更新显示
         loadInstalledApps();
-        if (appsAdapter != null) {
-            appsAdapter.notifyDataSetChanged();
-        }
+        updateTime();
     }
     
     @Override
@@ -336,57 +573,5 @@ public class LauncherActivity extends Activity {
         public String packageName;
         public String className;
         public Drawable icon;
-    }
-    
-    // 应用网格适配器
-    private class AppsAdapter extends BaseAdapter {
-        private Context context;
-        private List<AppInfo> apps;
-        
-        public AppsAdapter(Context context, List<AppInfo> apps) {
-            this.context = context;
-            this.apps = apps;
-        }
-        
-        @Override
-        public int getCount() {
-            return apps.size();
-        }
-        
-        @Override
-        public Object getItem(int position) {
-            return apps.get(position);
-        }
-        
-        @Override
-        public long getItemId(int position) {
-            return position;
-        }
-        
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            ViewHolder viewHolder;
-            
-            if (convertView == null) {
-                convertView = getLayoutInflater().inflate(R.layout.app_item, parent, false);
-                viewHolder = new ViewHolder();
-                viewHolder.iconImageView = convertView.findViewById(R.id.app_icon);
-                viewHolder.labelTextView = convertView.findViewById(R.id.app_label);
-                convertView.setTag(viewHolder);
-            } else {
-                viewHolder = (ViewHolder) convertView.getTag();
-            }
-            
-            AppInfo appInfo = apps.get(position);
-            viewHolder.iconImageView.setImageDrawable(appInfo.icon);
-            viewHolder.labelTextView.setText(appInfo.label);
-            
-            return convertView;
-        }
-        
-        private class ViewHolder {
-            ImageView iconImageView;
-            TextView labelTextView;
-        }
     }
 } 

@@ -21,4 +21,11 @@
     <color name="launcher_exit_bg">#FFCC4444</color>
     <color name="launcher_exit_pressed">#FFDD5555</color>
     <color name="launcher_exit_text">#FFFFFFFF</color>
+    
+    <!-- 新界面相关颜色 -->
+    <color name="launcher_deepseek_bg">#FF2A2A2A</color>
+    <color name="launcher_widgets_bg">#FF232323</color>
+    <color name="launcher_widget_item_bg">#FF383838</color>
+    <color name="launcher_small_button_bg">#FF4A4A4A</color>
+    <color name="launcher_small_exit_bg">#FFAA3333</color>
 </resources> 

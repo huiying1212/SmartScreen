@@ -59,6 +59,13 @@
             </intent-filter>
         </activity>
         
+        <!-- 全部应用列表活动 -->
+        <activity
+            android:name=".AllAppsActivity"
+            android:exported="false"
+            android:label="所有应用"
+            android:theme="@style/LauncherTheme" />
+        
         <!-- 数据收集管理界面 - 只能通过内部跳转访问 -->
         <activity
             android:name=".AndroidDataCollector"
