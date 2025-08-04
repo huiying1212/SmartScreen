@@ -37,6 +37,8 @@ public class AndroidDataCollector extends Activity {
     private Button statusButton;  // 添加状态按钮引用
     private Button geminiButton;  // 添加Gemini API按钮
     private Button deepSeekButton;  // 添加DeepSeek API按钮
+    private Button aiAnalysisToggleButton;  // 添加AI分析开关按钮
+    private Button allAppsButton;  // 添加所有应用按钮
     private TextView statusTextView;
     private TextView dataDisplayTextView;
     
@@ -50,7 +52,7 @@ public class AndroidDataCollector extends Activity {
     // DeepSeek API客户端
     private DeepSeekApiClient deepSeekApiClient;
     
-    // 服务连接
+    // 服务连接对象
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -58,16 +60,34 @@ public class AndroidDataCollector extends Activity {
                 (DataCollectionService.DataCollectionBinder) service;
             dataCollectionService = binder.getService();
             isServiceBound = true;
-            updateUI();
+            
+            // 启用按钮
+            stopButton.setEnabled(true);
+            getDataButton.setEnabled(true);
+            statusButton.setEnabled(true);
+            geminiButton.setEnabled(true);
+            deepSeekButton.setEnabled(true);
+            aiAnalysisToggleButton.setEnabled(true);
+            
             updateStatus("数据收集服务已连接");
+            updateAiAnalysisButtonText();
         }
         
         @Override
         public void onServiceDisconnected(ComponentName name) {
             dataCollectionService = null;
             isServiceBound = false;
-            updateUI();
+            
+            // 禁用按钮
+            stopButton.setEnabled(false);
+            getDataButton.setEnabled(false);
+            statusButton.setEnabled(false);
+            geminiButton.setEnabled(false);
+            deepSeekButton.setEnabled(false);
+            aiAnalysisToggleButton.setEnabled(false);
+            
             updateStatus("数据收集服务已断开");
+            updateAiAnalysisButtonText();
         }
     };
     
@@ -151,6 +171,19 @@ public class AndroidDataCollector extends Activity {
         deepSeekButton.setOnClickListener(v -> callDeepSeekApi());
         deepSeekButton.setEnabled(false);
         layout.addView(deepSeekButton);
+        
+        // AI分析开关按钮
+        aiAnalysisToggleButton = new Button(this);
+        aiAnalysisToggleButton.setText("AI自动分析: 检查中...");
+        aiAnalysisToggleButton.setOnClickListener(v -> toggleAiAnalysis());
+        aiAnalysisToggleButton.setEnabled(false);
+        layout.addView(aiAnalysisToggleButton);
+        
+        // 所有应用按钮
+        allAppsButton = new Button(this);
+        allAppsButton.setText("查看所有应用");
+        allAppsButton.setOnClickListener(v -> showAllApps());
+        layout.addView(allAppsButton);
         
         // 数据显示区域
         dataDisplayTextView = new TextView(this);
@@ -238,7 +271,6 @@ public class AndroidDataCollector extends Activity {
      * 停止数据收集
      */
     private void stopDataCollection() {
-        // 解绑服务
         if (isServiceBound) {
             unbindService(serviceConnection);
             isServiceBound = false;
@@ -415,6 +447,45 @@ public class AndroidDataCollector extends Activity {
     }
     
     /**
+     * 切换AI自动分析开关
+     */
+    private void toggleAiAnalysis() {
+        if (!isServiceBound || dataCollectionService == null) {
+            Toast.makeText(this, "数据收集服务未连接", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        boolean currentState = dataCollectionService.isAutoAnalysisEnabled();
+        dataCollectionService.setAutoAnalysisEnabled(!currentState);
+        
+        updateAiAnalysisButtonText();
+        
+        String message = "AI自动分析已" + (!currentState ? "开启" : "关闭");
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        updateStatus(message);
+    }
+    
+    /**
+     * 显示所有应用
+     */
+    private void showAllApps() {
+        Intent intent = new Intent(this, AllAppsActivity.class);
+        startActivity(intent);
+    }
+    
+    /**
+     * 更新AI分析按钮文本
+     */
+    private void updateAiAnalysisButtonText() {
+        if (isServiceBound && dataCollectionService != null) {
+            boolean enabled = dataCollectionService.isAutoAnalysisEnabled();
+            aiAnalysisToggleButton.setText("AI自动分析: " + (enabled ? "开启" : "关闭"));
+        } else {
+            aiAnalysisToggleButton.setText("AI自动分析: 检查中...");
+        }
+    }
+    
+    /**
      * 检查权限是否已获取
      */
     private boolean checkPermissions() {
@@ -441,8 +512,15 @@ public class AndroidDataCollector extends Activity {
             stopButton.setEnabled(isServiceBound);
             getDataButton.setEnabled(isServiceBound);
             statusButton.setEnabled(isServiceBound);
-            geminiButton.setEnabled(isServiceBound); // 更新Gemini按钮状态
-            deepSeekButton.setEnabled(isServiceBound); // 更新DeepSeek按钮状态
+            geminiButton.setEnabled(isServiceBound);
+            deepSeekButton.setEnabled(isServiceBound);
+            aiAnalysisToggleButton.setEnabled(isServiceBound);
+            
+            if (isServiceBound) {
+                updateAiAnalysisButtonText();
+            } else {
+                aiAnalysisToggleButton.setText("AI自动分析: 检查中...");
+            }
         });
     }
     

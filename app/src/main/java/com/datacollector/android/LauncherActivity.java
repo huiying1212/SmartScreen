@@ -1,15 +1,20 @@
 package com.datacollector.android;
 
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.provider.Settings;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -38,19 +43,19 @@ import java.util.Locale;
  * CATIA3 Launcher启动器主界面
  * 替代Android原生主屏幕，提供应用启动和数据收集功能
  */
-public class LauncherActivity extends Activity {
+public class LauncherActivity extends Activity implements DeepSeekApiClient.LauncherUpdateCallback {
     
     private static final String TAG = "LauncherActivity";
     
     // UI组件
     private ImageButton settingsButton;
     private ImageButton exitLauncherButton;
-    private TextView timeTextView;
-    private TextView dateTextView;
     private TextView deepseekResultTextView;
-    private Button refreshDeepseekButton;
-    private TextView dataStatusTextView;
-    private TextView appsCountTextView;
+    
+    // 智能建议widgets相关UI组件
+    private LinearLayout dynamicWidgetsContainer;
+    private TextView widgetsPlaceholderText;
+    private List<WidgetSuggestion> currentWidgetSuggestions;
     
     // 底部四个app快捷方式
     private LinearLayout[] appShortcuts = new LinearLayout[4];
@@ -58,16 +63,34 @@ public class LauncherActivity extends Activity {
     private TextView[] appNames = new TextView[4];
     private AppInfo[] shortcutApps = new AppInfo[4];
     
-    // Widget区域
-    private LinearLayout dataStatusWidget;
-    private LinearLayout appsStatsWidget;
-    private LinearLayout allAppsWidget;
-    
     // 数据相关
     private List<AppInfo> installedApps;
     private Handler timeHandler;
     private Runnable timeRunnable;
     private DeepSeekApiClient deepSeekApiClient;
+    
+    // 数据收集服务绑定
+    private DataCollectionService dataCollectionService;
+    private boolean isServiceBound = false;
+    
+    // 服务连接对象
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            DataCollectionService.DataCollectionBinder binder = 
+                (DataCollectionService.DataCollectionBinder) service;
+            dataCollectionService = binder.getService();
+            isServiceBound = true;
+            Log.d(TAG, "Connected to DataCollectionService");
+        }
+        
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            dataCollectionService = null;
+            isServiceBound = false;
+            Log.d(TAG, "Disconnected from DataCollectionService");
+        }
+    };
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,6 +103,15 @@ public class LauncherActivity extends Activity {
         startTimeUpdater();
         loadInstalledApps();
         setupDefaultShortcuts();
+        
+        // 初始化widget占位符
+        showDefaultWidgetPlaceholder();
+        
+        // 绑定数据收集服务
+        bindDataCollectionService();
+        
+        // 注册DeepSeek Launcher更新回调
+        DeepSeekApiClient.setLauncherUpdateCallback(this);
     }
     
     private void initViews() {
@@ -89,17 +121,10 @@ public class LauncherActivity extends Activity {
         
         // DeepSeek区域
         deepseekResultTextView = findViewById(R.id.deepseek_result_text);
-        refreshDeepseekButton = findViewById(R.id.refresh_deepseek_button);
         
-        // Widgets区域
-        timeTextView = findViewById(R.id.time_text);
-        dateTextView = findViewById(R.id.date_text);
-        dataStatusTextView = findViewById(R.id.data_status_text);
-        appsCountTextView = findViewById(R.id.apps_count_text);
-        
-        dataStatusWidget = findViewById(R.id.data_status_widget);
-        appsStatsWidget = findViewById(R.id.apps_stats_widget);
-        allAppsWidget = findViewById(R.id.all_apps_widget);
+        // 智能建议widgets相关UI组件
+        dynamicWidgetsContainer = findViewById(R.id.dynamic_widgets_container);
+        widgetsPlaceholderText = findViewById(R.id.widgets_placeholder_text);
         
         // 底部四个app快捷方式
         appShortcuts[0] = findViewById(R.id.app_shortcut_1);
@@ -121,6 +146,10 @@ public class LauncherActivity extends Activity {
     private void initializeData() {
         deepSeekApiClient = new DeepSeekApiClient(this);
         installedApps = new ArrayList<>();
+        currentWidgetSuggestions = new ArrayList<>();
+        
+        // 设置初始的AI助手提示信息
+        deepseekResultTextView.setText("AI智能助手准备就绪\n回到桌面时将自动分析并更新建议 🤖");
     }
     
     private void setupEventListeners() {
@@ -138,40 +167,6 @@ public class LauncherActivity extends Activity {
             @Override
             public void onClick(View v) {
                 showExitLauncherDialog();
-            }
-        });
-        
-        // DeepSeek刷新按钮
-        refreshDeepseekButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                callDeepSeekApi();
-            }
-        });
-        
-        // 数据状态widget点击事件
-        dataStatusWidget.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showDataStatus();
-            }
-        });
-        
-        // 应用统计widget点击事件
-        appsStatsWidget.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                loadInstalledApps();
-                updateAppsCount();
-                Toast.makeText(LauncherActivity.this, "应用列表已刷新", Toast.LENGTH_SHORT).show();
-            }
-        });
-        
-        // 所有应用widget点击事件
-        allAppsWidget.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showAllAppsDialog();
             }
         });
         
@@ -204,7 +199,6 @@ public class LauncherActivity extends Activity {
      * 调用DeepSeek API进行数据分析
      */
     private void callDeepSeekApi() {
-        refreshDeepseekButton.setEnabled(false);
         deepseekResultTextView.setText("正在调用AI分析，请稍候...");
         
         deepSeekApiClient.callDeepSeekWithLatestData(new DeepSeekApiClient.DeepSeekApiCallback() {
@@ -212,21 +206,33 @@ public class LauncherActivity extends Activity {
             public void onSuccess(String response) {
                 runOnUiThread(() -> {
                     try {
-                        // 尝试解析JSON响应，提取notification_text字段
+                        // 尝试解析JSON响应，提取notification_text和next_move字段
                         org.json.JSONObject jsonResponse = new org.json.JSONObject(response);
                         
                         String notificationText = null;
+                        org.json.JSONArray nextMoveArray = null;
                         
-                        // 尝试直接获取notification_text
+                        // 尝试直接获取字段
                         if (jsonResponse.has("notification_text")) {
                             notificationText = jsonResponse.getString("notification_text");
                         }
-                        // 如果没有找到，可能在嵌套的对象中
-                        else if (jsonResponse.has("data") && jsonResponse.getJSONObject("data").has("notification_text")) {
-                            notificationText = jsonResponse.getJSONObject("data").getString("notification_text");
+                        if (jsonResponse.has("next_move")) {
+                            nextMoveArray = jsonResponse.getJSONArray("next_move");
                         }
+                        
+                        // 如果没有找到，可能在嵌套的对象中
+                        if ((notificationText == null || nextMoveArray == null) && jsonResponse.has("data")) {
+                            org.json.JSONObject data = jsonResponse.getJSONObject("data");
+                            if (notificationText == null && data.has("notification_text")) {
+                                notificationText = data.getString("notification_text");
+                            }
+                            if (nextMoveArray == null && data.has("next_move")) {
+                                nextMoveArray = data.getJSONArray("next_move");
+                            }
+                        }
+                        
                         // 如果还没找到，尝试在choices数组中查找（OpenAI格式）
-                        else if (jsonResponse.has("choices")) {
+                        if ((notificationText == null || nextMoveArray == null) && jsonResponse.has("choices")) {
                             org.json.JSONArray choices = jsonResponse.getJSONArray("choices");
                             if (choices.length() > 0) {
                                 org.json.JSONObject choice = choices.getJSONObject(0);
@@ -237,30 +243,42 @@ public class LauncherActivity extends Activity {
                                     // 尝试解析content中的JSON
                                     try {
                                         org.json.JSONObject contentJson = new org.json.JSONObject(content);
-                                        if (contentJson.has("notification_text")) {
+                                        if (notificationText == null && contentJson.has("notification_text")) {
                                             notificationText = contentJson.getString("notification_text");
                                         }
+                                        if (nextMoveArray == null && contentJson.has("next_move")) {
+                                            nextMoveArray = contentJson.getJSONArray("next_move");
+                                        }
                                     } catch (org.json.JSONException e) {
-                                        // 如果content不是JSON，直接使用content
-                                        notificationText = content;
+                                        // 如果content不是JSON，直接使用content作为notification
+                                        if (notificationText == null) {
+                                            notificationText = content;
+                                        }
                                     }
                                 }
                             }
                         }
                         
-                        // 如果找到了notification_text，显示它
+                        // 显示notification_text
                         if (notificationText != null && !notificationText.trim().isEmpty()) {
                             deepseekResultTextView.setText(notificationText);
                         } else {
-                            // 如果没有找到notification_text字段，显示原始响应
                             deepseekResultTextView.setText("AI分析结果:\n" + response);
+                        }
+                        
+                        // 处理next_move数据并显示widget建议
+                        if (nextMoveArray != null) {
+                            parseAndDisplayWidgetSuggestions(nextMoveArray);
+                        } else {
+                            // 如果没有next_move数据，显示默认提示
+                            showDefaultWidgetPlaceholder();
                         }
                         
                     } catch (org.json.JSONException e) {
                         // 如果解析JSON失败，显示原始响应
                         deepseekResultTextView.setText("AI分析结果:\n" + response);
+                        showDefaultWidgetPlaceholder();
                     }
-                    refreshDeepseekButton.setEnabled(true);
                 });
             }
             
@@ -268,18 +286,144 @@ public class LauncherActivity extends Activity {
             public void onError(String error) {
                 runOnUiThread(() -> {
                     deepseekResultTextView.setText("AI分析失败: " + error);
-                    refreshDeepseekButton.setEnabled(true);
+                    showDefaultWidgetPlaceholder();
                 });
             }
         });
     }
     
     /**
-     * 显示所有应用的对话框
+     * 解析next_move数据并显示widget建议
      */
-    private void showAllAppsDialog() {
-        Intent intent = new Intent(this, AllAppsActivity.class);
-        startActivity(intent);
+    private void parseAndDisplayWidgetSuggestions(org.json.JSONArray nextMoveArray) {
+        try {
+            currentWidgetSuggestions.clear();
+            
+            // 解析每个widget建议
+            for (int i = 0; i < nextMoveArray.length(); i++) {
+                org.json.JSONObject widgetObj = nextMoveArray.getJSONObject(i);
+                
+                String type = widgetObj.optString("type", "widget");
+                String app = widgetObj.optString("app", "Unknown");
+                String action = widgetObj.optString("action", "No action specified");
+                
+                WidgetSuggestion suggestion = new WidgetSuggestion(type, app, action);
+                currentWidgetSuggestions.add(suggestion);
+            }
+            
+            // 显示widget建议
+            displayWidgetSuggestions();
+            
+        } catch (org.json.JSONException e) {
+            Log.e(TAG, "Error parsing widget suggestions", e);
+            showDefaultWidgetPlaceholder();
+        }
+    }
+    
+    /**
+     * 显示widget建议到UI
+     */
+    private void displayWidgetSuggestions() {
+        // 清空现有的widget视图
+        dynamicWidgetsContainer.removeAllViews();
+        
+        if (currentWidgetSuggestions.isEmpty()) {
+            showDefaultWidgetPlaceholder();
+            return;
+        }
+        
+        // 隐藏占位符文本
+        widgetsPlaceholderText.setVisibility(View.GONE);
+        
+        // 为每个建议创建widget视图
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (WidgetSuggestion suggestion : currentWidgetSuggestions) {
+            View widgetView = inflater.inflate(R.layout.widget_item, dynamicWidgetsContainer, false);
+            
+            // 设置widget内容
+            setupWidgetView(widgetView, suggestion);
+            
+            // 添加到容器
+            dynamicWidgetsContainer.addView(widgetView);
+        }
+    }
+    
+    /**
+     * 设置单个widget视图的内容和点击事件
+     */
+    private void setupWidgetView(View widgetView, WidgetSuggestion suggestion) {
+        ImageView appIcon = widgetView.findViewById(R.id.widget_app_icon);
+        TextView appName = widgetView.findViewById(R.id.widget_app_name);
+        TextView actionText = widgetView.findViewById(R.id.widget_action_text);
+        
+        // 设置文本内容
+        appName.setText(suggestion.getApp());
+        actionText.setText(suggestion.getAction());
+        
+        // 尝试获取应用图标
+        try {
+            PackageManager pm = getPackageManager();
+            // 尝试通过应用名称查找对应的包名
+            String packageName = findPackageNameByAppName(suggestion.getApp());
+            if (packageName != null) {
+                Drawable icon = pm.getApplicationIcon(packageName);
+                appIcon.setImageDrawable(icon);
+            } else {
+                // 使用默认图标
+                appIcon.setImageResource(android.R.drawable.ic_menu_gallery);
+            }
+        } catch (Exception e) {
+            // 如果获取图标失败，使用默认图标
+            appIcon.setImageResource(android.R.drawable.ic_menu_gallery);
+        }
+        
+        // 设置点击事件
+        widgetView.setOnClickListener(v -> {
+            handleWidgetClick(suggestion);
+        });
+    }
+    
+    /**
+     * 根据应用名称查找对应的包名
+     */
+    private String findPackageNameByAppName(String appName) {
+        for (AppInfo app : installedApps) {
+            if (app.label.equalsIgnoreCase(appName) || 
+                app.label.toLowerCase().contains(appName.toLowerCase()) ||
+                appName.toLowerCase().contains(app.label.toLowerCase())) {
+                return app.packageName;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 处理widget点击事件
+     */
+    private void handleWidgetClick(WidgetSuggestion suggestion) {
+        String packageName = findPackageNameByAppName(suggestion.getApp());
+        if (packageName != null) {
+            // 找到对应的应用，启动它
+            for (AppInfo app : installedApps) {
+                if (app.packageName.equals(packageName)) {
+                    launchApp(app);
+                    return;
+                }
+            }
+        }
+        
+        // 如果没找到应用，显示提示并尝试搜索相似应用
+        Toast.makeText(this, "未找到应用: " + suggestion.getApp() + "\n建议: " + suggestion.getAction(), 
+                      Toast.LENGTH_LONG).show();
+    }
+    
+    /**
+     * 显示默认的widget占位符
+     */
+    private void showDefaultWidgetPlaceholder() {
+        dynamicWidgetsContainer.removeAllViews();
+        widgetsPlaceholderText.setVisibility(View.VISIBLE);
+        widgetsPlaceholderText.setText("等待AI分析后显示智能建议...");
     }
     
     /**
@@ -342,10 +486,6 @@ public class LauncherActivity extends Activity {
         if (installedApps.size() > index) {
             setShortcutApp(index, installedApps.get(index));
         }
-    }
-    
-    private void updateAppsCount() {
-        appsCountTextView.setText("已安装 " + installedApps.size() + " 个应用");
     }
     
     private void showExitLauncherDialog() {
@@ -419,32 +559,16 @@ public class LauncherActivity extends Activity {
         timeRunnable = new Runnable() {
             @Override
             public void run() {
-                updateTime();
+                // updateTime(); // Removed as time display is no longer needed
                 timeHandler.postDelayed(this, 1000);
             }
         };
         timeHandler.post(timeRunnable);
     }
     
-    private void updateTime() {
-        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault());
-        
-        Date now = new Date();
-        timeTextView.setText(timeFormat.format(now));
-        dateTextView.setText(dateFormat.format(now));
-    }
-    
-    private void showDataStatus() {
-        String message = "数据收集状态：\n" +
-                        "当前时间：" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date()) + "\n" +
-                        "已安装应用：" + (installedApps != null ? installedApps.size() : 0) + " 个";
-        
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("CATIA3 数据状态")
-               .setMessage(message)
-               .setPositiveButton("确定", null)
-               .show();
+    private void updateDataStatus() {
+        // This method is no longer needed as dataStatusTextView is removed.
+        // Keeping it for now in case it's called elsewhere, but it will do nothing.
     }
     
     private void loadInstalledApps() {
@@ -480,12 +604,8 @@ public class LauncherActivity extends Activity {
         });
         
         // 更新应用计数显示
-        updateAppsCount();
-        updateDataStatus();
-    }
-    
-    private void updateDataStatus() {
-        dataStatusTextView.setText("运行中 - " + installedApps.size() + " 个应用");
+        // updateAppsCount(); // Removed as app statistics are no longer displayed
+        // updateDataStatus(); // Removed as dataStatusTextView is no longer available
     }
     
     private boolean isSystemApp(ApplicationInfo applicationInfo) {
@@ -546,6 +666,36 @@ public class LauncherActivity extends Activity {
         }
     }
     
+    /**
+     * 绑定数据收集服务
+     */
+    private void bindDataCollectionService() {
+        Intent serviceIntent = new Intent(this, DataCollectionService.class);
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+    
+    /**
+     * 触发数据收集
+     * 当用户回到桌面时调用
+     */
+    private void triggerDataCollection() {
+        try {
+            // 显示分析开始提示
+            deepseekResultTextView.setText("正在分析当前情况... 🔍");
+            
+            Intent serviceIntent = new Intent(this, DataCollectionService.class);
+            serviceIntent.putExtra("action", "trigger_collection");
+            serviceIntent.putExtra("trigger_reason", "home_screen_resume");
+            serviceIntent.putExtra("timestamp", System.currentTimeMillis());
+            startService(serviceIntent);
+            
+            Log.d(TAG, "Triggered data collection on home screen resume");
+        } catch (Exception e) {
+            Log.e(TAG, "Error triggering data collection", e);
+            deepseekResultTextView.setText("数据收集启动失败，请稍后重试");
+        }
+    }
+    
     @Override
     public void onBackPressed() {
         // 在Launcher中禁用返回键，保持在主屏幕
@@ -556,7 +706,16 @@ public class LauncherActivity extends Activity {
         super.onResume();
         // 每次回到主屏幕时刷新应用列表和更新显示
         loadInstalledApps();
-        updateTime();
+        // updateTime(); // Removed as time display is no longer needed
+        
+        // 重新注册回调（防止被清除）
+        DeepSeekApiClient.setLauncherUpdateCallback(this);
+        
+        Log.d(TAG, "onResume: Current widget suggestions count: " + 
+              (currentWidgetSuggestions != null ? currentWidgetSuggestions.size() : "null"));
+        
+        // 触发数据收集 - 每次回到桌面时生成数据
+        triggerDataCollection();
     }
     
     @Override
@@ -565,6 +724,119 @@ public class LauncherActivity extends Activity {
         if (timeHandler != null && timeRunnable != null) {
             timeHandler.removeCallbacks(timeRunnable);
         }
+        
+        // 解绑数据收集服务
+        if (isServiceBound) {
+            unbindService(serviceConnection);
+            isServiceBound = false;
+        }
+        
+        // 清除DeepSeek回调
+        DeepSeekApiClient.clearLauncherUpdateCallback();
+    }
+    
+    // 实现LauncherUpdateCallback接口
+    @Override
+    public void onAnalysisComplete(String notificationText) {
+        runOnUiThread(() -> {
+            // 更新DeepSeek显示区域
+            deepseekResultTextView.setText(notificationText);
+            
+            Log.d(TAG, "Launcher updated with notification: " + notificationText);
+        });
+    }
+    
+    /**
+     * 新增：处理完整的DeepSeek响应，包括widget建议
+     */
+    public void onFullAnalysisComplete(String fullResponse) {
+        runOnUiThread(() -> {
+            try {
+                // 解析完整响应
+                org.json.JSONObject jsonResponse = new org.json.JSONObject(fullResponse);
+                
+                String notificationText = null;
+                org.json.JSONArray nextMoveArray = null;
+                
+                // 尝试直接获取字段
+                if (jsonResponse.has("notification_text")) {
+                    notificationText = jsonResponse.getString("notification_text");
+                }
+                if (jsonResponse.has("next_move")) {
+                    nextMoveArray = jsonResponse.getJSONArray("next_move");
+                }
+                
+                // 如果没有找到，可能在嵌套的对象中
+                if ((notificationText == null || nextMoveArray == null) && jsonResponse.has("data")) {
+                    org.json.JSONObject data = jsonResponse.getJSONObject("data");
+                    if (notificationText == null && data.has("notification_text")) {
+                        notificationText = data.getString("notification_text");
+                    }
+                    if (nextMoveArray == null && data.has("next_move")) {
+                        nextMoveArray = data.getJSONArray("next_move");
+                    }
+                }
+                
+                // 如果还没找到，尝试在choices数组中查找（OpenAI格式）
+                if ((notificationText == null || nextMoveArray == null) && jsonResponse.has("choices")) {
+                    org.json.JSONArray choices = jsonResponse.getJSONArray("choices");
+                    if (choices.length() > 0) {
+                        org.json.JSONObject choice = choices.getJSONObject(0);
+                        if (choice.has("message")) {
+                            org.json.JSONObject message = choice.getJSONObject("message");
+                            String content = message.getString("content");
+                            
+                            // 尝试解析content中的JSON
+                            try {
+                                org.json.JSONObject contentJson = new org.json.JSONObject(content);
+                                if (notificationText == null && contentJson.has("notification_text")) {
+                                    notificationText = contentJson.getString("notification_text");
+                                }
+                                if (nextMoveArray == null && contentJson.has("next_move")) {
+                                    nextMoveArray = contentJson.getJSONArray("next_move");
+                                }
+                            } catch (org.json.JSONException e) {
+                                // 如果content不是JSON，直接使用content作为notification
+                                if (notificationText == null) {
+                                    notificationText = content;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 显示notification_text
+                if (notificationText != null && !notificationText.trim().isEmpty()) {
+                    deepseekResultTextView.setText(notificationText);
+                } else {
+                    deepseekResultTextView.setText("AI分析完成");
+                }
+                
+                // 处理next_move数据并显示widget建议
+                if (nextMoveArray != null && nextMoveArray.length() > 0) {
+                    parseAndDisplayWidgetSuggestions(nextMoveArray);
+                    Log.d(TAG, "Found " + nextMoveArray.length() + " widget suggestions");
+                } else {
+                    // 如果没有next_move数据，显示默认提示
+                    showDefaultWidgetPlaceholder();
+                    Log.d(TAG, "No widget suggestions found in response");
+                }
+                
+            } catch (org.json.JSONException e) {
+                Log.e(TAG, "Error parsing full analysis response", e);
+                deepseekResultTextView.setText("AI分析完成");
+                showDefaultWidgetPlaceholder();
+            }
+        });
+    }
+    
+    @Override
+    public void onAnalysisError(String error) {
+        runOnUiThread(() -> {
+            // 显示错误信息
+            deepseekResultTextView.setText("AI分析暂时不可用，请检查网络连接或稍后重试 ⚠️");
+            Log.e(TAG, "Analysis error: " + error);
+        });
     }
     
     // 应用信息类

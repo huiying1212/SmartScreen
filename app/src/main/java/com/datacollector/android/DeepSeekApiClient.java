@@ -39,6 +39,36 @@ public class DeepSeekApiClient {
         void onError(String error);
     }
     
+    /**
+     * Launcher更新回调接口
+     */
+    public interface LauncherUpdateCallback {
+        void onAnalysisComplete(String notificationText);
+        void onAnalysisError(String error);
+        
+        // 新增：处理完整响应的方法
+        default void onFullAnalysisComplete(String fullResponse) {
+            // 默认实现，向后兼容
+        }
+    }
+    
+    // 静态回调引用，用于launcher更新
+    private static LauncherUpdateCallback launcherUpdateCallback;
+    
+    /**
+     * 设置Launcher更新回调
+     */
+    public static void setLauncherUpdateCallback(LauncherUpdateCallback callback) {
+        launcherUpdateCallback = callback;
+    }
+    
+    /**
+     * 清除Launcher更新回调
+     */
+    public static void clearLauncherUpdateCallback() {
+        launcherUpdateCallback = null;
+    }
+    
     public DeepSeekApiClient(Context context) {
         this.context = context;
         this.httpClient = new OkHttpClient.Builder()
@@ -297,5 +327,168 @@ public class DeepSeekApiClient {
             Log.e(TAG, "构建请求JSON时出错", e);
             callback.onError("构建请求失败: " + e.getMessage());
         }
+    }
+    
+    /**
+     * 分析上下文数据（自动调用）
+     * 用于在数据生成时自动进行LLM分析
+     */
+    public void analyzeContextData(JSONObject contextData) {
+        new Thread(() -> {
+            try {
+                // 检查API密钥是否已配置
+                if (!ApiConfig.isDeepSeekApiKeyConfigured()) {
+                    Log.w(TAG, "DeepSeek API密钥未配置，跳过自动分析");
+                    return;
+                }
+                
+                // 读取prompt.txt文件
+                String promptContent = readPromptFile();
+                if (promptContent == null) {
+                    Log.w(TAG, "无法读取prompt.txt文件，跳过自动分析");
+                    return;
+                }
+                
+                // 构建请求内容
+                String combinedContent = promptContent + "\n\n用户数据:\n" + contextData.toString(2);
+                
+                // 调用API进行自动分析
+                callDeepSeekApi(combinedContent, new DeepSeekApiCallback() {
+                    @Override
+                    public void onSuccess(String response) {
+                        Log.i(TAG, "自动LLM分析完成");
+                        
+                        // 解析notification_text并更新launcher
+                        String notificationText = extractNotificationText(response);
+                        if (notificationText != null && launcherUpdateCallback != null) {
+                            launcherUpdateCallback.onAnalysisComplete(notificationText);
+                        }
+                        
+                        // 新增：调用完整响应处理方法
+                        if (launcherUpdateCallback != null) {
+                            launcherUpdateCallback.onFullAnalysisComplete(response);
+                        }
+                        
+                        // 保存分析结果
+                        saveAnalysisResult(response, contextData);
+                    }
+                    
+                    @Override
+                    public void onError(String error) {
+                        Log.w(TAG, "自动LLM分析失败: " + error);
+                        if (launcherUpdateCallback != null) {
+                            launcherUpdateCallback.onAnalysisError("分析失败: " + error);
+                        }
+                    }
+                });
+                
+            } catch (Exception e) {
+                Log.e(TAG, "自动分析时出错", e);
+            }
+        }).start();
+    }
+    
+    /**
+     * 保存分析结果
+     */
+    private void saveAnalysisResult(String analysisResult, JSONObject originalData) {
+        try {
+            // 创建分析结果文件
+            JSONObject resultData = new JSONObject();
+            resultData.put("analysis_result", analysisResult);
+            resultData.put("analysis_time", System.currentTimeMillis());
+            resultData.put("original_data_timestamp", originalData.optLong("collection_time"));
+            
+            // 保存到文件
+            String fileName = "analysis_result_" + System.currentTimeMillis() + ".json";
+            java.io.FileWriter fileWriter = new java.io.FileWriter(context.getExternalFilesDir(null) + "/" + fileName);
+            fileWriter.write(resultData.toString(4));
+            fileWriter.close();
+            
+            Log.d(TAG, "保存分析结果到: " + fileName);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "保存分析结果时出错", e);
+        }
+    }
+    
+    /**
+     * 从LLM响应中提取notification_text
+     */
+    private String extractNotificationText(String response) {
+        try {
+            // 首先尝试直接解析为JSON
+            JSONObject jsonResponse = new JSONObject(response);
+            
+            // 直接查找notification_text字段
+            if (jsonResponse.has("notification_text")) {
+                return jsonResponse.getString("notification_text");
+            }
+            
+            // 如果在choices数组中（OpenAI格式）
+            if (jsonResponse.has("choices")) {
+                JSONArray choices = jsonResponse.getJSONArray("choices");
+                if (choices.length() > 0) {
+                    JSONObject choice = choices.getJSONObject(0);
+                    if (choice.has("message")) {
+                        JSONObject message = choice.getJSONObject("message");
+                        String content = message.getString("content");
+                        
+                        // 尝试解析content中的JSON
+                        try {
+                            JSONObject contentJson = new JSONObject(content);
+                            if (contentJson.has("notification_text")) {
+                                return contentJson.getString("notification_text");
+                            }
+                        } catch (JSONException e) {
+                            // content不是JSON，尝试从纯文本中提取
+                            return extractNotificationFromText(content);
+                        }
+                    }
+                }
+            }
+            
+            // 如果都没找到，返回null
+            return null;
+            
+        } catch (JSONException e) {
+            // 如果整个响应不是JSON，尝试从纯文本中提取
+            return extractNotificationFromText(response);
+        }
+    }
+    
+    /**
+     * 从纯文本响应中提取notification_text
+     */
+    private String extractNotificationFromText(String text) {
+        try {
+            // 查找JSON模式的notification_text
+            String pattern = "\"notification_text\"\\s*:\\s*\"([^\"]+)\"";
+            java.util.regex.Pattern regex = java.util.regex.Pattern.compile(pattern);
+            java.util.regex.Matcher matcher = regex.matcher(text);
+            
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+            
+            // 如果没找到，返回响应的前100个字符作为fallback
+            if (text.length() > 100) {
+                return text.substring(0, 100) + "...";
+            } else {
+                return text;
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting notification from text", e);
+            return "AI分析完成";
+        }
+    }
+    
+    /**
+     * 清理资源
+     */
+    public void shutdown() {
+        // 如果有需要清理的资源，在这里处理
+        Log.d(TAG, "DeepSeekApiClient shutdown");
     }
 } 

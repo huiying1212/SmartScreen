@@ -2898,7 +2898,6 @@ id alertTitle
 id aligned
 id all
 id allStates
-id all_apps_widget
 id always
 id animateToEnd
 id animateToStart
@@ -2918,9 +2917,7 @@ id app_shortcut_1
 id app_shortcut_2
 id app_shortcut_3
 id app_shortcut_4
-id apps_count_text
 id apps_grid
-id apps_stats_widget
 id arc
 id asConfigured
 id async
@@ -2985,10 +2982,7 @@ id currentState
 id custom
 id customPanel
 id cut
-id data_status_text
-id data_status_widget
 id date_picker_actions
-id date_text
 id decelerate
 id decelerateAndComplete
 id decor_content_parent
@@ -3019,6 +3013,7 @@ id dragRight
 id dragStart
 id dragUp
 id dropdown_menu
+id dynamic_widgets_container
 id easeIn
 id easeInOut
 id easeOut
@@ -3195,7 +3190,6 @@ id progress_horizontal
 id radio
 id ratio
 id rectangles
-id refresh_deepseek_button
 id reverseSawtooth
 id right
 id rightToLeft
@@ -3310,7 +3304,6 @@ id textinput_placeholder
 id textinput_prefix_text
 id textinput_suffix_text
 id time
-id time_text
 id title
 id titleDividerNoCustom
 id title_bar
@@ -3345,6 +3338,11 @@ id view_tree_view_model_store_owner
 id visible
 id visible_removing_fragment_view_tag
 id west
+id widget_action_text
+id widget_app_icon
+id widget_app_name
+id widgets_container
+id widgets_placeholder_text
 id widgets_section
 id withText
 id with_icon
@@ -3541,6 +3539,7 @@ layout select_dialog_item_material
 layout select_dialog_multichoice_material
 layout select_dialog_singlechoice_material
 layout support_simple_spinner_dropdown_item
+layout widget_item
 mipmap ic_launcher
 mipmap ic_launcher_round
 plurals mtrl_badge_content_description

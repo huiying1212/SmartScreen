@@ -197,16 +197,6 @@
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
-        <Button
-                android:id="@+id/refresh_deepseek_button"
-            android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:background="@drawable/launcher_small_button_bg"
-                android:text="刷新"
-                android:textColor="@color/launcher_text_primary"
-                android:textSize="10sp"
-                android:padding="8dp" />
-
         </LinearLayout>
 
         <ScrollView
@@ -228,7 +218,7 @@
 
     </LinearLayout>
 
-    <!-- 中间：Widgets区域 -->
+    <!-- 中间：智能建议Widgets区域 -->
     <ScrollView
         android:id="@+id/widgets_section"
         android:layout_width="match_parent"
@@ -241,6 +231,7 @@
         android:padding="12dp">
 
         <LinearLayout
+            android:id="@+id/widgets_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
@@ -248,178 +239,29 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="快捷工具"
+                android:text="智能建议"
                 android:textColor="@color/launcher_text_primary"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="8dp" />
 
-            <!-- 时间和日期widget -->
+            <!-- 动态添加的widget建议将在这里显示 -->
             <LinearLayout
+                android:id="@+id/dynamic_widgets_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="@color/launcher_widget_item_bg"
-                android:padding="12dp"
-                android:layout_marginBottom="8dp">
+                android:orientation="vertical">
 
-                <LinearLayout
-                    android:layout_width="0dp"
+                <!-- 默认提示文本 -->
+                <TextView
+                    android:id="@+id/widgets_placeholder_text"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/time_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="12:00"
-                        android:textColor="@color/launcher_text_primary"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/date_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="2024年1月1日"
-                        android:textColor="@color/launcher_text_secondary"
-                        android:textSize="12sp" />
-
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@android:drawable/ic_menu_recent_history"
-                    android:layout_gravity="center_vertical" />
-
-            </LinearLayout>
-
-            <!-- 数据状态widget -->
-            <LinearLayout
-                android:id="@+id/data_status_widget"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="@color/launcher_widget_item_bg"
-                android:padding="12dp"
-                android:layout_marginBottom="8dp"
-                android:clickable="true">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="数据收集状态"
-            android:textColor="@color/launcher_text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/data_status_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="正在收集中..."
-                        android:textColor="@color/launcher_text_secondary"
-            android:textSize="12sp" />
-
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@android:drawable/ic_menu_info_details"
-                    android:layout_gravity="center_vertical" />
-
-            </LinearLayout>
-
-            <!-- 应用统计widget -->
-            <LinearLayout
-                android:id="@+id/apps_stats_widget"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="@color/launcher_widget_item_bg"
-                android:padding="12dp"
-                android:layout_marginBottom="8dp"
-                android:clickable="true">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-                        android:text="应用统计"
-            android:textColor="@color/launcher_text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/apps_count_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="已安装 0 个应用"
-                        android:textColor="@color/launcher_text_secondary"
-            android:textSize="12sp" />
-
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@android:drawable/ic_menu_sort_by_size"
-                    android:layout_gravity="center_vertical" />
-
-            </LinearLayout>
-
-            <!-- 全部应用入口widget -->
-            <LinearLayout
-                android:id="@+id/all_apps_widget"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="@color/launcher_widget_item_bg"
-                android:padding="12dp"
-                android:clickable="true">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="所有应用"
-                        android:textColor="@color/launcher_text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-                        android:text="点击查看所有应用"
-                        android:textColor="@color/launcher_text_secondary"
-            android:textSize="12sp" />
-
-    </LinearLayout>
-
-                <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@android:drawable/ic_menu_sort_by_size"
-                    android:layout_gravity="center_vertical" />
+                    android:text="等待AI分析后显示智能建议..."
+                    android:textColor="@color/launcher_text_secondary"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:padding="16dp" />
 
             </LinearLayout>
 

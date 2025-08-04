@@ -37,10 +37,19 @@ public class DataCollectionService extends Service implements DataCollectorManag
     // 屏幕内容收集器（暂时保持原有实现）
     private ScreenContentCollector screenCollector;
     
+    // LLM分析客户端
+    private DeepSeekApiClient deepSeekApiClient;
+    
     // 数据存储
     private JSONObject currentContextData;
     private Timer dataCollectionTimer;
     
+    // 添加触发原因存储
+    private String lastTriggerReason = "unknown";
+    
+    // 自动分析开关
+    private boolean autoAnalysisEnabled = true;
+
     // Binder类用于与Activity通信
     public class DataCollectionBinder extends Binder {
         public DataCollectionService getService() {
@@ -64,6 +73,16 @@ public class DataCollectionService extends Service implements DataCollectorManag
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 处理手动触发的数据收集
+        if (intent != null && intent.hasExtra("action")) {
+            String action = intent.getStringExtra("action");
+            if ("trigger_collection".equals(action)) {
+                String triggerReason = intent.getStringExtra("trigger_reason");
+                Log.i(TAG, "Manual data collection triggered: " + triggerReason);
+                collectCurrentContextData(triggerReason);
+            }
+        }
+        
         return START_STICKY; // 服务被杀死后会自动重启
     }
     
@@ -84,6 +103,9 @@ public class DataCollectionService extends Service implements DataCollectorManag
         // 初始化屏幕内容收集器（保持原有实现）
         screenCollector = new ScreenContentCollector(this);
         
+        // 初始化LLM分析客户端
+        deepSeekApiClient = new DeepSeekApiClient(this);
+        
         // 初始化数据结构
         currentContextData = new JSONObject();
         
@@ -102,16 +124,20 @@ public class DataCollectionService extends Service implements DataCollectorManag
             screenCollector.startCollection();
         }
         
-        // 启动定时数据收集
-        startPeriodicDataCollection();
+        // 移除定时数据收集 - 改为手动触发
+        // startPeriodicDataCollection();
         
-        Log.i(TAG, "Started data collection");
+        Log.i(TAG, "Started data collection (manual trigger mode)");
     }
     
     /**
      * 启动周期性数据收集
+     * 已禁用 - 改为手动触发模式
      */
+    @Deprecated
     private void startPeriodicDataCollection() {
+        // 不再使用定时收集，改为在回到桌面时触发
+        /*
         dataCollectionTimer = new Timer();
         dataCollectionTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -119,12 +145,21 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 collectCurrentContextData();
             }
         }, 0, 30000); // 每30秒收集一次完整的上下文数据
+        */
+        Log.i(TAG, "Periodic data collection disabled - using manual trigger mode");
     }
     
     /**
      * 收集当前上下文数据
      */
     private void collectCurrentContextData() {
+        collectCurrentContextData("manual_call");
+    }
+    
+    /**
+     * 收集当前上下文数据（带触发原因）
+     */
+    private void collectCurrentContextData(String triggerReason) {
         try {
             JSONObject contextData = new JSONObject();
             
@@ -132,6 +167,10 @@ public class DataCollectionService extends Service implements DataCollectorManag
             contextData.put("timestamp", System.currentTimeMillis());
             contextData.put("date_time", getCurrentDateTime());
             contextData.put("day_of_week", getCurrentDayOfWeek());
+            
+            // 添加触发原因
+            contextData.put("trigger_reason", triggerReason);
+            contextData.put("collection_mode", "manual_trigger");
             
             // 从所有数据收集器收集数据
             JSONObject collectorData = collectorManager.collectAllData();
@@ -152,6 +191,9 @@ public class DataCollectionService extends Service implements DataCollectorManag
             
             // 保存数据
             saveContextData(contextData);
+            
+            // 保存触发原因用于日志
+            lastTriggerReason = triggerReason;
             
         } catch (JSONException e) {
             Log.e(TAG, "Error collecting context data", e);
@@ -235,6 +277,15 @@ public class DataCollectionService extends Service implements DataCollectorManag
             
             Log.d(TAG, "Saved context data to: " + fileName);
             
+            // 自动分析
+            if (autoAnalysisEnabled && deepSeekApiClient != null) {
+                try {
+                    deepSeekApiClient.analyzeContextData(outputData);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error performing LLM analysis", e);
+                }
+            }
+            
         } catch (IOException | JSONException e) {
             Log.e(TAG, "Error saving context data", e);
         }
@@ -244,7 +295,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
      * 获取完整的上下文数据（外部调用接口）
      */
     public JSONObject getCompleteContextData() {
-        collectCurrentContextData();
+        collectCurrentContextData("external_api_call");
         return currentContextData;
     }
     
@@ -253,6 +304,33 @@ public class DataCollectionService extends Service implements DataCollectorManag
      */
     public DataCollectorManager getCollectorManager() {
         return collectorManager;
+    }
+    
+    /**
+     * 设置自动分析开关
+     */
+    public void setAutoAnalysisEnabled(boolean enabled) {
+        this.autoAnalysisEnabled = enabled;
+        Log.i(TAG, "Auto analysis " + (enabled ? "enabled" : "disabled"));
+    }
+    
+    /**
+     * 获取自动分析状态
+     */
+    public boolean isAutoAnalysisEnabled() {
+        return autoAnalysisEnabled;
+    }
+    
+    /**
+     * 手动触发LLM分析（用于外部调用）
+     */
+    public void triggerManualAnalysis() {
+        if (deepSeekApiClient != null && currentContextData != null) {
+            deepSeekApiClient.analyzeContextData(currentContextData);
+            Log.i(TAG, "Manual LLM analysis triggered");
+        } else {
+            Log.w(TAG, "Cannot trigger manual analysis - client or data not available");
+        }
     }
     
     // DataCollectionCallback 接口实现
@@ -283,6 +361,10 @@ public class DataCollectionService extends Service implements DataCollectorManag
         
         if (screenCollector != null) {
             screenCollector.stopCollection();
+        }
+        
+        if (deepSeekApiClient != null) {
+            deepSeekApiClient.shutdown();
         }
         
         Log.i(TAG, "DataCollectionService destroyed");
