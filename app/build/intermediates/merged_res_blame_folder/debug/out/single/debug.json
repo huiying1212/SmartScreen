@@ -16,20 +16,20 @@
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-hdpi\\ic_launcher.webp"
     },
     {
-        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-hdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-hdpi\\ic_launcher_round.webp"
-    },
-    {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_launcher_exit_button_bg.xml.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\launcher_exit_button_bg.xml"
     },
     {
-        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\layout_activity_main.xml.flat",
-        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\layout\\activity_main.xml"
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-hdpi_ic_launcher_round.webp.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-hdpi\\ic_launcher_round.webp"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-mdpi_ic_launcher_round.webp.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-mdpi\\ic_launcher_round.webp"
+    },
+    {
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\layout_activity_main.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\layout\\activity_main.xml"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_launcher_small_button_bg.xml.flat",
