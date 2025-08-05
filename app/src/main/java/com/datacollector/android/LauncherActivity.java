@@ -57,6 +57,11 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
     private TextView widgetsPlaceholderText;
     private List<WidgetSuggestion> currentWidgetSuggestions;
     
+    // 新增：widget状态管理
+    private boolean hasValidWidgetSuggestions = false;
+    private long lastWidgetUpdateTime = 0;
+    private static final long WIDGET_CACHE_DURATION = 10 * 60 * 1000; // 10分钟缓存
+    
     // 底部四个app快捷方式
     private LinearLayout[] appShortcuts = new LinearLayout[4];
     private ImageView[] appIcons = new ImageView[4];
@@ -270,14 +275,21 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
                         if (nextMoveArray != null) {
                             parseAndDisplayWidgetSuggestions(nextMoveArray);
                         } else {
-                            // 如果没有next_move数据，显示默认提示
-                            showDefaultWidgetPlaceholder();
+                            // 如果没有next_move数据，检查是否保持现有widget显示
+                            if (!hasValidWidgetSuggestions || 
+                                (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
+                                showDefaultWidgetPlaceholder();
+                            }
                         }
                         
                     } catch (org.json.JSONException e) {
                         // 如果解析JSON失败，显示原始响应
                         deepseekResultTextView.setText("AI分析结果:\n" + response);
-                        showDefaultWidgetPlaceholder();
+                        // 解析失败时也不要立即清空widget，除非过期
+                        if (!hasValidWidgetSuggestions || 
+                            (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
+                            showDefaultWidgetPlaceholder();
+                        }
                     }
                 });
             }
@@ -286,7 +298,11 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             public void onError(String error) {
                 runOnUiThread(() -> {
                     deepseekResultTextView.setText("AI分析失败: " + error);
-                    showDefaultWidgetPlaceholder();
+                    // 错误时也不要立即清空widget，除非过期
+                    if (!hasValidWidgetSuggestions || 
+                        (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
+                        showDefaultWidgetPlaceholder();
+                    }
                 });
             }
         });
@@ -346,6 +362,11 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             // 添加到容器
             dynamicWidgetsContainer.addView(widgetView);
         }
+        
+        // 更新widget状态
+        hasValidWidgetSuggestions = true;
+        lastWidgetUpdateTime = System.currentTimeMillis();
+        Log.d(TAG, "Widget建议已更新，数量: " + currentWidgetSuggestions.size());
     }
     
     /**
@@ -421,9 +442,17 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
      * 显示默认的widget占位符
      */
     private void showDefaultWidgetPlaceholder() {
+        // 如果有有效的widget建议且未过期，不要显示占位符
+        if (hasValidWidgetSuggestions && 
+            (System.currentTimeMillis() - lastWidgetUpdateTime) < WIDGET_CACHE_DURATION) {
+            Log.d(TAG, "保持现有widget建议显示，不显示占位符");
+            return;
+        }
+        
         dynamicWidgetsContainer.removeAllViews();
         widgetsPlaceholderText.setVisibility(View.VISIBLE);
         widgetsPlaceholderText.setText("等待AI分析后显示智能建议...");
+        hasValidWidgetSuggestions = false;
     }
     
     /**
@@ -712,7 +741,14 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         DeepSeekApiClient.setLauncherUpdateCallback(this);
         
         Log.d(TAG, "onResume: Current widget suggestions count: " + 
-              (currentWidgetSuggestions != null ? currentWidgetSuggestions.size() : "null"));
+              (currentWidgetSuggestions != null ? currentWidgetSuggestions.size() : "null") +
+              ", hasValidWidgetSuggestions: " + hasValidWidgetSuggestions);
+        
+        // 如果有有效的widget建议，恢复显示
+        if (hasValidWidgetSuggestions && currentWidgetSuggestions != null && !currentWidgetSuggestions.isEmpty()) {
+            displayWidgetSuggestions();
+            Log.d(TAG, "恢复显示之前的widget建议");
+        }
         
         // 触发数据收集 - 每次回到桌面时生成数据
         triggerDataCollection();
@@ -817,15 +853,22 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
                     parseAndDisplayWidgetSuggestions(nextMoveArray);
                     Log.d(TAG, "Found " + nextMoveArray.length() + " widget suggestions");
                 } else {
-                    // 如果没有next_move数据，显示默认提示
-                    showDefaultWidgetPlaceholder();
-                    Log.d(TAG, "No widget suggestions found in response");
+                    // 如果没有next_move数据，检查是否保持现有widget显示
+                    if (!hasValidWidgetSuggestions || 
+                        (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
+                        showDefaultWidgetPlaceholder();
+                    }
+                    Log.d(TAG, "No new widget suggestions, keeping existing ones if valid");
                 }
                 
             } catch (org.json.JSONException e) {
                 Log.e(TAG, "Error parsing full analysis response", e);
                 deepseekResultTextView.setText("AI分析完成");
-                showDefaultWidgetPlaceholder();
+                // 解析失败时也不要立即清空widget，除非过期
+                if (!hasValidWidgetSuggestions || 
+                    (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
+                    showDefaultWidgetPlaceholder();
+                }
             }
         });
     }

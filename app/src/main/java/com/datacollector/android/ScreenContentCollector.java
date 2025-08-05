@@ -442,4 +442,22 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
             }
         }
     }
+    
+    @Override
+    public void onServiceError(String error) {
+        Log.e(TAG, "无障碍服务错误: " + error);
+        
+        // 可以在这里实现错误处理逻辑
+        // 例如：停止收集、通知用户、尝试恢复等
+        if (error.contains("权限不足")) {
+            Log.w(TAG, "权限不足，暂停屏幕内容收集");
+            stopCollection();
+        } else if (error.contains("内存不足")) {
+            Log.w(TAG, "内存不足，清理队列");
+            clearQueue();
+        } else if (error.contains("服务中断")) {
+            Log.w(TAG, "服务被中断，等待恢复");
+            // 可以在这里实现重连逻辑
+        }
+    }
 } 

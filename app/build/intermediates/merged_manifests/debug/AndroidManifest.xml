@@ -89,6 +89,12 @@
             android:exported="false"
             android:label="数据收集管理" />
 
+        <!-- 服务健康监控界面 -->
+        <activity
+            android:name="com.datacollector.android.ServiceHealthActivity"
+            android:exported="false"
+            android:label="服务健康监控" />
+
         <!-- 数据收集服务 -->
         <service
             android:name="com.datacollector.android.DataCollectionService"
