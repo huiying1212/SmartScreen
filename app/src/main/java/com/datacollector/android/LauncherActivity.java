@@ -102,6 +102,9 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_launcher);
         
+        // 初始化已安装应用管理器 - 在应用启动时立即检查并缓存应用列表
+        InstalledAppsManager.getInstance(this).refreshAppsList();
+        
         initViews();
         initializeData();
         setupEventListeners();
@@ -734,6 +737,8 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
     protected void onResume() {
         super.onResume();
         // 每次回到主屏幕时刷新应用列表和更新显示
+        // 同时刷新已安装应用管理器的缓存，以防在后台时有新应用安装
+        InstalledAppsManager.getInstance(this).refreshAppsList();
         loadInstalledApps();
         // updateTime(); // Removed as time display is no longer needed
         

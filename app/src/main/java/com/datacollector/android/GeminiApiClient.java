@@ -74,8 +74,14 @@ public class GeminiApiClient {
                     return;
                 }
                 
-                // 构建请求内容
-                String combinedContent = promptContent + "\n\n用户数据:\n" + latestDataContent;
+                // 获取已安装应用列表
+                String installedAppsJson = InstalledAppsManager.getInstance(context).getInstalledAppsListJson();
+                
+                // 构建请求内容，包含应用列表
+                String combinedContent = promptContent + 
+                    "\n\n设备已安装应用信息:\n" + installedAppsJson +
+                    "\n\n用户数据:\n" + latestDataContent +
+                    "\n\n重要提示：在推荐应用时，请只从上述已安装应用列表中选择，不要推荐设备上不存在的应用。";
                 
                 // 调用API
                 callGeminiApi(combinedContent, callback);
