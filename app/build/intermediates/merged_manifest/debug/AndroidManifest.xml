@@ -14,6 +14,12 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
+    <!-- 前台服务权限 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <!-- 位置权限 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -98,7 +104,8 @@
         <!-- 数据收集服务 -->
         <service
             android:name="com.datacollector.android.DataCollectionService"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- 无障碍服务 -->
         <service

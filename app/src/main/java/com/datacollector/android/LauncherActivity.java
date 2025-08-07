@@ -27,6 +27,8 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import com.datacollector.android.utils.BatteryOptimizationHelper;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -87,6 +89,10 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             dataCollectionService = binder.getService();
             isServiceBound = true;
             Log.d(TAG, "Connected to DataCollectionService");
+            
+            // 确保回调已注册
+            DeepSeekApiClient.setLauncherUpdateCallback(LauncherActivity.this);
+            Log.d(TAG, "LauncherUpdateCallback re-registered after service connection");
         }
         
         @Override
@@ -102,6 +108,9 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_launcher);
         
+        // 检查电池优化
+        BatteryOptimizationHelper.checkAndRequestBatteryOptimization(this);
+
         // 初始化已安装应用管理器 - 在应用启动时立即检查并缓存应用列表
         InstalledAppsManager.getInstance(this).refreshAppsList();
         
@@ -315,6 +324,7 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
      * 解析next_move数据并显示widget建议
      */
     private void parseAndDisplayWidgetSuggestions(org.json.JSONArray nextMoveArray) {
+        Log.d(TAG, "parseAndDisplayWidgetSuggestions called with " + nextMoveArray.length() + " items");
         try {
             currentWidgetSuggestions.clear();
             
@@ -325,6 +335,8 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
                 String type = widgetObj.optString("type", "widget");
                 String app = widgetObj.optString("app", "Unknown");
                 String action = widgetObj.optString("action", "No action specified");
+                
+                Log.d(TAG, "Parsed widget " + i + ": type=" + type + ", app=" + app + ", action=" + action);
                 
                 WidgetSuggestion suggestion = new WidgetSuggestion(type, app, action);
                 currentWidgetSuggestions.add(suggestion);
@@ -343,10 +355,12 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
      * 显示widget建议到UI
      */
     private void displayWidgetSuggestions() {
+        Log.d(TAG, "displayWidgetSuggestions called with " + currentWidgetSuggestions.size() + " suggestions");
         // 清空现有的widget视图
         dynamicWidgetsContainer.removeAllViews();
         
         if (currentWidgetSuggestions.isEmpty()) {
+            Log.d(TAG, "No widget suggestions to display, showing placeholder");
             showDefaultWidgetPlaceholder();
             return;
         }
@@ -364,6 +378,7 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             
             // 添加到容器
             dynamicWidgetsContainer.addView(widgetView);
+            Log.d(TAG, "Added widget for app: " + suggestion.getApp());
         }
         
         // 更新widget状态
@@ -703,6 +718,8 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
      */
     private void bindDataCollectionService() {
         Intent serviceIntent = new Intent(this, DataCollectionService.class);
+        // 先启动前台服务，然后绑定
+        startForegroundService(serviceIntent);
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
     
@@ -719,7 +736,7 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             serviceIntent.putExtra("action", "trigger_collection");
             serviceIntent.putExtra("trigger_reason", "home_screen_resume");
             serviceIntent.putExtra("timestamp", System.currentTimeMillis());
-            startService(serviceIntent);
+            startForegroundService(serviceIntent);
             
             Log.d(TAG, "Triggered data collection on home screen resume");
         } catch (Exception e) {
@@ -790,11 +807,14 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
     /**
      * 新增：处理完整的DeepSeek响应，包括widget建议
      */
+    @Override
     public void onFullAnalysisComplete(String fullResponse) {
+        Log.d(TAG, "onFullAnalysisComplete called with response length: " + fullResponse.length());
         runOnUiThread(() -> {
             try {
                 // 解析完整响应
                 org.json.JSONObject jsonResponse = new org.json.JSONObject(fullResponse);
+                Log.d(TAG, "Parsed JSON response: " + jsonResponse.toString());
                 
                 String notificationText = null;
                 org.json.JSONArray nextMoveArray = null;
@@ -802,9 +822,11 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
                 // 尝试直接获取字段
                 if (jsonResponse.has("notification_text")) {
                     notificationText = jsonResponse.getString("notification_text");
+                    Log.d(TAG, "Found notification_text: " + notificationText);
                 }
                 if (jsonResponse.has("next_move")) {
                     nextMoveArray = jsonResponse.getJSONArray("next_move");
+                    Log.d(TAG, "Found next_move array with " + nextMoveArray.length() + " items");
                 }
                 
                 // 如果没有找到，可能在嵌套的对象中
@@ -855,12 +877,15 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
                 
                 // 处理next_move数据并显示widget建议
                 if (nextMoveArray != null && nextMoveArray.length() > 0) {
+                    Log.d(TAG, "Processing " + nextMoveArray.length() + " widget suggestions");
                     parseAndDisplayWidgetSuggestions(nextMoveArray);
                     Log.d(TAG, "Found " + nextMoveArray.length() + " widget suggestions");
                 } else {
+                    Log.d(TAG, "No next_move data found, checking existing widgets");
                     // 如果没有next_move数据，检查是否保持现有widget显示
                     if (!hasValidWidgetSuggestions || 
                         (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
+                        Log.d(TAG, "Showing default widget placeholder due to no suggestions or expired cache");
                         showDefaultWidgetPlaceholder();
                     }
                     Log.d(TAG, "No new widget suggestions, keeping existing ones if valid");
@@ -885,6 +910,13 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             deepseekResultTextView.setText("AI分析暂时不可用，请检查网络连接或稍后重试 ⚠️");
             Log.e(TAG, "Analysis error: " + error);
         });
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        // 处理电池优化设置结果
+        BatteryOptimizationHelper.handleBatteryOptimizationResult(this, requestCode, resultCode);
     }
     
     // 应用信息类

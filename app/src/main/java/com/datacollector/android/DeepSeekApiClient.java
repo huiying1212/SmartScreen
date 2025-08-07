@@ -373,12 +373,16 @@ public class DeepSeekApiClient {
                         // 解析notification_text并更新launcher
                         String notificationText = extractNotificationText(response);
                         if (notificationText != null && launcherUpdateCallback != null) {
+                            Log.d(TAG, "Calling onAnalysisComplete with: " + notificationText);
                             launcherUpdateCallback.onAnalysisComplete(notificationText);
                         }
                         
                         // 新增：调用完整响应处理方法
                         if (launcherUpdateCallback != null) {
+                            Log.d(TAG, "Calling onFullAnalysisComplete with response length: " + response.length());
                             launcherUpdateCallback.onFullAnalysisComplete(response);
+                        } else {
+                            Log.w(TAG, "launcherUpdateCallback is null, cannot update widgets");
                         }
                         
                         // 保存分析结果

@@ -1,10 +1,18 @@
 package com.datacollector.android;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
+import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.util.Log;
+
+import androidx.core.app.NotificationCompat;
 
 import com.datacollector.android.collectors.ActivityRecognitionCollector;
 import com.datacollector.android.collectors.BluetoothDataCollector;
@@ -26,10 +34,13 @@ import java.util.TimerTask;
 /**
  * 重构后的数据收集服务
  * 使用新的接口抽象架构，通过DataCollectorManager管理所有数据收集器
+ * 现在运行为前台服务以确保持续的后台运行
  */
 public class DataCollectionService extends Service implements DataCollectorManager.DataCollectionCallback {
     
     private static final String TAG = "DataCollectionService";
+    private static final String CHANNEL_ID = "DataCollectionChannel";
+    private static final int NOTIFICATION_ID = 1001;
     
     // 数据收集器管理器
     private DataCollectorManager collectorManager;
@@ -49,6 +60,9 @@ public class DataCollectionService extends Service implements DataCollectorManag
     
     // 自动分析开关
     private boolean autoAnalysisEnabled = true;
+    
+    // 唤醒锁
+    private PowerManager.WakeLock wakeLock;
 
     // Binder类用于与Activity通信
     public class DataCollectionBinder extends Binder {
@@ -67,12 +81,18 @@ public class DataCollectionService extends Service implements DataCollectorManag
     @Override
     public void onCreate() {
         super.onCreate();
+        createNotificationChannel();
+        startForegroundService();
+        acquireWakeLock();
         initializeCollectors();
         startDataCollection();
     }
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 确保前台服务运行
+        startForegroundService();
+        
         // 处理手动触发的数据收集
         if (intent != null && intent.hasExtra("action")) {
             String action = intent.getStringExtra("action");
@@ -84,6 +104,76 @@ public class DataCollectionService extends Service implements DataCollectorManag
         }
         
         return START_STICKY; // 服务被杀死后会自动重启
+    }
+    
+    /**
+     * 创建通知渠道（Android 8.0+需要）
+     */
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                CHANNEL_ID,
+                "数据收集服务",
+                NotificationManager.IMPORTANCE_LOW
+            );
+            channel.setDescription("CATIA3 后台数据收集服务");
+            channel.setShowBadge(false);
+            channel.setSound(null, null);
+            
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+        }
+    }
+    
+    /**
+     * 启动前台服务
+     */
+    private void startForegroundService() {
+        Intent notificationIntent = new Intent(this, LauncherActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            this, 0, notificationIntent, 
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("CATIA3 数据收集")
+            .setContentText("正在后台收集用户行为数据")
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSound(null)
+            .build();
+        
+        startForeground(NOTIFICATION_ID, notification);
+        Log.i(TAG, "Started as foreground service");
+    }
+    
+    /**
+     * 获取唤醒锁以防止系统休眠时停止数据收集
+     */
+    private void acquireWakeLock() {
+        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        if (powerManager != null) {
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "CATIA3::DataCollectionWakeLock"
+            );
+            wakeLock.acquire(10 * 60 * 1000L); // 10分钟，会在数据收集时续期
+            Log.i(TAG, "Wake lock acquired");
+        }
+    }
+    
+    /**
+     * 释放唤醒锁
+     */
+    private void releaseWakeLock() {
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
+            Log.i(TAG, "Wake lock released");
+        }
     }
     
     /**
@@ -350,22 +440,27 @@ public class DataCollectionService extends Service implements DataCollectorManag
     public void onDestroy() {
         super.onDestroy();
         
-        // 清理资源
-        if (dataCollectionTimer != null) {
-            dataCollectionTimer.cancel();
-        }
-        
+        // 停止数据收集
         if (collectorManager != null) {
-            collectorManager.shutdown();
+            collectorManager.stopAllCollectors();
         }
         
         if (screenCollector != null) {
             screenCollector.stopCollection();
         }
         
+        // 停止定时器
+        if (dataCollectionTimer != null) {
+            dataCollectionTimer.cancel();
+            dataCollectionTimer = null;
+        }
+        
+        // 关闭LLM客户端
         if (deepSeekApiClient != null) {
             deepSeekApiClient.shutdown();
         }
+
+        releaseWakeLock(); // 释放唤醒锁
         
         Log.i(TAG, "DataCollectionService destroyed");
     }
