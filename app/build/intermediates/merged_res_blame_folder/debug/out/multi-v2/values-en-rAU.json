@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.datacollector.android.app-mergeDebugResources-27:/values-en-rAU/values-en-rAU.xml",
+            "outputFile": "com.datacollector.android.app-mergeDebugResources-29:/values-en-rAU/values-en-rAU.xml",
             "map": [
                 {
                     "source": "C:\\Users\\Kate\\.gradle\\caches\\8.12\\transforms\\7da3e27adb8c02368eb46247c342376b\\transformed\\core-1.9.0\\res\\values-en-rAU\\values-en-rAU.xml",

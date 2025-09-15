@@ -6,7 +6,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 
-import com.datacollector.android.ActivityRecognizer;
+import com.datacollector.android.recognition.ActivityRecognizer;
 
 import org.json.JSONException;
 import org.json.JSONObject;

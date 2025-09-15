@@ -43,6 +43,14 @@
     <!-- 无障碍服务权限 -->
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
     
+    <!-- 截图和媒体投影权限 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.CAPTURE_VIDEO_OUTPUT" />
+    <uses-permission android:name="android.permission.CAPTURE_SECURE_VIDEO_OUTPUT" />
+    
+    <!-- 相机权限（可选，用于更高级的OCR功能） -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -51,7 +59,7 @@
         
         <!-- Launcher启动器主活动 - 唯一的启动入口 -->
         <activity
-            android:name=".LauncherActivity"
+            android:name=".activities.LauncherActivity"
             android:exported="true"
             android:label="CATIA3 Launcher"
             android:launchMode="singleTask"
@@ -67,32 +75,32 @@
         
         <!-- 全部应用列表活动 -->
         <activity
-            android:name=".AllAppsActivity"
+            android:name=".activities.AllAppsActivity"
             android:exported="false"
             android:label="所有应用"
             android:theme="@style/LauncherTheme" />
         
         <!-- 数据收集管理界面 - 只能通过内部跳转访问 -->
         <activity
-            android:name=".AndroidDataCollector"
+            android:name=".activities.AndroidDataCollector"
             android:exported="false"
             android:label="数据收集管理" />
         
         <!-- 服务健康监控界面 -->
         <activity
-            android:name=".ServiceHealthActivity"
+            android:name=".activities.ServiceHealthActivity"
             android:exported="false"
             android:label="服务健康监控" />
         
         <!-- 数据收集服务 -->
         <service
-            android:name=".DataCollectionService"
+            android:name=".services.DataCollectionService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
         
         <!-- 无障碍服务 -->
         <service
-            android:name=".AccessibilityDataService"
+            android:name=".services.AccessibilityDataService"
             android:exported="false"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>

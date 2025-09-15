@@ -1,4 +1,4 @@
-package com.datacollector.android;
+package com.datacollector.android.activities;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -7,6 +7,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
 import android.view.View;
+
+import com.datacollector.android.utils.AccessibilityServiceMonitor;
+import com.datacollector.android.services.AccessibilityDataService;
 
 /**
  * 服务健康监控界面
