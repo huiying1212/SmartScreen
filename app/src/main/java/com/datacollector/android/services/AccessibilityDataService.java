@@ -19,13 +19,18 @@ public class AccessibilityDataService extends AccessibilityService {
     private static ScreenContentCallback contentCallback;
     
     // 性能控制
-    private static final long MIN_EVENT_INTERVAL = 200; // 最小事件间隔200ms
-    private static final int MAX_RECURSION_DEPTH = 20; // 最大递归深度
-    private static final int MAX_TEXT_LENGTH = 10000; // 最大文本长度
+    private static final long MIN_EVENT_INTERVAL = 300; // 增加到300ms，减少处理频率
+    private static final int MAX_RECURSION_DEPTH = 15; // 减少到15，防止栈溢出
+    private static final int MAX_TEXT_LENGTH = 5000; // 减少到5000，防止内存问题
+    private static final int MAX_CHILD_NODES = 50; // 限制子节点数量
     
     private long lastEventTime = 0;
     private Handler mainHandler;
     private AtomicBoolean isProcessing = new AtomicBoolean(false);
+    
+    // 添加内存监控
+    private long lastMemoryCheck = 0;
+    private static final long MEMORY_CHECK_INTERVAL = 30000; // 30秒检查一次内存
     
     // 屏幕内容变化回调接口
     public interface ScreenContentCallback {
@@ -47,8 +52,21 @@ public class AccessibilityDataService extends AccessibilityService {
         }
         
         try {
+            // 定期检查内存使用情况
+            checkMemoryUsage(currentTime);
+            
             processAccessibilityEvent(event);
             lastEventTime = currentTime;
+        } catch (OutOfMemoryError e) {
+            Log.e(TAG, "内存不足，强制垃圾回收", e);
+            System.gc(); // 强制垃圾回收
+            notifyError("内存不足，已尝试清理");
+        } catch (StackOverflowError e) {
+            Log.e(TAG, "栈溢出错误", e);
+            notifyError("处理深度过大，已跳过");
+        } catch (SecurityException e) {
+            Log.e(TAG, "权限错误", e);
+            notifyError("权限不足: " + e.getMessage());
         } catch (Exception e) {
             Log.e(TAG, "处理无障碍事件时发生错误", e);
             notifyError("事件处理异常: " + e.getMessage());
@@ -80,6 +98,12 @@ public class AccessibilityDataService extends AccessibilityService {
             // 提取屏幕文本内容
             String screenText = extractTextFromNodeSafely(rootNode);
             String packageName = getPackageNameSafely(event);
+            
+            // 过滤掉launcher自身的数据，避免干扰分析
+            if ("com.datacollector.android".equals(packageName)) {
+                Log.d(TAG, "跳过launcher自身数据收集，避免分析干扰");
+                return;
+            }
             
             // 内容有效性检查
             if (screenText != null && !screenText.trim().isEmpty() && 
@@ -160,15 +184,18 @@ public class AccessibilityDataService extends AccessibilityService {
                 textBuilder.append(contentDesc).append(" ");
             }
             
-            // 递归遍历子节点
-            int childCount = node.getChildCount();
+            // 递归遍历子节点 - 添加数量限制
+            int childCount = Math.min(node.getChildCount(), MAX_CHILD_NODES);
             for (int i = 0; i < childCount && textBuilder.length() <= MAX_TEXT_LENGTH; i++) {
                 AccessibilityNodeInfo child = null;
                 try {
                     child = node.getChild(i);
-                    if (child != null) {
+                    if (child != null && child.refresh()) { // 检查子节点有效性
                         extractTextRecursivelySafe(child, textBuilder, depth + 1);
                     }
+                } catch (IllegalStateException e) {
+                    Log.w(TAG, "子节点已失效: " + i, e);
+                    break; // 如果节点失效，停止处理
                 } catch (Exception e) {
                     Log.w(TAG, "处理子节点时出错: " + i, e);
                 } finally {
@@ -249,7 +276,50 @@ public class AccessibilityDataService extends AccessibilityService {
         super.onServiceConnected();
         instance = this;
         isProcessing.set(false);
+        
+        // 重置统计信息
+        lastEventTime = 0;
+        lastMemoryCheck = 0;
+        
         Log.i(TAG, "无障碍服务已连接");
+        
+        // 启动健康监控
+        startHealthMonitoring();
+    }
+    
+    /**
+     * 启动健康监控
+     */
+    private void startHealthMonitoring() {
+        if (mainHandler == null) {
+            mainHandler = new Handler(Looper.getMainLooper());
+        }
+        
+        // 每分钟检查一次服务健康状态
+        mainHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // 检查服务是否还活跃
+                    if (instance != null) {
+                        Log.d(TAG, "健康检查: 服务正常运行");
+                        
+                        // 检查是否长时间没有处理事件（可能表示有问题）
+                        long currentTime = System.currentTimeMillis();
+                        if (lastEventTime > 0 && (currentTime - lastEventTime) > 5 * 60 * 1000) {
+                            Log.w(TAG, "警告: 超过5分钟未处理任何事件");
+                        }
+                        
+                        // 继续下一次检查
+                        if (mainHandler != null) {
+                            mainHandler.postDelayed(this, 60000);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "健康检查时出错", e);
+                }
+            }
+        }, 60000); // 1分钟后开始第一次检查
     }
     
     @Override
@@ -300,6 +370,53 @@ public class AccessibilityDataService extends AccessibilityService {
     }
     
     /**
+     * 检查内存使用情况
+     */
+    private void checkMemoryUsage(long currentTime) {
+        if (currentTime - lastMemoryCheck < MEMORY_CHECK_INTERVAL) {
+            return;
+        }
+        
+        try {
+            Runtime runtime = Runtime.getRuntime();
+            long totalMemory = runtime.totalMemory();
+            long freeMemory = runtime.freeMemory();
+            long usedMemory = totalMemory - freeMemory;
+            long maxMemory = runtime.maxMemory();
+            
+            double memoryUsagePercent = (double) usedMemory / maxMemory * 100;
+            
+            Log.d(TAG, String.format("内存使用情况: %.1f%% (%d/%d MB)", 
+                                    memoryUsagePercent, 
+                                    usedMemory / 1024 / 1024, 
+                                    maxMemory / 1024 / 1024));
+            
+            // 分级内存警告和处理
+            if (memoryUsagePercent > 90) {
+                Log.e(TAG, "内存使用极高(" + String.format("%.1f%%", memoryUsagePercent) + ")，强制垃圾回收");
+                System.gc();
+                // 暂停处理一段时间，让系统恢复
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                notifyError("内存使用极高，已强制清理并暂停处理");
+            } else if (memoryUsagePercent > 80) {
+                Log.w(TAG, "内存使用过高(" + String.format("%.1f%%", memoryUsagePercent) + ")，建议垃圾回收");
+                System.gc();
+                notifyError("内存使用过高，已执行清理");
+            } else if (memoryUsagePercent > 70) {
+                Log.i(TAG, "内存使用较高(" + String.format("%.1f%%", memoryUsagePercent) + ")，预警");
+            }
+            
+            lastMemoryCheck = currentTime;
+        } catch (Exception e) {
+            Log.w(TAG, "检查内存使用情况时出错", e);
+        }
+    }
+    
+    /**
      * 获取服务状态信息
      */
     public static String getServiceStatus() {
@@ -314,6 +431,17 @@ public class AccessibilityDataService extends AccessibilityService {
             status.append(" - 正在处理事件");
         } else {
             status.append(" - 空闲中");
+        }
+        
+        // 添加内存信息
+        try {
+            Runtime runtime = Runtime.getRuntime();
+            long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+            long maxMemory = runtime.maxMemory();
+            double memoryPercent = (double) usedMemory / maxMemory * 100;
+            status.append(String.format("\n内存使用: %.1f%%", memoryPercent));
+        } catch (Exception e) {
+            // 忽略内存检查错误
         }
         
         return status.toString();

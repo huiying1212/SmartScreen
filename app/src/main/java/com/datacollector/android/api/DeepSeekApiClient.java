@@ -130,14 +130,28 @@ public class DeepSeekApiClient {
      */
     private String getLatestDataFileContent() {
         try {
-            File dataDir = context.getExternalFilesDir(null);
-            if (dataDir == null || !dataDir.exists()) {
+            File rootDataDir = context.getExternalFilesDir(null);
+            if (rootDataDir == null || !rootDataDir.exists()) {
                 Log.e(TAG, "数据目录不存在");
                 return null;
             }
             
-            File[] files = dataDir.listFiles((dir, name) -> 
-                name.startsWith("context_data_") && name.endsWith(".json"));
+            // 优先从data子目录查找文件
+            File dataSubDir = new File(rootDataDir, "data");
+            File[] files = null;
+            
+            if (dataSubDir.exists()) {
+                files = dataSubDir.listFiles((dir, name) -> 
+                    name.startsWith("context_data_") && name.endsWith(".json"));
+                Log.d(TAG, "从data子目录查找数据文件");
+            }
+            
+            // 如果data子目录不存在或没有文件，从根目录查找（兼容旧版本）
+            if (files == null || files.length == 0) {
+                files = rootDataDir.listFiles((dir, name) -> 
+                    name.startsWith("context_data_") && name.endsWith(".json"));
+                Log.d(TAG, "从根目录查找数据文件（兼容模式）");
+            }
             
             if (files == null || files.length == 0) {
                 Log.e(TAG, "未找到数据文件");
@@ -168,7 +182,7 @@ public class DeepSeekApiClient {
                 return null;
             }
             
-            Log.i(TAG, "使用最新数据文件: " + latestFile.getName());
+            Log.i(TAG, "使用最新数据文件: " + latestFile.getAbsolutePath());
             
             // 读取文件内容
             StringBuilder content = new StringBuilder();
@@ -417,13 +431,21 @@ public class DeepSeekApiClient {
             resultData.put("analysis_time", System.currentTimeMillis());
             resultData.put("original_data_timestamp", originalData.optLong("collection_time"));
             
-            // 保存到文件
+            // 创建analysis子目录用于存储AI分析结果
+            File analysisDir = new File(context.getExternalFilesDir(null), "analysis");
+            if (!analysisDir.exists()) {
+                analysisDir.mkdirs();
+                Log.d(TAG, "Created analysis directory: " + analysisDir.getAbsolutePath());
+            }
+            
+            // 保存到analysis子目录中
             String fileName = "analysis_result_" + System.currentTimeMillis() + ".json";
-            java.io.FileWriter fileWriter = new java.io.FileWriter(context.getExternalFilesDir(null) + "/" + fileName);
+            File analysisFile = new File(analysisDir, fileName);
+            java.io.FileWriter fileWriter = new java.io.FileWriter(analysisFile);
             fileWriter.write(resultData.toString(4));
             fileWriter.close();
             
-            Log.d(TAG, "保存分析结果到: " + fileName);
+            Log.d(TAG, "保存分析结果到: " + analysisFile.getAbsolutePath());
             
         } catch (Exception e) {
             Log.e(TAG, "保存分析结果时出错", e);

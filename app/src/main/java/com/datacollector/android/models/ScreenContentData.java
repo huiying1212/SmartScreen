@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 /**
  * 屏幕内容数据类
  * 扩展支持截图和OCR识别
+ * 增强内存管理，避免内存泄漏
  */
 public class ScreenContentData {
     public long timestamp;
@@ -51,5 +52,43 @@ public class ScreenContentData {
     public boolean hasTextContent() {
         return (content != null && !content.trim().isEmpty()) || 
                (ocrText != null && !ocrText.trim().isEmpty());
+    }
+    
+    /**
+     * 清理Bitmap资源，避免内存泄漏
+     */
+    public void recycleBitmap() {
+        if (screenshot != null && !screenshot.isRecycled()) {
+            screenshot.recycle();
+            screenshot = null;
+        }
+    }
+    
+    /**
+     * 检查Bitmap是否有效
+     */
+    public boolean hasBitmap() {
+        return screenshot != null && !screenshot.isRecycled();
+    }
+    
+    /**
+     * 获取数据大小估算（用于内存管理）
+     */
+    public long getEstimatedMemorySize() {
+        long size = 0;
+        
+        if (content != null) {
+            size += content.length() * 2; // 字符串大约2字节每字符
+        }
+        
+        if (ocrText != null) {
+            size += ocrText.length() * 2;
+        }
+        
+        if (screenshot != null && !screenshot.isRecycled()) {
+            size += screenshot.getByteCount();
+        }
+        
+        return size;
     }
 } 

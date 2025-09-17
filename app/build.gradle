@@ -10,10 +10,13 @@ android {
         applicationId "com.datacollector.android"
         minSdk 23
         targetSdk 33
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        // 增加内存限制，提高稳定性
+        multiDexEnabled true
     }
 
     buildTypes {

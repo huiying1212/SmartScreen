@@ -100,14 +100,28 @@ public class GeminiApiClient {
      */
     private String getLatestDataFileContent() {
         try {
-            File dataDir = context.getExternalFilesDir(null);
-            if (dataDir == null || !dataDir.exists()) {
+            File rootDataDir = context.getExternalFilesDir(null);
+            if (rootDataDir == null || !rootDataDir.exists()) {
                 Log.e(TAG, "数据目录不存在");
                 return null;
             }
             
-            File[] files = dataDir.listFiles((dir, name) -> 
-                name.startsWith("context_data_") && name.endsWith(".json"));
+            // 优先从data子目录查找文件
+            File dataSubDir = new File(rootDataDir, "data");
+            File[] files = null;
+            
+            if (dataSubDir.exists()) {
+                files = dataSubDir.listFiles((dir, name) -> 
+                    name.startsWith("context_data_") && name.endsWith(".json"));
+                Log.d(TAG, "从data子目录查找数据文件");
+            }
+            
+            // 如果data子目录不存在或没有文件，从根目录查找（兼容旧版本）
+            if (files == null || files.length == 0) {
+                files = rootDataDir.listFiles((dir, name) -> 
+                    name.startsWith("context_data_") && name.endsWith(".json"));
+                Log.d(TAG, "从根目录查找数据文件（兼容模式）");
+            }
             
             if (files == null || files.length == 0) {
                 Log.e(TAG, "未找到数据文件");
@@ -138,7 +152,7 @@ public class GeminiApiClient {
                 return null;
             }
             
-            Log.i(TAG, "使用最新数据文件: " + latestFile.getName());
+            Log.i(TAG, "使用最新数据文件: " + latestFile.getAbsolutePath());
             
             // 读取文件内容
             StringBuilder content = new StringBuilder();

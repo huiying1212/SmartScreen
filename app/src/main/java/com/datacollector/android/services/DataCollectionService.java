@@ -22,11 +22,13 @@ import com.datacollector.android.collectors.WiFiDataCollector;
 import com.datacollector.android.managers.DataCollectorManager;
 import com.datacollector.android.activities.LauncherActivity;
 import com.datacollector.android.api.DeepSeekApiClient;
+import com.datacollector.android.utils.DataCleanupManager;
 import com.datacollector.android.R;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -54,6 +56,9 @@ public class DataCollectionService extends Service implements DataCollectorManag
     
     // LLM分析客户端
     private DeepSeekApiClient deepSeekApiClient;
+    
+    // 数据清理管理器
+    private DataCleanupManager dataCleanupManager;
     
     // 数据存储
     private JSONObject currentContextData;
@@ -97,6 +102,13 @@ public class DataCollectionService extends Service implements DataCollectorManag
         // 确保前台服务运行
         startForegroundService();
         
+        // 刷新唤醒锁
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.acquire(10 * 60 * 1000L); // 续期10分钟
+        } else {
+            acquireWakeLock();
+        }
+        
         // 处理手动触发的数据收集
         if (intent != null && intent.hasExtra("action")) {
             String action = intent.getStringExtra("action");
@@ -106,6 +118,8 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 collectCurrentContextData(triggerReason);
             }
         }
+        
+        Log.i(TAG, "Service restarted with flags: " + flags + ", startId: " + startId);
         
         return START_STICKY; // 服务被杀死后会自动重启
     }
@@ -199,6 +213,9 @@ public class DataCollectionService extends Service implements DataCollectorManag
         
         // 初始化LLM分析客户端
         deepSeekApiClient = new DeepSeekApiClient(this);
+        
+        // 初始化数据清理管理器
+        dataCleanupManager = new DataCleanupManager(this);
         
         // 初始化数据结构
         currentContextData = new JSONObject();
@@ -360,16 +377,24 @@ public class DataCollectionService extends Service implements DataCollectorManag
             outputData.put("context_data", contextData);
             outputData.put("collection_time", System.currentTimeMillis());
             
-            // 保存到文件
+            // 创建data子目录用于存储原始收集数据
+            File dataDir = new File(getExternalFilesDir(null), "data");
+            if (!dataDir.exists()) {
+                dataDir.mkdirs();
+                Log.d(TAG, "Created data directory: " + dataDir.getAbsolutePath());
+            }
+            
+            // 保存到data子目录中
             String fileName = "context_data_" + System.currentTimeMillis() + ".json";
-            FileWriter fileWriter = new FileWriter(getExternalFilesDir(null) + "/" + fileName);
+            File dataFile = new File(dataDir, fileName);
+            FileWriter fileWriter = new FileWriter(dataFile);
             fileWriter.write(outputData.toString(4)); // 4 spaces for pretty printing
             fileWriter.close();
             
             // 同时保存到实时数据结构
             this.currentContextData = outputData;
             
-            Log.d(TAG, "Saved context data to: " + fileName);
+            Log.d(TAG, "Saved context data to: " + dataFile.getAbsolutePath());
             
             // 自动分析
             if (autoAnalysisEnabled && deepSeekApiClient != null) {
@@ -413,6 +438,26 @@ public class DataCollectionService extends Service implements DataCollectorManag
      */
     public boolean isAutoAnalysisEnabled() {
         return autoAnalysisEnabled;
+    }
+    
+    /**
+     * 获取数据清理统计信息
+     */
+    public String getDataCleanupStats() {
+        if (dataCleanupManager != null) {
+            return dataCleanupManager.getCleanupStats();
+        }
+        return "数据清理管理器未初始化";
+    }
+    
+    /**
+     * 手动触发数据清理
+     */
+    public void performManualCleanup() {
+        if (dataCleanupManager != null) {
+            dataCleanupManager.performImmediateCleanup();
+            Log.i(TAG, "手动触发数据清理");
+        }
     }
     
     /**
@@ -486,6 +531,11 @@ public class DataCollectionService extends Service implements DataCollectorManag
         // 关闭LLM客户端
         if (deepSeekApiClient != null) {
             deepSeekApiClient.shutdown();
+        }
+        
+        // 停止数据清理任务
+        if (dataCleanupManager != null) {
+            dataCleanupManager.stopCleanup();
         }
 
         releaseWakeLock(); // 释放唤醒锁

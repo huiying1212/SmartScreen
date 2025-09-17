@@ -5,6 +5,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -12,6 +13,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Process;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -33,6 +35,7 @@ import com.datacollector.android.services.DataCollectionService;
 import com.datacollector.android.api.GeminiApiClient;
 import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.utils.BatteryOptimizationHelper;
+import com.datacollector.android.utils.LauncherStabilityManager;
 import com.datacollector.android.R;
 
 import org.json.JSONException;
@@ -50,10 +53,20 @@ import java.util.Locale;
 /**
  * CATIA3 Launcher启动器主界面
  * 替代Android原生主屏幕，提供应用启动和数据收集功能
+ * 增强版本：添加了进程保活和稳定性管理机制
  */
 public class LauncherActivity extends Activity implements DeepSeekApiClient.LauncherUpdateCallback {
     
     private static final String TAG = "LauncherActivity";
+    private static final String PREFS_NAME = "launcher_prefs";
+    private static final String KEY_LAST_ACTIVE_TIME = "last_active_time";
+    private static final String KEY_RESTART_COUNT = "restart_count";
+    
+    // 稳定性管理器
+    private LauncherStabilityManager stabilityManager;
+    
+    // SharedPreferences for state persistence
+    private SharedPreferences prefs;
     
     // UI组件
     private ImageButton settingsButton;
@@ -69,6 +82,13 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
     private boolean hasValidWidgetSuggestions = false;
     private long lastWidgetUpdateTime = 0;
     private static final long WIDGET_CACHE_DURATION = 10 * 60 * 1000; // 10分钟缓存
+    
+    // AI分析触发优化 - 只在有变化时触发
+    private long lastAnalysisTime = 0;
+    private boolean hasChangedSinceLastAnalysis = false;
+    private long lastPauseTime = 0;
+    private static final long MIN_ANALYSIS_INTERVAL = 5000; // 最小分析间隔5秒
+    private static final long MIN_PAUSE_DURATION = 2000; // 最小暂停时长2秒
     
     // 底部四个app快捷方式
     private LinearLayout[] appShortcuts = new LinearLayout[4];
@@ -114,6 +134,15 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_launcher);
         
+        // 初始化SharedPreferences
+        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        
+        // 初始化稳定性管理器
+        stabilityManager = new LauncherStabilityManager(this);
+        
+        // 检查是否是重启
+        checkForRestart();
+        
         // 检查电池优化
         BatteryOptimizationHelper.checkAndRequestBatteryOptimization(this);
 
@@ -135,6 +164,12 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         
         // 注册DeepSeek Launcher更新回调
         DeepSeekApiClient.setLauncherUpdateCallback(this);
+        
+        // 启动稳定性监控
+        stabilityManager.startStabilityMonitoring();
+        
+        // 记录活跃时间
+        recordActiveTime();
     }
     
     private void initViews() {
@@ -182,6 +217,15 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             public void onClick(View v) {
                 Intent intent = new Intent(LauncherActivity.this, AndroidDataCollector.class);
                 startActivity(intent);
+            }
+        });
+        
+        // 长按设置按钮显示数据清理状态
+        settingsButton.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                showDataCleanupStatus();
+                return true;
             }
         });
         
@@ -508,8 +552,12 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         appIcons[index].setImageDrawable(appInfo.icon);
         appNames[index].setText(appInfo.label);
         
-        Toast.makeText(this, "快捷方式 " + (index + 1) + " 已设置为: " + appInfo.label, 
-                      Toast.LENGTH_SHORT).show();
+        // 标记有变化 - 用户修改了快捷方式
+        hasChangedSinceLastAnalysis = true;
+        
+        // Toast提示已移除 - 用户要求不显示设置成功提示
+        // Toast.makeText(this, "快捷方式 " + (index + 1) + " 已设置为: " + appInfo.label, 
+        //               Toast.LENGTH_SHORT).show();
     }
     
     /**
@@ -692,6 +740,9 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             // 这里可以添加应用启动的数据收集逻辑
             collectAppLaunchData(appInfo);
             
+            // 标记有变化 - 用户启动了应用
+            hasChangedSinceLastAnalysis = true;
+            
         } catch (Exception e) {
             e.printStackTrace();
             // 如果直接启动失败，尝试使用包管理器启动
@@ -699,6 +750,8 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             if (launchIntent != null) {
                 startActivity(launchIntent);
                 collectAppLaunchData(appInfo);
+                // 标记有变化 - 用户启动了应用
+                hasChangedSinceLastAnalysis = true;
             } else {
                 Toast.makeText(this, "无法启动应用: " + appInfo.label, Toast.LENGTH_SHORT).show();
             }
@@ -727,6 +780,46 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         // 先启动前台服务，然后绑定
         startForegroundService(serviceIntent);
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+    
+    /**
+     * 判断是否应该触发AI分析
+     * 只在有变化或首次启动时返回true
+     */
+    private boolean shouldTriggerAnalysis() {
+        long currentTime = System.currentTimeMillis();
+        
+        // 首次启动（从未分析过）
+        if (lastAnalysisTime == 0) {
+            return true;
+        }
+        
+        // 防止频繁分析 - 距离上次分析不足最小间隔
+        if (currentTime - lastAnalysisTime < MIN_ANALYSIS_INTERVAL) {
+            return false;
+        }
+        
+        // 有变化需要分析
+        if (hasChangedSinceLastAnalysis) {
+            return true;
+        }
+        
+        // 检测用户是否从其他应用返回（切换应用行为）
+        if (lastPauseTime > 0 && lastPauseTime > lastAnalysisTime) {
+            // 检查用户是否真的离开了足够长的时间（避免短暂切换）
+            long pauseDuration = currentTime - lastPauseTime;
+            if (pauseDuration >= MIN_PAUSE_DURATION) {
+                return true;
+            }
+        }
+        
+        // 超过一定时间间隔强制分析（避免长时间不更新）
+        long timeSinceLastAnalysis = currentTime - lastAnalysisTime;
+        if (timeSinceLastAnalysis > 30 * 60 * 1000) { // 30分钟强制更新一次
+            return true;
+        }
+        
+        return false;
     }
     
     /**
@@ -765,6 +858,11 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         loadInstalledApps();
         // updateTime(); // Removed as time display is no longer needed
         
+        // 重新启动稳定性监控（如果被暂停）
+        if (stabilityManager != null) {
+            stabilityManager.startStabilityMonitoring();
+        }
+        
         // 重新注册回调（防止被清除）
         DeepSeekApiClient.setLauncherUpdateCallback(this);
         
@@ -778,8 +876,22 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             Log.d(TAG, "恢复显示之前的widget建议");
         }
         
-        // 触发数据收集 - 每次回到桌面时生成数据
-        triggerDataCollection();
+        // 记录活跃时间
+        recordActiveTime();
+        
+        // 触发数据收集 - 只在有变化或首次启动时触发
+        if (shouldTriggerAnalysis()) {
+            triggerDataCollection();
+            hasChangedSinceLastAnalysis = false;
+            lastAnalysisTime = System.currentTimeMillis();
+        }
+    }
+    
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // 记录用户离开launcher的时间
+        lastPauseTime = System.currentTimeMillis();
     }
     
     @Override
@@ -787,6 +899,11 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         super.onDestroy();
         if (timeHandler != null && timeRunnable != null) {
             timeHandler.removeCallbacks(timeRunnable);
+        }
+        
+        // 停止稳定性监控
+        if (stabilityManager != null) {
+            stabilityManager.stopStabilityMonitoring();
         }
         
         // 解绑数据收集服务
@@ -923,6 +1040,114 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         super.onActivityResult(requestCode, resultCode, data);
         // 处理电池优化设置结果
         BatteryOptimizationHelper.handleBatteryOptimizationResult(this, requestCode, resultCode);
+    }
+    
+    /**
+     * 检查是否是重启
+     */
+    private void checkForRestart() {
+        long lastActiveTime = prefs.getLong(KEY_LAST_ACTIVE_TIME, 0);
+        long currentTime = System.currentTimeMillis();
+        
+        if (lastActiveTime > 0) {
+            long timeSinceLastActive = currentTime - lastActiveTime;
+            
+            // 如果距离上次活跃时间超过1分钟，可能是重启
+            if (timeSinceLastActive > 60 * 1000) {
+                int restartCount = prefs.getInt(KEY_RESTART_COUNT, 0) + 1;
+                prefs.edit().putInt(KEY_RESTART_COUNT, restartCount).apply();
+                
+                Log.w(TAG, "Detected launcher restart. Count: " + restartCount + 
+                           ", Time since last active: " + (timeSinceLastActive / 1000) + " seconds");
+                
+                // 如果重启次数过多，显示提示
+                if (restartCount > 5) {
+                    showStabilityWarning();
+                }
+            }
+        }
+    }
+    
+    /**
+     * 记录活跃时间
+     */
+    private void recordActiveTime() {
+        long currentTime = System.currentTimeMillis();
+        prefs.edit().putLong(KEY_LAST_ACTIVE_TIME, currentTime).apply();
+    }
+    
+    /**
+     * 显示稳定性警告
+     */
+    private void showStabilityWarning() {
+        if (stabilityManager != null) {
+            String stats = stabilityManager.getStabilityStats();
+            
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+            builder.setTitle("Launcher稳定性提醒")
+                   .setMessage("检测到Launcher频繁重启，这可能影响使用体验。\n\n" +
+                              "建议检查以下设置：\n" +
+                              "1. 电池优化豁免\n" +
+                              "2. 后台应用限制\n" +
+                              "3. 内存清理白名单\n\n" +
+                              stats)
+                   .setPositiveButton("去设置", (dialog, which) -> {
+                       BatteryOptimizationHelper.checkAndRequestBatteryOptimization(this);
+                   })
+                   .setNegativeButton("忽略", (dialog, which) -> {
+                       // 重置重启计数
+                       prefs.edit().putInt(KEY_RESTART_COUNT, 0).apply();
+                   })
+                   .show();
+        }
+    }
+    
+    /**
+     * 显示数据清理状态
+     */
+    private void showDataCleanupStatus() {
+        if (dataCollectionService != null) {
+            String cleanupStats = dataCollectionService.getDataCleanupStats();
+            
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+            builder.setTitle("数据清理状态")
+                   .setMessage(cleanupStats + "\n\n数据清理功能会自动删除旧的数据文件以节省存储空间，" +
+                              "包括：\n" +
+                              "• 7天前的上下文数据\n" +
+                              "• 3天前的分析结果\n" +
+                              "• 1天前的日志文件\n" +
+                              "• 2小时前的临时文件")
+                   .setPositiveButton("立即清理", (dialog, which) -> {
+                       if (dataCollectionService != null) {
+                           dataCollectionService.performManualCleanup();
+                           Toast.makeText(this, "数据清理已开始", Toast.LENGTH_SHORT).show();
+                       }
+                   })
+                   .setNegativeButton("关闭", null)
+                   .show();
+        } else {
+            Toast.makeText(this, "数据收集服务未连接", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        // 保存重要状态
+        if (currentWidgetSuggestions != null) {
+            outState.putBoolean("hasValidWidgets", hasValidWidgetSuggestions);
+            outState.putLong("lastWidgetUpdate", lastWidgetUpdateTime);
+        }
+    }
+    
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        // 恢复状态
+        if (savedInstanceState != null) {
+            hasValidWidgetSuggestions = savedInstanceState.getBoolean("hasValidWidgets", false);
+            lastWidgetUpdateTime = savedInstanceState.getLong("lastWidgetUpdate", 0);
+        }
     }
     
     // 应用信息类

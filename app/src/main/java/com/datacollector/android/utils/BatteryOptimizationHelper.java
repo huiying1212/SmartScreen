@@ -104,6 +104,70 @@ public class BatteryOptimizationHelper {
             showBatteryOptimizationDialog(activity);
         } else {
             Log.i(TAG, "App is already ignoring battery optimizations");
+            // 即使已经豁免，也检查其他可能的限制
+            checkAdditionalRestrictions(activity);
+        }
+    }
+    
+    /**
+     * 检查其他可能的后台限制
+     */
+    private static void checkAdditionalRestrictions(Activity activity) {
+        // 检查自启动管理（主要针对国产ROM）
+        if (Build.MANUFACTURER.toLowerCase().contains("xiaomi") ||
+            Build.MANUFACTURER.toLowerCase().contains("huawei") ||
+            Build.MANUFACTURER.toLowerCase().contains("oppo") ||
+            Build.MANUFACTURER.toLowerCase().contains("vivo") ||
+            Build.MANUFACTURER.toLowerCase().contains("meizu")) {
+            
+            Log.i(TAG, "Detected custom ROM: " + Build.MANUFACTURER + ", may need additional settings");
+            showCustomRomOptimizationTips(activity);
+        }
+    }
+    
+    /**
+     * 显示针对定制ROM的优化提示
+     */
+    private static void showCustomRomOptimizationTips(Activity activity) {
+        String manufacturer = Build.MANUFACTURER.toLowerCase();
+        String tips = getCustomRomTips(manufacturer);
+        
+        new AlertDialog.Builder(activity)
+            .setTitle("系统优化建议")
+            .setMessage("检测到您使用的是 " + Build.MANUFACTURER + " 设备。\n\n" +
+                       "为确保Launcher稳定运行，建议进行以下设置：\n\n" + tips)
+            .setPositiveButton("知道了", null)
+            .setNeutralButton("打开设置", (dialog, which) -> {
+                try {
+                    Intent intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
+                    activity.startActivity(intent);
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to open settings", e);
+                }
+            })
+            .show();
+    }
+    
+    /**
+     * 获取针对不同ROM的优化建议
+     */
+    private static String getCustomRomTips(String manufacturer) {
+        if (manufacturer.contains("xiaomi")) {
+            return "• 设置 → 应用设置 → 应用管理 → CATIA3 → 省电策略 → 无限制\n" +
+                   "• 安全中心 → 应用管理 → 权限 → 自启动管理 → 允许CATIA3自启动";
+        } else if (manufacturer.contains("huawei")) {
+            return "• 设置 → 应用 → 应用启动管理 → CATIA3 → 手动管理 → 全部开启\n" +
+                   "• 手机管家 → 应用启动管理 → CATIA3 → 允许";
+        } else if (manufacturer.contains("oppo")) {
+            return "• 设置 → 电池 → 应用耗电管理 → CATIA3 → 允许后台运行\n" +
+                   "• 手机管家 → 权限隐私 → 自启动管理 → CATIA3 → 允许";
+        } else if (manufacturer.contains("vivo")) {
+            return "• i管家 → 应用管理 → 权限管理 → 自启动 → CATIA3 → 允许\n" +
+                   "• 设置 → 电池 → 后台应用管理 → CATIA3 → 允许后台高耗电";
+        } else {
+            return "• 检查应用自启动权限\n" +
+                   "• 检查后台应用限制\n" +
+                   "• 将应用加入内存清理白名单";
         }
     }
     

