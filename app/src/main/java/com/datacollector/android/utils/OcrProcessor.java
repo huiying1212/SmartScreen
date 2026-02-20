@@ -24,9 +24,11 @@ public class OcrProcessor {
     private TextRecognizer latinTextRecognizer;
     private TextRecognizer chineseTextRecognizer;
     private Context context;
+    private OcrLogger ocrLogger;
     
     public OcrProcessor(Context context) {
         this.context = context;
+        this.ocrLogger = new OcrLogger(context);
         initializeRecognizers();
     }
     
@@ -35,15 +37,42 @@ public class OcrProcessor {
      */
     private void initializeRecognizers() {
         try {
+            Log.d(TAG, "开始初始化OCR识别器...");
+            ocrLogger.logOcrInitialization(true, "开始初始化OCR识别器");
+            
             // 初始化拉丁文本识别器
             latinTextRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+            Log.d(TAG, "拉丁文本识别器创建成功");
+            ocrLogger.logModelDownloadStart("拉丁文本识别器");
             
             // 初始化中文文本识别器
             chineseTextRecognizer = TextRecognition.getClient(new ChineseTextRecognizerOptions.Builder().build());
+            Log.d(TAG, "中文文本识别器创建成功");
+            ocrLogger.logModelDownloadStart("中文文本识别器");
             
             Log.d(TAG, "OCR识别器初始化成功");
+            ocrLogger.logOcrInitialization(true, "OCR识别器初始化完成");
         } catch (Exception e) {
             Log.e(TAG, "OCR识别器初始化失败", e);
+            
+            // 记录具体的初始化失败原因
+            String errorMsg = e.getMessage() != null ? e.getMessage() : "未知错误";
+            if (e.getMessage() != null) {
+                if (e.getMessage().contains("network") || e.getMessage().contains("download")) {
+                    Log.e(TAG, "OCR模型下载失败，可能是网络连接问题: " + e.getMessage());
+                    ocrLogger.logModelDownloadFailure("OCR识别器", "网络连接问题: " + errorMsg);
+                } else if (e.getMessage().contains("storage") || e.getMessage().contains("space")) {
+                    Log.e(TAG, "OCR模型下载失败，可能是存储空间不足: " + e.getMessage());
+                    ocrLogger.logModelDownloadFailure("OCR识别器", "存储空间不足: " + errorMsg);
+                } else if (e.getMessage().contains("permission")) {
+                    Log.e(TAG, "OCR模型下载失败，可能是权限问题: " + e.getMessage());
+                    ocrLogger.logModelDownloadFailure("OCR识别器", "权限问题: " + errorMsg);
+                } else {
+                    Log.e(TAG, "OCR模型下载失败，未知原因: " + e.getMessage());
+                    ocrLogger.logModelDownloadFailure("OCR识别器", "未知原因: " + errorMsg);
+                }
+            }
+            ocrLogger.logOcrInitialization(false, "OCR识别器初始化失败: " + errorMsg);
         }
     }
     
@@ -79,10 +108,22 @@ public class OcrProcessor {
                     } else {
                         callback.onSuccess(recognizedText, confidence);
                         Log.d(TAG, "中文OCR识别成功，文本长度: " + recognizedText.length());
+                        ocrLogger.logOcrSuccess(String.valueOf(recognizedText.length()), confidence);
                     }
                 })
                 .addOnFailureListener(e -> {
                     Log.w(TAG, "中文OCR识别失败，尝试拉丁文识别", e);
+                    
+                    // 检查是否是模型下载失败
+                    if (e.getMessage() != null) {
+                        if (e.getMessage().contains("model") || e.getMessage().contains("download") || 
+                            e.getMessage().contains("network") || e.getMessage().contains("connection")) {
+                            Log.e(TAG, "中文OCR模型可能下载失败: " + e.getMessage());
+                            ocrLogger.logModelDownloadFailure("中文文本识别器", e.getMessage());
+                        }
+                    }
+                    ocrLogger.logOcrFailure("中文OCR识别失败: " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
+                    
                     // 中文识别失败，尝试拉丁文识别
                     recognizeWithLatinRecognizer(image, callback);
                 });
@@ -103,10 +144,27 @@ public class OcrProcessor {
                 float confidence = calculateAverageConfidence(visionText);
                 callback.onSuccess(recognizedText, confidence);
                 Log.d(TAG, "拉丁文OCR识别成功，文本长度: " + recognizedText.length());
+                ocrLogger.logOcrSuccess(String.valueOf(recognizedText.length()), confidence);
             })
             .addOnFailureListener(e -> {
                 Log.e(TAG, "拉丁文OCR识别也失败", e);
-                callback.onError("OCR识别失败: " + e.getMessage());
+                
+                // 检查是否是模型下载失败
+                String errorMsg = e.getMessage() != null ? e.getMessage() : "未知错误";
+                if (e.getMessage() != null) {
+                    if (e.getMessage().contains("model") || e.getMessage().contains("download") || 
+                        e.getMessage().contains("network") || e.getMessage().contains("connection")) {
+                        Log.e(TAG, "拉丁文OCR模型可能下载失败: " + e.getMessage());
+                        ocrLogger.logModelDownloadFailure("拉丁文本识别器", e.getMessage());
+                        callback.onError("OCR模型下载失败: " + e.getMessage());
+                    } else {
+                        ocrLogger.logOcrFailure("拉丁文OCR识别失败: " + errorMsg);
+                        callback.onError("OCR识别失败: " + e.getMessage());
+                    }
+                } else {
+                    ocrLogger.logOcrFailure("拉丁文OCR识别失败: 未知错误");
+                    callback.onError("OCR识别失败: 未知错误");
+                }
             });
     }
     
@@ -188,6 +246,108 @@ public class OcrProcessor {
             Log.d(TAG, "OCR识别器资源已释放");
         } catch (Exception e) {
             Log.e(TAG, "释放OCR识别器资源时出错", e);
+        }
+    }
+    
+    /**
+     * 检查OCR模型是否可用
+     */
+    public boolean isOcrModelAvailable() {
+        try {
+            if (latinTextRecognizer == null || chineseTextRecognizer == null) {
+                Log.w(TAG, "OCR识别器未初始化");
+                return false;
+            }
+            
+            // 检查识别器对象是否存在
+            // 注意：Google ML Kit的模型下载是在第一次使用时进行的
+            // 这里我们只能检查识别器对象是否创建成功
+            Log.d(TAG, "OCR模型检查: 识别器对象已创建");
+            Log.i(TAG, "注意：OCR模型将在首次使用时自动下载，请确保网络连接正常");
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "OCR模型检查失败", e);
+            return false;
+        }
+    }
+    
+    /**
+     * 测试OCR模型下载状态（使用小图片进行测试）
+     */
+    public void testOcrModelDownload(OcrCallback callback) {
+        try {
+            // 创建一个1x1像素的测试图片
+            Bitmap testBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+            testBitmap.setPixel(0, 0, 0xFF000000); // 黑色像素
+            
+            Log.d(TAG, "开始测试OCR模型下载状态...");
+            
+            // 使用中文识别器进行测试
+            chineseTextRecognizer.process(InputImage.fromBitmap(testBitmap, 0))
+                .addOnSuccessListener(visionText -> {
+                    Log.d(TAG, "OCR模型测试成功，模型已可用");
+                    ocrLogger.logModelDownloadSuccess("中文文本识别器测试");
+                    testBitmap.recycle();
+                    callback.onSuccess("OCR模型测试成功", 1.0f);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "OCR模型测试失败", e);
+                    testBitmap.recycle();
+                    
+                    // 检查是否是模型下载问题
+                    String errorMsg = e.getMessage() != null ? e.getMessage() : "未知错误";
+                    if (e.getMessage() != null && 
+                        (e.getMessage().contains("model") || e.getMessage().contains("download") || 
+                         e.getMessage().contains("network") || e.getMessage().contains("connection"))) {
+                        Log.e(TAG, "OCR模型下载失败: " + e.getMessage());
+                        ocrLogger.logModelDownloadFailure("中文文本识别器测试", errorMsg);
+                        callback.onError("OCR模型下载失败: " + e.getMessage());
+                    } else {
+                        ocrLogger.logOcrFailure("OCR模型测试失败: " + errorMsg);
+                        callback.onError("OCR模型测试失败: " + e.getMessage());
+                    }
+                });
+                
+        } catch (Exception e) {
+            Log.e(TAG, "OCR模型测试过程出错", e);
+            callback.onError("OCR模型测试过程出错: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取OCR模型状态信息
+     */
+    public String getOcrModelStatus() {
+        StringBuilder status = new StringBuilder();
+        
+        if (latinTextRecognizer != null) {
+            status.append("拉丁文识别器: 已初始化\n");
+        } else {
+            status.append("拉丁文识别器: 未初始化\n");
+        }
+        
+        if (chineseTextRecognizer != null) {
+            status.append("中文识别器: 已初始化\n");
+        } else {
+            status.append("中文识别器: 未初始化\n");
+        }
+        
+        return status.toString();
+    }
+    
+    /**
+     * 获取OCR日志文件路径
+     */
+    public String getOcrLogFilePath() {
+        return ocrLogger != null ? ocrLogger.getLogFilePath() : "OCR日志未初始化";
+    }
+    
+    /**
+     * 清理OCR日志
+     */
+    public void cleanupOcrLogs() {
+        if (ocrLogger != null) {
+            ocrLogger.cleanupOldLogs();
         }
     }
     

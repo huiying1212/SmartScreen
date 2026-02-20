@@ -10,6 +10,8 @@ import android.os.Bundle;
 
 import androidx.core.app.ActivityCompat;
 
+import com.datacollector.android.utils.CollectionConfig;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -17,7 +19,7 @@ import java.util.Locale;
 
 /**
  * 位置数据收集器
- * 收集GPS位置信息
+ * 采集参数通过CollectionConfig动态配置（借鉴Beiwe的device_settings远程配置模式）
  */
 public class LocationDataCollector extends BaseDataCollector<JSONObject> implements LocationListener {
     
@@ -35,8 +37,11 @@ public class LocationDataCollector extends BaseDataCollector<JSONObject> impleme
     protected void initializeDefaultConfiguration() {
         super.initializeDefaultConfiguration();
         try {
-            configuration.put("update_interval", 60000); // 1分钟
-            configuration.put("min_distance", 10); // 10米
+            CollectionConfig config = CollectionConfig.getInstance(context);
+            configuration.put("update_interval",
+                    config.getLong(CollectionConfig.KEY_LOCATION_INTERVAL, 60000));
+            configuration.put("min_distance",
+                    config.getFloat(CollectionConfig.KEY_LOCATION_MIN_DISTANCE, 10f));
             configuration.put("provider", LocationManager.GPS_PROVIDER);
         } catch (JSONException e) {
             e.printStackTrace();
@@ -45,19 +50,13 @@ public class LocationDataCollector extends BaseDataCollector<JSONObject> impleme
     
     @Override
     public boolean isAvailable() {
-        if (!isEnabled()) {
+        if (!isEnabled()) return false;
+        if (!CollectionConfig.getInstance(context).getBoolean(CollectionConfig.KEY_LOCATION_ENABLED, true))
             return false;
-        }
-        
-        // 检查权限
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) 
-            != PackageManager.PERMISSION_GRANTED) {
-            return false;
-        }
-        
-        // 检查LocationManager和GPS提供者
-        return locationManager != null && 
-               locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) return false;
+        return locationManager != null &&
+                locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
     }
     
     @Override

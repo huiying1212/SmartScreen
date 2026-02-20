@@ -104,11 +104,37 @@ public class ScreenContentCollector implements AccessibilityDataService.ScreenCo
                 this.screenshotCapture = new ScreenshotCapture(context);
                 this.screenshotManager = new ScreenshotManager(context);
                 this.powerOptimizer = new PowerOptimizer(context);
-                Log.d(TAG, "OCR功能已启用，包含优化组件");
+                
+                // 检查OCR模型是否可用
+                if (this.ocrProcessor != null && this.ocrProcessor.isOcrModelAvailable()) {
+                    Log.d(TAG, "OCR功能已启用，模型状态正常");
+                    Log.d(TAG, "OCR模型状态:\n" + this.ocrProcessor.getOcrModelStatus());
+                } else {
+                    Log.w(TAG, "OCR功能已启用，但模型可能未完全加载");
+                    if (contentMonitor != null) {
+                        contentMonitor.recordOcrFailure("OCR模型可能未完全加载");
+                    }
+                }
             } catch (Exception e) {
                 Log.e(TAG, "OCR初始化失败", e);
+                
+                // 记录具体的初始化失败原因
+                String errorMsg = "OCR初始化失败: " + e.getMessage();
+                if (e.getMessage() != null) {
+                    if (e.getMessage().contains("network") || e.getMessage().contains("download")) {
+                        errorMsg = "OCR模型下载失败，网络连接问题: " + e.getMessage();
+                        Log.e(TAG, "OCR模型下载失败，请检查网络连接");
+                    } else if (e.getMessage().contains("storage") || e.getMessage().contains("space")) {
+                        errorMsg = "OCR模型下载失败，存储空间不足: " + e.getMessage();
+                        Log.e(TAG, "OCR模型下载失败，请清理存储空间");
+                    } else if (e.getMessage().contains("permission")) {
+                        errorMsg = "OCR模型下载失败，权限问题: " + e.getMessage();
+                        Log.e(TAG, "OCR模型下载失败，请检查应用权限");
+                    }
+                }
+                
                 if (contentMonitor != null) {
-                    contentMonitor.recordOcrFailure("OCR初始化失败: " + e.getMessage());
+                    contentMonitor.recordOcrFailure(errorMsg);
                 }
             }
         }

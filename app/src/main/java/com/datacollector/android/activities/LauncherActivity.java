@@ -334,24 +334,18 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
                         }
                         
                         // 处理next_move数据并显示widget建议
-                        if (nextMoveArray != null) {
+                        if (nextMoveArray != null && nextMoveArray.length() > 0) {
                             parseAndDisplayWidgetSuggestions(nextMoveArray);
                         } else {
-                            // 如果没有next_move数据，检查是否保持现有widget显示
-                            if (!hasValidWidgetSuggestions || 
-                                (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
-                                showDefaultWidgetPlaceholder();
-                            }
+                            // 如果没有next_move数据，显示分析完成但无建议的状态
+                            showAnalysisCompleteNoSuggestions();
                         }
                         
                     } catch (org.json.JSONException e) {
                         // 如果解析JSON失败，显示原始响应
                         deepseekResultTextView.setText("AI分析结果:\n" + response);
-                        // 解析失败时也不要立即清空widget，除非过期
-                        if (!hasValidWidgetSuggestions || 
-                            (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
-                            showDefaultWidgetPlaceholder();
-                        }
+                        // 解析失败时显示分析完成但无建议状态
+                        showAnalysisCompleteNoSuggestions();
                     }
                 });
             }
@@ -360,11 +354,8 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             public void onError(String error) {
                 runOnUiThread(() -> {
                     deepseekResultTextView.setText("AI分析失败: " + error);
-                    // 错误时也不要立即清空widget，除非过期
-                    if (!hasValidWidgetSuggestions || 
-                        (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
-                        showDefaultWidgetPlaceholder();
-                    }
+                    // 错误时显示分析失败状态
+                    showAnalysisErrorWidget();
                 });
             }
         });
@@ -521,6 +512,66 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         widgetsPlaceholderText.setVisibility(View.VISIBLE);
         widgetsPlaceholderText.setText("等待AI分析后显示智能建议...");
         hasValidWidgetSuggestions = false;
+    }
+    
+    /**
+     * 显示AI分析进行中的widget状态
+     */
+    private void showAnalysisInProgressWidget() {
+        Log.d(TAG, "显示AI分析进行中状态");
+        
+        // 清空现有的widget视图
+        dynamicWidgetsContainer.removeAllViews();
+        
+        // 显示分析中状态
+        widgetsPlaceholderText.setVisibility(View.VISIBLE);
+        widgetsPlaceholderText.setText("AI正在分析中，请稍候... 🔍");
+        
+        // 暂时标记为无效状态，强制等待新结果
+        hasValidWidgetSuggestions = false;
+        lastWidgetUpdateTime = 0; // 重置时间，确保新结果会立即显示
+        
+        Log.d(TAG, "AI分析进行中状态已显示");
+    }
+    
+    /**
+     * 显示AI分析完成但无建议的状态
+     */
+    private void showAnalysisCompleteNoSuggestions() {
+        Log.d(TAG, "显示AI分析完成但无建议状态");
+        
+        // 清空现有的widget视图
+        dynamicWidgetsContainer.removeAllViews();
+        
+        // 显示分析完成状态
+        widgetsPlaceholderText.setVisibility(View.VISIBLE);
+        widgetsPlaceholderText.setText("AI分析完成，暂无智能建议");
+        
+        // 标记为无效状态，等待下次分析
+        hasValidWidgetSuggestions = false;
+        lastWidgetUpdateTime = System.currentTimeMillis();
+        
+        Log.d(TAG, "AI分析完成但无建议状态已显示");
+    }
+    
+    /**
+     * 显示AI分析错误状态
+     */
+    private void showAnalysisErrorWidget() {
+        Log.d(TAG, "显示AI分析错误状态");
+        
+        // 清空现有的widget视图
+        dynamicWidgetsContainer.removeAllViews();
+        
+        // 显示分析错误状态
+        widgetsPlaceholderText.setVisibility(View.VISIBLE);
+        widgetsPlaceholderText.setText("AI分析失败，请稍后重试 ⚠️");
+        
+        // 标记为无效状态，等待下次分析
+        hasValidWidgetSuggestions = false;
+        lastWidgetUpdateTime = System.currentTimeMillis();
+        
+        Log.d(TAG, "AI分析错误状态已显示");
     }
     
     /**
@@ -831,6 +882,9 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
             // 显示分析开始提示
             deepseekResultTextView.setText("正在分析当前情况... 🔍");
             
+            // 立即清除widget显示，显示分析中状态
+            showAnalysisInProgressWidget();
+            
             Intent serviceIntent = new Intent(this, DataCollectionService.class);
             serviceIntent.putExtra("action", "trigger_collection");
             serviceIntent.putExtra("trigger_reason", "home_screen_resume");
@@ -841,6 +895,8 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         } catch (Exception e) {
             Log.e(TAG, "Error triggering data collection", e);
             deepseekResultTextView.setText("数据收集启动失败，请稍后重试");
+            // 错误时也显示分析中状态
+            showAnalysisInProgressWidget();
         }
     }
     
@@ -1004,24 +1060,16 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
                     parseAndDisplayWidgetSuggestions(nextMoveArray);
                     Log.d(TAG, "Found " + nextMoveArray.length() + " widget suggestions");
                 } else {
-                    Log.d(TAG, "No next_move data found, checking existing widgets");
-                    // 如果没有next_move数据，检查是否保持现有widget显示
-                    if (!hasValidWidgetSuggestions || 
-                        (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
-                        Log.d(TAG, "Showing default widget placeholder due to no suggestions or expired cache");
-                        showDefaultWidgetPlaceholder();
-                    }
-                    Log.d(TAG, "No new widget suggestions, keeping existing ones if valid");
+                    Log.d(TAG, "No next_move data found, showing analysis complete no suggestions");
+                    // 如果没有next_move数据，显示分析完成但无建议的状态
+                    showAnalysisCompleteNoSuggestions();
                 }
                 
             } catch (org.json.JSONException e) {
                 Log.e(TAG, "Error parsing full analysis response", e);
                 deepseekResultTextView.setText("AI分析完成");
-                // 解析失败时也不要立即清空widget，除非过期
-                if (!hasValidWidgetSuggestions || 
-                    (System.currentTimeMillis() - lastWidgetUpdateTime) >= WIDGET_CACHE_DURATION) {
-                    showDefaultWidgetPlaceholder();
-                }
+                // 解析失败时显示分析完成但无建议状态
+                showAnalysisCompleteNoSuggestions();
             }
         });
     }
@@ -1031,6 +1079,8 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
         runOnUiThread(() -> {
             // 显示错误信息
             deepseekResultTextView.setText("AI分析暂时不可用，请检查网络连接或稍后重试 ⚠️");
+            // 显示分析错误状态
+            showAnalysisErrorWidget();
             Log.e(TAG, "Analysis error: " + error);
         });
     }
@@ -1103,20 +1153,18 @@ public class LauncherActivity extends Activity implements DeepSeekApiClient.Laun
     }
     
     /**
-     * 显示数据清理状态
+     * 显示数据清理状态和采集统计
      */
     private void showDataCleanupStatus() {
         if (dataCollectionService != null) {
             String cleanupStats = dataCollectionService.getDataCleanupStats();
+            String collectionStats = dataCollectionService.getCollectionStatsSummary();
             
             android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-            builder.setTitle("数据清理状态")
-                   .setMessage(cleanupStats + "\n\n数据清理功能会自动删除旧的数据文件以节省存储空间，" +
-                              "包括：\n" +
-                              "• 7天前的上下文数据\n" +
-                              "• 3天前的分析结果\n" +
-                              "• 1天前的日志文件\n" +
-                              "• 2小时前的临时文件")
+            builder.setTitle("数据管理状态")
+                   .setMessage(cleanupStats + "\n\n" + collectionStats +
+                              "\n\n数据清理会自动删除旧文件以节省存储空间。\n" +
+                              "数据文件使用AES-GCM加密 + GZIP压缩存储。")
                    .setPositiveButton("立即清理", (dialog, which) -> {
                        if (dataCollectionService != null) {
                            dataCollectionService.performManualCleanup();

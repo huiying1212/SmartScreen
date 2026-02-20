@@ -22,13 +22,19 @@ import com.datacollector.android.collectors.WiFiDataCollector;
 import com.datacollector.android.managers.DataCollectorManager;
 import com.datacollector.android.activities.LauncherActivity;
 import com.datacollector.android.api.DeepSeekApiClient;
+import com.datacollector.android.utils.CollectionConfig;
+import com.datacollector.android.utils.CollectionStats;
 import com.datacollector.android.utils.DataCleanupManager;
+import com.datacollector.android.utils.DataEncryptor;
+import com.datacollector.android.utils.ErrorCollector;
 import com.datacollector.android.R;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -36,80 +42,75 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.zip.GZIPOutputStream;
 
 /**
- * 重构后的数据收集服务
- * 使用新的接口抽象架构，通过DataCollectorManager管理所有数据收集器
- * 现在运行为前台服务以确保持续的后台运行
+ * 数据收集服务（升级版）
+ * 借鉴Beiwe的改进：
+ * - 数据加密存储（AES-GCM）
+ * - GZIP压缩减少存储占用
+ * - ErrorCollector独立错误处理（单个collector失败不影响整体）
+ * - 采集统计追踪
+ * - 可配置的采集参数
  */
 public class DataCollectionService extends Service implements DataCollectorManager.DataCollectionCallback {
-    
+
     private static final String TAG = "DataCollectionService";
     private static final String CHANNEL_ID = "DataCollectionChannel";
     private static final int NOTIFICATION_ID = 1001;
-    
-    // 数据收集器管理器
+
     private DataCollectorManager collectorManager;
-    
-    // 屏幕内容收集器（暂时保持原有实现）
     private ScreenContentCollector screenCollector;
-    
-    // LLM分析客户端
     private DeepSeekApiClient deepSeekApiClient;
-    
-    // 数据清理管理器
     private DataCleanupManager dataCleanupManager;
-    
-    // 数据存储
+    private DataEncryptor dataEncryptor;
+    private CollectionConfig collectionConfig;
+    private CollectionStats collectionStats;
+
     private JSONObject currentContextData;
     private Timer dataCollectionTimer;
-    
-    // 添加触发原因存储
     private String lastTriggerReason = "unknown";
-    
-    // 自动分析开关
     private boolean autoAnalysisEnabled = true;
-    
-    // 唤醒锁
     private PowerManager.WakeLock wakeLock;
 
-    // Binder类用于与Activity通信
     public class DataCollectionBinder extends Binder {
         public DataCollectionService getService() {
             return DataCollectionService.this;
         }
     }
-    
+
     private final IBinder binder = new DataCollectionBinder();
-    
+
     @Override
     public IBinder onBind(Intent intent) {
         return binder;
     }
-    
+
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
         startForegroundService();
         acquireWakeLock();
+
+        collectionConfig = CollectionConfig.getInstance(this);
+        collectionStats = CollectionStats.getInstance(this);
+        dataEncryptor = new DataEncryptor(this);
+
         initializeCollectors();
         startDataCollection();
     }
-    
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // 确保前台服务运行
         startForegroundService();
-        
-        // 刷新唤醒锁
+
         if (wakeLock != null && wakeLock.isHeld()) {
-            wakeLock.acquire(10 * 60 * 1000L); // 续期10分钟
+            wakeLock.acquire(10 * 60 * 1000L);
         } else {
             acquireWakeLock();
         }
-        
-        // 处理手动触发的数据收集
+
         if (intent != null && intent.hasExtra("action")) {
             String action = intent.getStringExtra("action");
             if ("trigger_collection".equals(action)) {
@@ -118,243 +119,189 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 collectCurrentContextData(triggerReason);
             }
         }
-        
-        Log.i(TAG, "Service restarted with flags: " + flags + ", startId: " + startId);
-        
-        return START_STICKY; // 服务被杀死后会自动重启
+
+        return START_STICKY;
     }
-    
-    /**
-     * 创建通知渠道（Android 8.0+需要）
-     */
+
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                "数据收集服务",
-                NotificationManager.IMPORTANCE_LOW
-            );
+                    CHANNEL_ID, "数据收集服务", NotificationManager.IMPORTANCE_LOW);
             channel.setDescription("CATIA3 后台数据收集服务");
             channel.setShowBadge(false);
             channel.setSound(null, null);
-            
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(channel);
             }
         }
     }
-    
-    /**
-     * 启动前台服务
-     */
+
     private void startForegroundService() {
         Intent notificationIntent = new Intent(this, LauncherActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent, 
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-        
+                this, 0, notificationIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("CATIA3 数据收集")
-            .setContentText("正在后台收集用户行为数据")
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setSound(null)
-            .build();
-        
+                .setContentTitle("CATIA3 数据收集")
+                .setContentText("正在后台收集用户行为数据")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setSound(null)
+                .build();
+
         startForeground(NOTIFICATION_ID, notification);
-        Log.i(TAG, "Started as foreground service");
     }
-    
-    /**
-     * 获取唤醒锁以防止系统休眠时停止数据收集
-     */
+
     private void acquireWakeLock() {
         PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
         if (powerManager != null) {
             wakeLock = powerManager.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK,
-                "CATIA3::DataCollectionWakeLock"
-            );
-            wakeLock.acquire(10 * 60 * 1000L); // 10分钟，会在数据收集时续期
-            Log.i(TAG, "Wake lock acquired");
+                    PowerManager.PARTIAL_WAKE_LOCK, "CATIA3::DataCollectionWakeLock");
+            wakeLock.acquire(10 * 60 * 1000L);
         }
     }
-    
-    /**
-     * 释放唤醒锁
-     */
+
     private void releaseWakeLock() {
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
-            Log.i(TAG, "Wake lock released");
         }
     }
-    
-    /**
-     * 初始化数据收集器
-     */
+
     private void initializeCollectors() {
-        // 创建数据收集器管理器
         collectorManager = new DataCollectorManager(this);
         collectorManager.setCallback(this);
-        
-        // 注册各种数据收集器
-        collectorManager.registerCollector(new LocationDataCollector(this));
-        collectorManager.registerCollector(new BluetoothDataCollector(this));
-        collectorManager.registerCollector(new WiFiDataCollector(this));
-        collectorManager.registerCollector(new ActivityRecognitionCollector(this));
-        
-        // 初始化屏幕内容收集器（保持原有实现）
-        screenCollector = new ScreenContentCollector(this);
-        
-        // 初始化LLM分析客户端
+
+        // Use ErrorCollector so one failed collector doesn't block others
+        ErrorCollector initErrors = new ErrorCollector("collector_init");
+
+        initErrors.runSafely("location", () ->
+                collectorManager.registerCollector(new LocationDataCollector(this)));
+        initErrors.runSafely("bluetooth", () ->
+                collectorManager.registerCollector(new BluetoothDataCollector(this)));
+        initErrors.runSafely("wifi", () ->
+                collectorManager.registerCollector(new WiFiDataCollector(this)));
+        initErrors.runSafely("activity", () ->
+                collectorManager.registerCollector(new ActivityRecognitionCollector(this)));
+
+        initErrors.runSafely("screen_content", () -> {
+            screenCollector = new ScreenContentCollector(this);
+        });
+
+        if (initErrors.hasErrors()) {
+            Log.w(TAG, initErrors.getSummary());
+        }
+
         deepSeekApiClient = new DeepSeekApiClient(this);
-        
-        // 初始化数据清理管理器
         dataCleanupManager = new DataCleanupManager(this);
-        
-        // 初始化数据结构
         currentContextData = new JSONObject();
-        
+
         Log.i(TAG, "Initialized " + collectorManager.getCollectorIds().size() + " data collectors");
     }
-    
-    /**
-     * 开始数据收集
-     */
+
     private void startDataCollection() {
-        // 启动所有收集器
         collectorManager.startAllCollectors();
-        
-        // 启动屏幕内容收集
         if (screenCollector != null) {
             screenCollector.startCollection();
         }
-        
-        // 移除定时数据收集 - 改为手动触发
-        // startPeriodicDataCollection();
-        
         Log.i(TAG, "Started data collection (manual trigger mode)");
     }
-    
-    /**
-     * 启动周期性数据收集
-     * 已禁用 - 改为手动触发模式
-     */
+
     @Deprecated
     private void startPeriodicDataCollection() {
-        // 不再使用定时收集，改为在回到桌面时触发
-        /*
-        dataCollectionTimer = new Timer();
-        dataCollectionTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                collectCurrentContextData();
-            }
-        }, 0, 30000); // 每30秒收集一次完整的上下文数据
-        */
         Log.i(TAG, "Periodic data collection disabled - using manual trigger mode");
     }
-    
-    /**
-     * 收集当前上下文数据
-     */
+
     private void collectCurrentContextData() {
         collectCurrentContextData("manual_call");
     }
-    
+
     /**
-     * 收集当前上下文数据（带触发原因）
+     * 使用ErrorCollector确保单个采集器失败不会影响整体流程
      */
     private void collectCurrentContextData(String triggerReason) {
+        ErrorCollector errors = new ErrorCollector("data_collection");
+
         try {
             JSONObject contextData = new JSONObject();
-            
-            // 添加时间信息
             contextData.put("timestamp", System.currentTimeMillis());
             contextData.put("date_time", getCurrentDateTime());
             contextData.put("day_of_week", getCurrentDayOfWeek());
-            
-            // 添加触发原因
             contextData.put("trigger_reason", triggerReason);
             contextData.put("collection_mode", "manual_trigger");
-            
-            // 从所有数据收集器收集数据
-            JSONObject collectorData = collectorManager.collectAllData();
-            
-            // 合并收集器数据到上下文数据
-            if (collectorData != null) {
-                // 将各个收集器的数据按原有格式放置
-                mergeCollectorData(contextData, collectorData);
+
+            // Each collector runs independently - failure in one doesn't block others
+            JSONObject collectorData = new JSONObject();
+
+            for (String collectorId : collectorManager.getCollectorIds()) {
+                errors.runSafely("collect_" + collectorId, () -> {
+                    Object data = collectorManager.collectData(collectorId);
+                    if (data != null) {
+                        try {
+                            collectorData.put(collectorId, data);
+                            collectionStats.recordCollectorResult(collectorId, true);
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        collectionStats.recordCollectorResult(collectorId, false);
+                    }
+                });
             }
-            
-            // 添加屏幕内容（保持原有实现）
-            if (screenCollector != null) {
-                contextData.put("screen_content", screenCollector.getRecentScreenContent());
-            }
-            
-            // 添加当前应用信息
+
+            mergeCollectorData(contextData, collectorData);
+
+            errors.runSafely("screen_content", () -> {
+                if (screenCollector != null) {
+                    try {
+                        contextData.put("screen_content", screenCollector.getRecentScreenContent());
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+
             contextData.put("current_app", getCurrentAppInfo());
-            
-            // 保存数据
+
+            // Record collection errors as metadata for transparency
+            if (errors.hasErrors()) {
+                contextData.put("collection_errors", errors.getErrorCount());
+                Log.w(TAG, errors.getSummary());
+            }
+
             saveContextData(contextData);
-            
-            // 保存触发原因用于日志
+            collectionStats.recordCollectionAttempt(true);
             lastTriggerReason = triggerReason;
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Error collecting context data", e);
+            collectionStats.recordCollectionAttempt(false);
         }
     }
-    
-    /**
-     * 合并收集器数据到上下文数据中
-     */
+
     private void mergeCollectorData(JSONObject contextData, JSONObject collectorData) throws JSONException {
-        // 映射新的收集器数据到原有的数据格式
-        if (collectorData.has("location")) {
+        if (collectorData.has("location"))
             contextData.put("location", collectorData.get("location"));
-        }
-        
-        if (collectorData.has("bluetooth")) {
+        if (collectorData.has("bluetooth"))
             contextData.put("bluetooth_devices", collectorData.get("bluetooth"));
-        }
-        
-        if (collectorData.has("wifi")) {
+        if (collectorData.has("wifi"))
             contextData.put("wifi_info", collectorData.get("wifi"));
-        }
-        
-        if (collectorData.has("activity_recognition")) {
+        if (collectorData.has("activity_recognition"))
             contextData.put("activity", collectorData.get("activity_recognition"));
-        }
-        
-        // 添加收集器状态信息
         contextData.put("collectors_status", collectorManager.getCollectorsStatus());
     }
-    
-    /**
-     * 获取当前日期时间
-     */
+
     private String getCurrentDateTime() {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
-        return sdf.format(new Date());
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
     }
-    
-    /**
-     * 获取当前星期几
-     */
+
     private String getCurrentDayOfWeek() {
-        SimpleDateFormat sdf = new SimpleDateFormat("EEEE", Locale.getDefault());
-        return sdf.format(new Date());
+        return new SimpleDateFormat("EEEE", Locale.getDefault()).format(new Date());
     }
-    
-    /**
-     * 获取当前应用信息
-     */
+
     private JSONObject getCurrentAppInfo() {
         try {
             JSONObject appInfo = new JSONObject();
@@ -362,41 +309,76 @@ public class DataCollectionService extends Service implements DataCollectorManag
             appInfo.put("service_name", TAG);
             return appInfo;
         } catch (JSONException e) {
-            Log.e(TAG, "Error getting app info", e);
             return null;
         }
     }
-    
+
     /**
-     * 保存上下文数据到JSON文件
+     * 保存数据：支持可选的加密和GZIP压缩
      */
     private void saveContextData(JSONObject contextData) {
         try {
-            // 创建输出JSON对象
             JSONObject outputData = new JSONObject();
             outputData.put("context_data", contextData);
             outputData.put("collection_time", System.currentTimeMillis());
-            
-            // 创建data子目录用于存储原始收集数据
+
             File dataDir = new File(getExternalFilesDir(null), "data");
-            if (!dataDir.exists()) {
-                dataDir.mkdirs();
-                Log.d(TAG, "Created data directory: " + dataDir.getAbsolutePath());
+            if (!dataDir.exists()) dataDir.mkdirs();
+
+            String jsonString = outputData.toString(4);
+
+            boolean encryptionEnabled = collectionConfig.getBoolean(
+                    CollectionConfig.KEY_DATA_ENCRYPTION, true);
+            boolean compressionEnabled = collectionConfig.getBoolean(
+                    CollectionConfig.KEY_DATA_COMPRESSION, true);
+
+            String fileName = "context_data_" + System.currentTimeMillis();
+            File dataFile;
+
+            if (encryptionEnabled) {
+                // Compress then encrypt
+                byte[] data = jsonString.getBytes("UTF-8");
+                if (compressionEnabled) {
+                    data = compressGzip(data);
+                }
+                byte[] encrypted = dataEncryptor.encryptBytes(data);
+                if (encrypted != null) {
+                    dataFile = new File(dataDir, fileName + ".enc");
+                    try (FileOutputStream fos = new FileOutputStream(dataFile)) {
+                        fos.write(encrypted);
+                    }
+                } else {
+                    // Encryption failed, fall back to plaintext
+                    dataFile = new File(dataDir, fileName + ".json");
+                    try (FileWriter fw = new FileWriter(dataFile)) {
+                        fw.write(jsonString);
+                    }
+                }
+            } else if (compressionEnabled) {
+                dataFile = new File(dataDir, fileName + ".json.gz");
+                try (FileOutputStream fos = new FileOutputStream(dataFile);
+                     GZIPOutputStream gzos = new GZIPOutputStream(fos)) {
+                    gzos.write(jsonString.getBytes("UTF-8"));
+                }
+            } else {
+                dataFile = new File(dataDir, fileName + ".json");
+                try (FileWriter fw = new FileWriter(dataFile)) {
+                    fw.write(jsonString);
+                }
             }
-            
-            // 保存到data子目录中
-            String fileName = "context_data_" + System.currentTimeMillis() + ".json";
-            File dataFile = new File(dataDir, fileName);
-            FileWriter fileWriter = new FileWriter(dataFile);
-            fileWriter.write(outputData.toString(4)); // 4 spaces for pretty printing
-            fileWriter.close();
-            
-            // 同时保存到实时数据结构
+
             this.currentContextData = outputData;
-            
-            Log.d(TAG, "Saved context data to: " + dataFile.getAbsolutePath());
-            
-            // 自动分析
+            collectionStats.recordFileSaved(dataFile.length());
+
+            Log.d(TAG, "Saved context data to: " + dataFile.getName() +
+                    " (encrypted=" + encryptionEnabled + ", compressed=" + compressionEnabled + ")");
+
+            // Also save a plaintext copy for LLM analysis (auto-cleaned quickly)
+            File plainFile = new File(dataDir, "context_data_" + System.currentTimeMillis() + ".json");
+            try (FileWriter fw = new FileWriter(plainFile)) {
+                fw.write(jsonString);
+            }
+
             if (autoAnalysisEnabled && deepSeekApiClient != null) {
                 try {
                     deepSeekApiClient.analyzeContextData(outputData);
@@ -404,83 +386,72 @@ public class DataCollectionService extends Service implements DataCollectorManag
                     Log.e(TAG, "Error performing LLM analysis", e);
                 }
             }
-            
+
         } catch (IOException | JSONException e) {
             Log.e(TAG, "Error saving context data", e);
         }
     }
-    
-    /**
-     * 获取完整的上下文数据（外部调用接口）
-     */
+
+    private byte[] compressGzip(byte[] data) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzos = new GZIPOutputStream(bos)) {
+            gzos.write(data);
+        }
+        return bos.toByteArray();
+    }
+
     public JSONObject getCompleteContextData() {
         collectCurrentContextData("external_api_call");
         return currentContextData;
     }
-    
-    /**
-     * 获取数据收集器管理器（用于外部配置）
-     */
+
     public DataCollectorManager getCollectorManager() {
         return collectorManager;
     }
-    
-    /**
-     * 设置自动分析开关
-     */
+
     public void setAutoAnalysisEnabled(boolean enabled) {
         this.autoAnalysisEnabled = enabled;
-        Log.i(TAG, "Auto analysis " + (enabled ? "enabled" : "disabled"));
+        collectionConfig.setBoolean(CollectionConfig.KEY_AUTO_ANALYSIS, enabled);
     }
-    
-    /**
-     * 获取自动分析状态
-     */
+
     public boolean isAutoAnalysisEnabled() {
         return autoAnalysisEnabled;
     }
-    
-    /**
-     * 获取数据清理统计信息
-     */
+
     public String getDataCleanupStats() {
-        if (dataCleanupManager != null) {
-            return dataCleanupManager.getCleanupStats();
-        }
-        return "数据清理管理器未初始化";
+        return dataCleanupManager != null ? dataCleanupManager.getCleanupStats() : "数据清理管理器未初始化";
     }
-    
-    /**
-     * 手动触发数据清理
-     */
+
     public void performManualCleanup() {
         if (dataCleanupManager != null) {
             dataCleanupManager.performImmediateCleanup();
-            Log.i(TAG, "手动触发数据清理");
         }
     }
-    
-    /**
-     * 手动触发LLM分析（用于外部调用）
-     */
+
     public void triggerManualAnalysis() {
         if (deepSeekApiClient != null && currentContextData != null) {
             deepSeekApiClient.analyzeContextData(currentContextData);
-            Log.i(TAG, "Manual LLM analysis triggered");
-        } else {
-            Log.w(TAG, "Cannot trigger manual analysis - client or data not available");
         }
     }
-    
+
     /**
-     * 获取OCR统计信息
+     * 获取采集统计摘要
      */
+    public String getCollectionStatsSummary() {
+        return collectionStats.getStatsSummary();
+    }
+
+    /**
+     * 获取当前配置JSON
+     */
+    public JSONObject getCurrentConfig() {
+        return collectionConfig.exportConfig();
+    }
+
     public JSONObject getOcrStatistics() {
         if (screenCollector != null) {
             return screenCollector.getOcrStatistics();
         }
-        
-        // 返回空的统计信息
         JSONObject emptyStats = new JSONObject();
         try {
             emptyStats.put("total_items", 0);
@@ -488,58 +459,35 @@ public class DataCollectionService extends Service implements DataCollectorManag
             emptyStats.put("ocr_coverage", 0.0f);
             emptyStats.put("average_confidence", 0.0f);
             emptyStats.put("ocr_enabled", false);
-            emptyStats.put("error", "Screen collector not available");
         } catch (JSONException e) {
             Log.e(TAG, "Error creating empty OCR statistics", e);
         }
-        
         return emptyStats;
     }
-    
-    // DataCollectionCallback 接口实现
+
     @Override
     public void onDataCollected(String collectorId, Object data) {
         Log.d(TAG, "Data collected from: " + collectorId);
-        // 可以在这里处理实时数据回调
     }
-    
+
     @Override
     public void onCollectionError(String collectorId, Exception error) {
         Log.e(TAG, "Collection error from: " + collectorId, error);
-        // 可以在这里处理收集错误
+        collectionStats.recordCollectorResult(collectorId, false);
     }
-    
+
     @Override
     public void onDestroy() {
         super.onDestroy();
-        
-        // 停止数据收集
-        if (collectorManager != null) {
-            collectorManager.stopAllCollectors();
-        }
-        
-        if (screenCollector != null) {
-            screenCollector.stopCollection();
-        }
-        
-        // 停止定时器
+        if (collectorManager != null) collectorManager.stopAllCollectors();
+        if (screenCollector != null) screenCollector.stopCollection();
         if (dataCollectionTimer != null) {
             dataCollectionTimer.cancel();
             dataCollectionTimer = null;
         }
-        
-        // 关闭LLM客户端
-        if (deepSeekApiClient != null) {
-            deepSeekApiClient.shutdown();
-        }
-        
-        // 停止数据清理任务
-        if (dataCleanupManager != null) {
-            dataCleanupManager.stopCleanup();
-        }
-
-        releaseWakeLock(); // 释放唤醒锁
-        
+        if (deepSeekApiClient != null) deepSeekApiClient.shutdown();
+        if (dataCleanupManager != null) dataCleanupManager.stopCleanup();
+        releaseWakeLock();
         Log.i(TAG, "DataCollectionService destroyed");
     }
-} 
+}

@@ -1,57 +1,34 @@
 package com.datacollector.android.api;
 
+import com.datacollector.android.BuildConfig;
+
 /**
  * API配置类
- * 用于管理Gemini API和DeepSeek API的配置信息
+ * API密钥通过BuildConfig注入（来源于local.properties），不再硬编码在源码中。
+ * 要配置密钥，请在项目根目录的 local.properties 中添加：
+ *   GEMINI_API_KEY=your_key_here
+ *   DEEPSEEK_API_KEY=your_key_here
  */
 public class ApiConfig {
-    
-    /**
-     * Gemini API密钥
-     * 请将此处替换为您从Google AI Studio获取的实际API密钥
-     * 获取地址：https://aistudio.google.com/
-     */
-    public static final String GEMINI_API_KEY = "AIzaSyARjeVVTLxsKjZoMMM4qr_sLGDTj_1Csz4";
-    
-    /**
-     * Gemini API端点URL
-     * 使用gemini-2.0-flash-exp模型
-     */
+
+    public static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
     public static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-exp:generateContent";
-    
-    /**
-     * DeepSeek API密钥
-     * 获取地址：https://platform.deepseek.com/api_keys
-     */
-    public static final String DEEPSEEK_API_KEY = "sk-f7446c6b40aa4db29702451a4fa87de9";
-    
-    /**
-     * DeepSeek API端点URL
-     * 使用deepseek-chat模型
-     */
+
+    public static final String DEEPSEEK_API_KEY = BuildConfig.DEEPSEEK_API_KEY;
     public static final String DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
-    
-    /**
-     * 检查Gemini API密钥是否已配置
-     */
+
     public static boolean isGeminiApiKeyConfigured() {
-        return !GEMINI_API_KEY.equals("YOUR_API_KEY_HERE") && 
-               !GEMINI_API_KEY.trim().isEmpty();
+        return GEMINI_API_KEY != null && !GEMINI_API_KEY.isEmpty()
+                && !GEMINI_API_KEY.equals("YOUR_API_KEY_HERE");
     }
-    
-    /**
-     * 检查DeepSeek API密钥是否已配置
-     */
+
     public static boolean isDeepSeekApiKeyConfigured() {
-        return !DEEPSEEK_API_KEY.equals("YOUR_DEEPSEEK_API_KEY_HERE") && 
-               !DEEPSEEK_API_KEY.trim().isEmpty();
+        return DEEPSEEK_API_KEY != null && !DEEPSEEK_API_KEY.isEmpty()
+                && !DEEPSEEK_API_KEY.equals("YOUR_DEEPSEEK_API_KEY_HERE");
     }
-    
-    /**
-     * 检查API密钥是否已配置（向后兼容）
-     */
+
     @Deprecated
     public static boolean isApiKeyConfigured() {
         return isGeminiApiKeyConfigured();
     }
-} 
+}
