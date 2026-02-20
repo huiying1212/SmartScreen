@@ -163,13 +163,6 @@ public class AndroidDataCollector extends Activity {
         statusButton.setEnabled(false);
         layout.addView(statusButton);
         
-        // OCR统计按钮
-        Button ocrStatsButton = new Button(this);
-        ocrStatsButton.setText("查看OCR统计");
-        ocrStatsButton.setOnClickListener(v -> getOcrStatistics());
-        ocrStatsButton.setEnabled(false);
-        layout.addView(ocrStatsButton);
-        
         // Gemini API按钮
         geminiButton = new Button(this);
         geminiButton.setText("调用Gemini AI分析");
@@ -366,38 +359,6 @@ public class AndroidDataCollector extends Activity {
         }
     }
     
-    /**
-     * 获取OCR统计信息
-     */
-    private void getOcrStatistics() {
-        if (isServiceBound && dataCollectionService != null) {
-            new Thread(() -> {
-                try {
-                    JSONObject ocrStats = dataCollectionService.getOcrStatistics();
-                    runOnUiThread(() -> {
-                        if (ocrStats != null) {
-                            try {
-                                String statsText = "OCR识别统计信息:\n" + ocrStats.toString(2);
-                                dataDisplayTextView.setText(statsText);
-                                updateStatus("OCR统计获取成功");
-                            } catch (Exception e) {
-                                dataDisplayTextView.setText("OCR统计格式化错误: " + e.getMessage());
-                            }
-                        } else {
-                            dataDisplayTextView.setText("未获取到OCR统计信息");
-                        }
-                    });
-                } catch (Exception e) {
-                    runOnUiThread(() -> {
-                        dataDisplayTextView.setText("获取OCR统计出错: " + e.getMessage());
-                        updateStatus("OCR统计获取失败");
-                    });
-                }
-            }).start();
-        } else {
-            Toast.makeText(this, "服务未连接", Toast.LENGTH_SHORT).show();
-        }
-    }
     
     /**
      * 调用Gemini API进行数据分析

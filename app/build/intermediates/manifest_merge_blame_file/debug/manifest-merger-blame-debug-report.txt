@@ -1,8 +1,8 @@
 1<?xml version="1.0" encoding="utf-8"?>
 2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 3    package="com.datacollector.android"
-4    android:versionCode="2"
-5    android:versionName="1.1" >
+4    android:versionCode="3"
+5    android:versionName="2.0" >
 6
 7    <uses-sdk
 8        android:minSdkVersion="23"
@@ -249,112 +249,28 @@
 135                android:resource="@xml/accessibility_service_config" />
 135-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:117:17-69
 136        </service>
-137        <service
-137-->[com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\9555f6bf0f772dea5a9e8d1965108d98\transformed\jetified-play-services-mlkit-text-recognition-common-19.0.0\AndroidManifest.xml:9:9-15:19
-138            android:name="com.google.mlkit.common.internal.MlKitComponentDiscoveryService"
-138-->[com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\9555f6bf0f772dea5a9e8d1965108d98\transformed\jetified-play-services-mlkit-text-recognition-common-19.0.0\AndroidManifest.xml:10:13-91
-139            android:directBootAware="true"
-139-->[com.google.mlkit:common:18.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\ecdd56c74e27a683ae8b2a5e8712845d\transformed\jetified-common-18.8.0\AndroidManifest.xml:17:13-43
-140            android:exported="false" >
-140-->[com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\9555f6bf0f772dea5a9e8d1965108d98\transformed\jetified-play-services-mlkit-text-recognition-common-19.0.0\AndroidManifest.xml:11:13-37
-141            <meta-data
-141-->[com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\9555f6bf0f772dea5a9e8d1965108d98\transformed\jetified-play-services-mlkit-text-recognition-common-19.0.0\AndroidManifest.xml:12:13-14:85
-142                android:name="com.google.firebase.components:com.google.mlkit.vision.text.internal.TextRegistrar"
-142-->[com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\9555f6bf0f772dea5a9e8d1965108d98\transformed\jetified-play-services-mlkit-text-recognition-common-19.0.0\AndroidManifest.xml:13:17-114
-143                android:value="com.google.firebase.components.ComponentRegistrar" />
-143-->[com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\9555f6bf0f772dea5a9e8d1965108d98\transformed\jetified-play-services-mlkit-text-recognition-common-19.0.0\AndroidManifest.xml:14:17-82
-144            <meta-data
-144-->[com.google.mlkit:vision-common:17.3.0] C:\Users\Kate\.gradle\caches\8.12\transforms\1fb018263911ce4bb8e1bd89db05095f\transformed\jetified-vision-common-17.3.0\AndroidManifest.xml:12:13-14:85
-145                android:name="com.google.firebase.components:com.google.mlkit.vision.common.internal.VisionCommonRegistrar"
-145-->[com.google.mlkit:vision-common:17.3.0] C:\Users\Kate\.gradle\caches\8.12\transforms\1fb018263911ce4bb8e1bd89db05095f\transformed\jetified-vision-common-17.3.0\AndroidManifest.xml:13:17-124
-146                android:value="com.google.firebase.components.ComponentRegistrar" />
-146-->[com.google.mlkit:vision-common:17.3.0] C:\Users\Kate\.gradle\caches\8.12\transforms\1fb018263911ce4bb8e1bd89db05095f\transformed\jetified-vision-common-17.3.0\AndroidManifest.xml:14:17-82
-147            <meta-data
-147-->[com.google.mlkit:common:18.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\ecdd56c74e27a683ae8b2a5e8712845d\transformed\jetified-common-18.8.0\AndroidManifest.xml:20:13-22:85
-148                android:name="com.google.firebase.components:com.google.mlkit.common.internal.CommonComponentRegistrar"
-148-->[com.google.mlkit:common:18.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\ecdd56c74e27a683ae8b2a5e8712845d\transformed\jetified-common-18.8.0\AndroidManifest.xml:21:17-120
-149                android:value="com.google.firebase.components.ComponentRegistrar" />
-149-->[com.google.mlkit:common:18.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\ecdd56c74e27a683ae8b2a5e8712845d\transformed\jetified-common-18.8.0\AndroidManifest.xml:22:17-82
-150        </service>
-151
-152        <provider
-152-->[com.google.mlkit:common:18.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\ecdd56c74e27a683ae8b2a5e8712845d\transformed\jetified-common-18.8.0\AndroidManifest.xml:9:9-13:38
-153            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
-153-->[com.google.mlkit:common:18.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\ecdd56c74e27a683ae8b2a5e8712845d\transformed\jetified-common-18.8.0\AndroidManifest.xml:10:13-78
-154            android:authorities="com.datacollector.android.mlkitinitprovider"
-154-->[com.google.mlkit:common:18.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\ecdd56c74e27a683ae8b2a5e8712845d\transformed\jetified-common-18.8.0\AndroidManifest.xml:11:13-69
-155            android:exported="false"
-155-->[com.google.mlkit:common:18.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\ecdd56c74e27a683ae8b2a5e8712845d\transformed\jetified-common-18.8.0\AndroidManifest.xml:12:13-37
-156            android:initOrder="99" />
-156-->[com.google.mlkit:common:18.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\ecdd56c74e27a683ae8b2a5e8712845d\transformed\jetified-common-18.8.0\AndroidManifest.xml:13:13-35
-157
-158        <activity
-158-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\5048f636557edd0b561a9d25f0376830\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:20:9-22:45
-159            android:name="com.google.android.gms.common.api.GoogleApiActivity"
-159-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\5048f636557edd0b561a9d25f0376830\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:20:19-85
-160            android:exported="false"
-160-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\5048f636557edd0b561a9d25f0376830\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:22:19-43
-161            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-161-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\5048f636557edd0b561a9d25f0376830\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:21:19-78
-162
-163        <meta-data
-163-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\2d91aa327215a0a6a7dc2fdf83b9c3f4\transformed\jetified-play-services-basement-18.1.0\AndroidManifest.xml:21:9-23:69
-164            android:name="com.google.android.gms.version"
-164-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\2d91aa327215a0a6a7dc2fdf83b9c3f4\transformed\jetified-play-services-basement-18.1.0\AndroidManifest.xml:22:13-58
-165            android:value="@integer/google_play_services_version" />
-165-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\2d91aa327215a0a6a7dc2fdf83b9c3f4\transformed\jetified-play-services-basement-18.1.0\AndroidManifest.xml:23:13-66
-166
-167        <provider
-167-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
-168            android:name="androidx.startup.InitializationProvider"
-168-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:25:13-67
-169            android:authorities="com.datacollector.android.androidx-startup"
-169-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:26:13-68
-170            android:exported="false" >
-170-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:27:13-37
-171            <meta-data
-171-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:29:13-31:52
-172                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-172-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:30:17-75
-173                android:value="androidx.startup" />
-173-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:31:17-49
-174            <meta-data
-174-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:31:13-33:52
-175                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-175-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:32:17-78
-176                android:value="androidx.startup" />
-176-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:33:17-49
-177        </provider>
-178
-179        <service
-179-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Kate\.gradle\caches\8.12\transforms\47d2e64c0eff6aaf545853c1c6c9f919\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:29:9-35:19
-180            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
-180-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Kate\.gradle\caches\8.12\transforms\47d2e64c0eff6aaf545853c1c6c9f919\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:30:13-103
-181            android:exported="false" >
-181-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Kate\.gradle\caches\8.12\transforms\47d2e64c0eff6aaf545853c1c6c9f919\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:31:13-37
-182            <meta-data
-182-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Kate\.gradle\caches\8.12\transforms\47d2e64c0eff6aaf545853c1c6c9f919\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:32:13-34:39
-183                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
-183-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Kate\.gradle\caches\8.12\transforms\47d2e64c0eff6aaf545853c1c6c9f919\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:33:17-94
-184                android:value="cct" />
-184-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Kate\.gradle\caches\8.12\transforms\47d2e64c0eff6aaf545853c1c6c9f919\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:34:17-36
-185        </service>
-186        <service
-186-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Kate\.gradle\caches\8.12\transforms\7676e40e0678c5e5271084c663127d23\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:26:9-30:19
-187            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
-187-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Kate\.gradle\caches\8.12\transforms\7676e40e0678c5e5271084c663127d23\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:27:13-117
-188            android:exported="false"
-188-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Kate\.gradle\caches\8.12\transforms\7676e40e0678c5e5271084c663127d23\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:28:13-37
-189            android:permission="android.permission.BIND_JOB_SERVICE" >
-189-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Kate\.gradle\caches\8.12\transforms\7676e40e0678c5e5271084c663127d23\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:29:13-69
-190        </service>
-191
-192        <receiver
-192-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Kate\.gradle\caches\8.12\transforms\7676e40e0678c5e5271084c663127d23\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:32:9-34:40
-193            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
-193-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Kate\.gradle\caches\8.12\transforms\7676e40e0678c5e5271084c663127d23\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:33:13-132
-194            android:exported="false" />
-194-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Kate\.gradle\caches\8.12\transforms\7676e40e0678c5e5271084c663127d23\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:34:13-37
-195    </application>
-196
-197</manifest>
+137
+138        <provider
+138-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
+139            android:name="androidx.startup.InitializationProvider"
+139-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:25:13-67
+140            android:authorities="com.datacollector.android.androidx-startup"
+140-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:26:13-68
+141            android:exported="false" >
+141-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:27:13-37
+142            <meta-data
+142-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:29:13-31:52
+143                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+143-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:30:17-75
+144                android:value="androidx.startup" />
+144-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:31:17-49
+145            <meta-data
+145-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:31:13-33:52
+146                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+146-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:32:17-78
+147                android:value="androidx.startup" />
+147-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:33:17-49
+148        </provider>
+149    </application>
+150
+151</manifest>

@@ -448,6 +448,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
         return collectionConfig.exportConfig();
     }
 
+    /** 屏幕内容统计（OCR 已移除，仅返回无障碍文本条数） */
     public JSONObject getOcrStatistics() {
         if (screenCollector != null) {
             return screenCollector.getOcrStatistics();
@@ -455,12 +456,9 @@ public class DataCollectionService extends Service implements DataCollectorManag
         JSONObject emptyStats = new JSONObject();
         try {
             emptyStats.put("total_items", 0);
-            emptyStats.put("ocr_items", 0);
-            emptyStats.put("ocr_coverage", 0.0f);
-            emptyStats.put("average_confidence", 0.0f);
             emptyStats.put("ocr_enabled", false);
         } catch (JSONException e) {
-            Log.e(TAG, "Error creating empty OCR statistics", e);
+            Log.e(TAG, "Error creating empty statistics", e);
         }
         return emptyStats;
     }

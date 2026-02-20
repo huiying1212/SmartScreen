@@ -11,7 +11,7 @@ import android.util.Log;
 
 /**
  * 电量优化器
- * 根据设备状态动态调整OCR处理频率和策略
+ * 根据设备状态提供电量和内存状态信息
  */
 public class PowerOptimizer {
     
@@ -148,42 +148,6 @@ public class PowerOptimizer {
     }
     
     /**
-     * 根据优化级别获取OCR配置
-     */
-    public OcrConfig getOptimizedOcrConfig() {
-        OptimizationLevel level = analyzeOptimizationLevel();
-        OcrConfig config = new OcrConfig();
-        
-        switch (level) {
-            case NORMAL:
-                config.ocrInterval = 2000;          // 2秒间隔
-                config.screenshotQuality = 90;      // 90%质量
-                config.maxBitmapSize = 1920 * 1080; // 全分辨率
-                config.enableOcr = true;
-                config.batchProcessing = false;
-                break;
-                
-            case POWER_SAVE:
-                config.ocrInterval = 5000;          // 5秒间隔
-                config.screenshotQuality = 70;      // 70%质量
-                config.maxBitmapSize = 1280 * 720;  // 降低分辨率
-                config.enableOcr = true;
-                config.batchProcessing = true;       // 启用批处理
-                break;
-                
-            case AGGRESSIVE:
-                config.ocrInterval = 10000;         // 10秒间隔
-                config.screenshotQuality = 50;      // 50%质量
-                config.maxBitmapSize = 854 * 480;   // 大幅降低分辨率
-                config.enableOcr = false;           // 暂停OCR
-                config.batchProcessing = true;
-                break;
-        }
-        
-        return config;
-    }
-    
-    /**
      * 获取系统性能统计
      */
     public SystemPerformance getSystemPerformance() {
@@ -244,17 +208,6 @@ public class PowerOptimizer {
         public long usedMemoryMB = 0;
         public int memoryUsagePercent = 0;
         public boolean isLowMemory = false;
-    }
-    
-    /**
-     * OCR配置数据类
-     */
-    public static class OcrConfig {
-        public int ocrInterval = 2000;           // OCR间隔时间(ms)
-        public int screenshotQuality = 90;       // 截图质量(1-100)
-        public int maxBitmapSize = 1920 * 1080;  // 最大Bitmap尺寸
-        public boolean enableOcr = true;         // 是否启用OCR
-        public boolean batchProcessing = false;  // 是否启用批处理
     }
     
     /**

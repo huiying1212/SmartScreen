@@ -35,8 +35,6 @@ public class CollectionConfig {
 
     // Screen content defaults
     public static final String KEY_SCREEN_CONTENT_ENABLED = "screen_content_enabled";
-    public static final String KEY_OCR_ENABLED = "ocr_enabled";
-    public static final String KEY_OCR_INTERVAL = "ocr_interval_ms";
 
     // Data management
     public static final String KEY_AUTO_ANALYSIS = "auto_analysis_enabled";
@@ -79,8 +77,6 @@ public class CollectionConfig {
         putIfAbsent(editor, KEY_BLUETOOTH_ENABLED, true);
         putIfAbsent(editor, KEY_ACTIVITY_ENABLED, true);
         putIfAbsent(editor, KEY_SCREEN_CONTENT_ENABLED, true);
-        putIfAbsent(editor, KEY_OCR_ENABLED, true);
-        putIfAbsent(editor, KEY_OCR_INTERVAL, 2000L);
         putIfAbsent(editor, KEY_AUTO_ANALYSIS, true);
         putIfAbsent(editor, KEY_DATA_ENCRYPTION, true);
         putIfAbsent(editor, KEY_DATA_COMPRESSION, true);
