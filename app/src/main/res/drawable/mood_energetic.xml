@@ -1,0 +1,44 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <!-- Face circle -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M32,2A30,30,0,1,1,2,32A30,30,0,0,1,32,2Z" />
+    <!-- Left eye (sparkle) -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M22,24m-3.5,0a3.5,3.5,0,1,1,7,0a3.5,3.5,0,1,1,-7,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20.5,22.5m-1.2,0a1.2,1.2,0,1,1,2.4,0a1.2,1.2,0,1,1,-2.4,0" />
+    <!-- Right eye (sparkle) -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M42,24m-3.5,0a3.5,3.5,0,1,1,7,0a3.5,3.5,0,1,1,-7,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40.5,22.5m-1.2,0a1.2,1.2,0,1,1,2.4,0a1.2,1.2,0,1,1,-2.4,0" />
+    <!-- Big smile -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#333333"
+        android:strokeWidth="2.5"
+        android:pathData="M18,36Q32,50,46,36" />
+    <!-- Blush left -->
+    <path
+        android:fillColor="#FFAB91"
+        android:fillAlpha="0.5"
+        android:pathData="M14,34m-4,0a4,2.5,0,1,1,8,0a4,2.5,0,1,1,-8,0" />
+    <!-- Blush right -->
+    <path
+        android:fillColor="#FFAB91"
+        android:fillAlpha="0.5"
+        android:pathData="M50,34m-4,0a4,2.5,0,1,1,8,0a4,2.5,0,1,1,-8,0" />
+    <!-- Star sparkle -->
+    <path
+        android:fillColor="#FFF176"
+        android:pathData="M52,8L54,12L58,14L54,16L52,20L50,16L46,14L50,12Z" />
+</vector>

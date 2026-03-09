@@ -2770,6 +2770,12 @@ drawable material_ic_keyboard_arrow_previous_black_24dp
 drawable material_ic_keyboard_arrow_right_black_24dp
 drawable material_ic_menu_arrow_down_black_24dp
 drawable material_ic_menu_arrow_up_black_24dp
+drawable mood_concerned
+drawable mood_energetic
+drawable mood_exhausted
+drawable mood_happy
+drawable mood_neutral
+drawable mood_tired
 drawable mtrl_bottomsheet_drag_handle
 drawable mtrl_checkbox_button
 drawable mtrl_checkbox_button_checked_unchecked
@@ -2940,6 +2946,13 @@ id bounceEnd
 id bounceStart
 id btn_call_deepseek
 id btn_call_gemini
+id btn_data_management
+id btn_generate_now
+id btn_interval_1h
+id btn_interval_2h
+id btn_interval_30m
+id btn_perm_overlay
+id btn_perm_usage
 id btn_start_collection
 id btn_stop_collection
 id btn_view_data
@@ -3054,6 +3067,7 @@ id graph_wrap
 id group_divider
 id grouping
 id groups
+id header_mood_icon
 id header_title
 id hideable
 id home
@@ -3169,6 +3183,7 @@ id on
 id onInterceptTouchReturnSwipe
 id outline
 id outward
+id overlay_mood_icon
 id overshoot
 id packed
 id parallax
@@ -3273,6 +3288,8 @@ id stretch
 id submenuarrow
 id submit_area
 id supportScrollUp
+id switch_overlay
+id switch_wallpaper
 id tabMode
 id tag_accessibility_actions
 id tag_accessibility_clickable_spans
@@ -3322,6 +3339,10 @@ id transition_scene_layoutid_cache
 id transition_transform
 id triangle
 id tv_data_preview
+id tv_generation_status
+id tv_mood_label
+id tv_mood_status
+id tv_screen_time
 id tv_status
 id unchecked
 id uniform
@@ -3461,6 +3482,7 @@ layout abc_tooltip
 layout activity_all_apps
 layout activity_launcher
 layout activity_main
+layout activity_main_setup
 layout app_item
 layout custom_dialog
 layout design_bottom_navigation_item
@@ -3478,6 +3500,7 @@ layout design_navigation_menu
 layout design_navigation_menu_item
 layout design_text_input_end_icon
 layout design_text_input_start_icon
+layout floating_overlay
 layout m3_alert_dialog
 layout m3_alert_dialog_actions
 layout m3_alert_dialog_title

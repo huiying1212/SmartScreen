@@ -62,6 +62,12 @@ public class DataAggregator {
             Map<String, Integer> appUsageCounts = new HashMap<>();
             JSONArray screenContentSamples = new JSONArray();
             JSONArray wifiHistory = new JSONArray();
+            // Calendar / reminder accumulators (deduplicated by event_id)
+            Map<Long, JSONObject> calendarEventMap = new HashMap<>();
+            Map<Long, JSONObject> reminderEventMap = new HashMap<>();
+            // Screen usage: keep the latest snapshot (highest today_screen_time_ms wins)
+            JSONObject latestScreenUsage = null;
+            long latestScreenUsageMs = -1;
             long earliestTimestamp = Long.MAX_VALUE;
             long latestTimestamp = 0;
 
@@ -122,6 +128,46 @@ public class DataAggregator {
                 if (!trigger.isEmpty()) {
                     appUsageCounts.merge(trigger, 1, Integer::sum);
                 }
+
+                // Aggregate screen usage: keep the snapshot with the largest today_screen_time_ms
+                JSONObject screenUsage = contextData.optJSONObject("screen_usage");
+                if (screenUsage != null) {
+                    long screenMs = screenUsage.optLong("today_screen_time_ms", 0);
+                    if (screenMs > latestScreenUsageMs) {
+                        latestScreenUsageMs = screenMs;
+                        latestScreenUsage = screenUsage;
+                    }
+                }
+
+                // Aggregate calendar events (deduplicate by event_id, keep latest snapshot)
+                JSONObject calendar = contextData.optJSONObject("calendar");
+                if (calendar != null) {
+                    JSONArray calEvents = calendar.optJSONArray("events");
+                    if (calEvents != null) {
+                        for (int i = 0; i < calEvents.length(); i++) {
+                            JSONObject ev = calEvents.optJSONObject(i);
+                            if (ev != null) {
+                                long evId = ev.optLong("event_id", -1);
+                                if (evId >= 0) calendarEventMap.put(evId, ev);
+                            }
+                        }
+                    }
+                }
+
+                // Aggregate reminders (deduplicate by event_id)
+                JSONObject remindersObj = contextData.optJSONObject("reminders");
+                if (remindersObj != null) {
+                    JSONArray remList = remindersObj.optJSONArray("reminders");
+                    if (remList != null) {
+                        for (int i = 0; i < remList.length(); i++) {
+                            JSONObject rem = remList.optJSONObject(i);
+                            if (rem != null) {
+                                long evId = rem.optLong("event_id", -1);
+                                if (evId >= 0) reminderEventMap.put(evId, rem);
+                            }
+                        }
+                    }
+                }
             }
 
             // Build summary
@@ -155,6 +201,33 @@ public class DataAggregator {
                 usagePattern.put(entry.getKey(), entry.getValue());
             }
             summary.put("usage_pattern", usagePattern);
+
+            // Screen usage summary (latest snapshot)
+            if (latestScreenUsage != null) {
+                summary.put("screen_usage", latestScreenUsage);
+            }
+
+            // Calendar events summary (up to 30 unique events)
+            JSONArray calendarSummary = new JSONArray();
+            int calCount = 0;
+            for (JSONObject ev : calendarEventMap.values()) {
+                if (calCount >= 30) break;
+                calendarSummary.put(ev);
+                calCount++;
+            }
+            summary.put("calendar_events", calendarSummary);
+            summary.put("calendar_event_count", calendarSummary.length());
+
+            // Reminders summary (up to 30 unique events with reminders)
+            JSONArray reminderSummary = new JSONArray();
+            int remCount = 0;
+            for (JSONObject rem : reminderEventMap.values()) {
+                if (remCount >= 30) break;
+                reminderSummary.put(rem);
+                remCount++;
+            }
+            summary.put("reminder_events", reminderSummary);
+            summary.put("reminder_event_count", reminderSummary.length());
 
             summary.put("status", "aggregated");
 

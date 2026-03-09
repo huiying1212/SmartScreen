@@ -16,11 +16,15 @@ import androidx.core.app.NotificationCompat;
 
 import com.datacollector.android.collectors.ActivityRecognitionCollector;
 import com.datacollector.android.collectors.BluetoothDataCollector;
+import com.datacollector.android.collectors.CalendarDataCollector;
 import com.datacollector.android.collectors.LocationDataCollector;
+import com.datacollector.android.collectors.ReminderDataCollector;
 import com.datacollector.android.collectors.ScreenContentCollector;
+import com.datacollector.android.collectors.ScreenUsageCollector;
 import com.datacollector.android.collectors.WiFiDataCollector;
 import com.datacollector.android.managers.DataCollectorManager;
-import com.datacollector.android.activities.LauncherActivity;
+import com.datacollector.android.managers.WallpaperGenerationManager;
+import com.datacollector.android.activities.MainActivity;
 import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.CollectionStats;
@@ -66,6 +70,8 @@ public class DataCollectionService extends Service implements DataCollectorManag
     private DataEncryptor dataEncryptor;
     private CollectionConfig collectionConfig;
     private CollectionStats collectionStats;
+
+    private WallpaperGenerationManager wallpaperGenerationManager;
 
     private JSONObject currentContextData;
     private Timer dataCollectionTimer;
@@ -138,7 +144,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
     }
 
     private void startForegroundService() {
-        Intent notificationIntent = new Intent(this, LauncherActivity.class);
+        Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this, 0, notificationIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -186,6 +192,12 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 collectorManager.registerCollector(new WiFiDataCollector(this)));
         initErrors.runSafely("activity", () ->
                 collectorManager.registerCollector(new ActivityRecognitionCollector(this)));
+        initErrors.runSafely("calendar", () ->
+                collectorManager.registerCollector(new CalendarDataCollector(this)));
+        initErrors.runSafely("reminders", () ->
+                collectorManager.registerCollector(new ReminderDataCollector(this)));
+        initErrors.runSafely("screen_usage", () ->
+                collectorManager.registerCollector(new ScreenUsageCollector(this)));
 
         initErrors.runSafely("screen_content", () -> {
             screenCollector = new ScreenContentCollector(this);
@@ -197,6 +209,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
         deepSeekApiClient = new DeepSeekApiClient(this);
         dataCleanupManager = new DataCleanupManager(this);
+        wallpaperGenerationManager = new WallpaperGenerationManager(this);
         currentContextData = new JSONObject();
 
         Log.i(TAG, "Initialized " + collectorManager.getCollectorIds().size() + " data collectors");
@@ -291,6 +304,12 @@ public class DataCollectionService extends Service implements DataCollectorManag
             contextData.put("wifi_info", collectorData.get("wifi"));
         if (collectorData.has("activity_recognition"))
             contextData.put("activity", collectorData.get("activity_recognition"));
+        if (collectorData.has("calendar"))
+            contextData.put("calendar", collectorData.get("calendar"));
+        if (collectorData.has("reminders"))
+            contextData.put("reminders", collectorData.get("reminders"));
+        if (collectorData.has("screen_usage"))
+            contextData.put("screen_usage", collectorData.get("screen_usage"));
         contextData.put("collectors_status", collectorManager.getCollectorsStatus());
     }
 
@@ -387,9 +406,51 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 }
             }
 
+            // Notify floating overlay of updated screen time
+            notifyOverlayUpdate(contextData);
+
+            // Trigger wallpaper generation if interval has elapsed
+            triggerWallpaperGenerationIfNeeded();
+
         } catch (IOException | JSONException e) {
             Log.e(TAG, "Error saving context data", e);
         }
+    }
+
+    private void notifyOverlayUpdate(JSONObject contextData) {
+        try {
+            JSONObject screenUsage = contextData.optJSONObject("screen_usage");
+            if (screenUsage != null) {
+                long screenTimeMs = screenUsage.optLong("today_screen_time_ms", 0);
+                FloatingOverlayService.sendMoodUpdate(this, screenTimeMs);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error notifying overlay", e);
+        }
+    }
+
+    private void triggerWallpaperGenerationIfNeeded() {
+        if (wallpaperGenerationManager == null) return;
+        if (!wallpaperGenerationManager.shouldGenerate()) return;
+
+        Log.i(TAG, "Triggering periodic wallpaper generation");
+        wallpaperGenerationManager.generateAndSetWallpaper(
+                new WallpaperGenerationManager.WallpaperGenerationCallback() {
+                    @Override
+                    public void onSuccess(String message) {
+                        Log.i(TAG, "Wallpaper generated: " + message);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Log.w(TAG, "Wallpaper generation failed: " + error);
+                    }
+
+                    @Override
+                    public void onProgress(String status) {
+                        Log.d(TAG, "Wallpaper generation: " + status);
+                    }
+                });
     }
 
     private byte[] compressGzip(byte[] data) throws IOException {
@@ -484,6 +545,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
             dataCollectionTimer = null;
         }
         if (deepSeekApiClient != null) deepSeekApiClient.shutdown();
+        if (wallpaperGenerationManager != null) wallpaperGenerationManager.shutdown();
         if (dataCleanupManager != null) dataCleanupManager.stopCleanup();
         releaseWakeLock();
         Log.i(TAG, "DataCollectionService destroyed");

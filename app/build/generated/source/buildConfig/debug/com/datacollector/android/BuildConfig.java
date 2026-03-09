@@ -13,4 +13,6 @@ public final class BuildConfig {
   public static final String DEEPSEEK_API_KEY = "sk-f7446c6b40aa4db29702451a4fa87de9";
   // Field from default config.
   public static final String GEMINI_API_KEY = "AIzaSyARjeVVTLxsKjZoMMM4qr_sLGDTj_1Csz4";
+  // Field from default config.
+  public static final String QWEN_IMAGE_API_KEY = "sk-552b058f935945e398a7b9bc969b05d8";
 }

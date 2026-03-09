@@ -56,6 +56,9 @@
     
     <!-- 启动时运行权限 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    
+    <!-- 壁纸权限 -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
     <application
         android:allowBackup="true"
@@ -63,30 +66,19 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme">
         
-        <!-- Launcher启动器主活动 - 唯一的启动入口 -->
+        <!-- 主控制面板 - 唯一的启动入口 -->
         <activity
-            android:name=".activities.LauncherActivity"
+            android:name=".activities.MainActivity"
             android:exported="true"
-            android:label="CATIA3 Launcher"
-            android:launchMode="singleTask"
-            android:stateNotNeeded="true"
-            android:theme="@style/LauncherTheme">
-            <intent-filter android:priority="1000">
+            android:label="CATIA3"
+            android:launchMode="singleTask">
+            <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         
-        <!-- 全部应用列表活动 -->
-        <activity
-            android:name=".activities.AllAppsActivity"
-            android:exported="false"
-            android:label="所有应用"
-            android:theme="@style/LauncherTheme" />
-        
-        <!-- 数据收集管理界面 - 只能通过内部跳转访问 -->
+        <!-- 数据收集管理界面 -->
         <activity
             android:name=".activities.AndroidDataCollector"
             android:exported="false"
@@ -103,6 +95,11 @@
             android:name=".services.DataCollectionService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+        
+        <!-- 悬浮窗口服务 -->
+        <service
+            android:name=".services.FloatingOverlayService"
+            android:exported="false" />
         
         <!-- 无障碍服务 -->
         <service

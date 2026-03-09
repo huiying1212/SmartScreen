@@ -105,7 +105,7 @@ public class DeepSeekApiClient {
 
                 // 聚合历史数据为摘要，提供更丰富的上下文
                 CollectionConfig config = CollectionConfig.getInstance(context);
-                int windowHours = (int) config.getLong(CollectionConfig.KEY_AGGREGATION_WINDOW_HOURS, 24);
+                int windowHours = config.getInt(CollectionConfig.KEY_AGGREGATION_WINDOW_HOURS, 24);
                 JSONObject aggregatedData = aggregator.aggregateRecentData(windowHours);
 
                 String combinedContent = promptContent +
@@ -330,7 +330,7 @@ public class DeepSeekApiClient {
                         .getInstalledAppsListJson();
 
                 CollectionConfig config = CollectionConfig.getInstance(context);
-                int windowHours = (int) config.getLong(CollectionConfig.KEY_AGGREGATION_WINDOW_HOURS, 24);
+                int windowHours = config.getInt(CollectionConfig.KEY_AGGREGATION_WINDOW_HOURS, 24);
                 JSONObject aggregatedData = aggregator.aggregateRecentData(windowHours);
 
                 String combinedContent = promptContent +

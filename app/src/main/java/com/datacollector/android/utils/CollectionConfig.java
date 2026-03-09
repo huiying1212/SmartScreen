@@ -36,6 +36,21 @@ public class CollectionConfig {
     // Screen content defaults
     public static final String KEY_SCREEN_CONTENT_ENABLED = "screen_content_enabled";
 
+    // Calendar collector defaults
+    public static final String KEY_CALENDAR_ENABLED = "calendar_enabled";
+    public static final String KEY_CALENDAR_PAST_DAYS = "calendar_past_days";
+    public static final String KEY_CALENDAR_FUTURE_DAYS = "calendar_future_days";
+    public static final String KEY_CALENDAR_MAX_EVENTS = "calendar_max_events";
+
+    // Reminder collector defaults
+    public static final String KEY_REMINDER_ENABLED = "reminder_enabled";
+    public static final String KEY_REMINDER_PAST_DAYS = "reminder_past_days";
+    public static final String KEY_REMINDER_FUTURE_DAYS = "reminder_future_days";
+
+    // Screen usage collector defaults
+    public static final String KEY_SCREEN_USAGE_ENABLED = "screen_usage_enabled";
+    public static final String KEY_SCREEN_USAGE_TOP_APPS = "screen_usage_top_apps_count";
+
     // Data management
     public static final String KEY_AUTO_ANALYSIS = "auto_analysis_enabled";
     public static final String KEY_DATA_ENCRYPTION = "data_encryption_enabled";
@@ -51,6 +66,14 @@ public class CollectionConfig {
 
     // Aggregation settings
     public static final String KEY_AGGREGATION_WINDOW_HOURS = "aggregation_window_hours";
+
+    // Floating overlay settings
+    public static final String KEY_OVERLAY_ENABLED = "overlay_enabled";
+
+    // Wallpaper generation settings
+    public static final String KEY_WALLPAPER_GENERATION_ENABLED = "wallpaper_generation_enabled";
+    public static final String KEY_WALLPAPER_GENERATION_INTERVAL_MS = "wallpaper_generation_interval_ms";
+    public static final String KEY_LAST_WALLPAPER_GENERATION_TIME = "last_wallpaper_generation_time";
 
     private final SharedPreferences prefs;
 
@@ -77,6 +100,15 @@ public class CollectionConfig {
         putIfAbsent(editor, KEY_BLUETOOTH_ENABLED, true);
         putIfAbsent(editor, KEY_ACTIVITY_ENABLED, true);
         putIfAbsent(editor, KEY_SCREEN_CONTENT_ENABLED, true);
+        putIfAbsent(editor, KEY_CALENDAR_ENABLED, true);
+        putIfAbsent(editor, KEY_CALENDAR_PAST_DAYS, 7);
+        putIfAbsent(editor, KEY_CALENDAR_FUTURE_DAYS, 30);
+        putIfAbsent(editor, KEY_CALENDAR_MAX_EVENTS, 50);
+        putIfAbsent(editor, KEY_REMINDER_ENABLED, true);
+        putIfAbsent(editor, KEY_REMINDER_PAST_DAYS, 3);
+        putIfAbsent(editor, KEY_REMINDER_FUTURE_DAYS, 30);
+        putIfAbsent(editor, KEY_SCREEN_USAGE_ENABLED, true);
+        putIfAbsent(editor, KEY_SCREEN_USAGE_TOP_APPS, 10);
         putIfAbsent(editor, KEY_AUTO_ANALYSIS, true);
         putIfAbsent(editor, KEY_DATA_ENCRYPTION, true);
         putIfAbsent(editor, KEY_DATA_COMPRESSION, true);
@@ -87,6 +119,10 @@ public class CollectionConfig {
         putIfAbsent(editor, KEY_API_CONNECT_TIMEOUT, 30);
         putIfAbsent(editor, KEY_API_READ_TIMEOUT, 60);
         putIfAbsent(editor, KEY_AGGREGATION_WINDOW_HOURS, 24);
+        putIfAbsent(editor, KEY_OVERLAY_ENABLED, true);
+        putIfAbsent(editor, KEY_WALLPAPER_GENERATION_ENABLED, true);
+        putIfAbsent(editor, KEY_WALLPAPER_GENERATION_INTERVAL_MS, 3600_000L); // 1 hour
+        putIfAbsent(editor, KEY_LAST_WALLPAPER_GENERATION_TIME, 0L);
         editor.apply();
     }
 

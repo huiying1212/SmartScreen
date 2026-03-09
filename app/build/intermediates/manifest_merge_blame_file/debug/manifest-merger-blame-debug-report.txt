@@ -123,154 +123,144 @@
 64-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:58:5-81
 64-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:58:22-78
 65
-66    <permission
-66-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:22:5-24:47
-67        android:name="com.datacollector.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
-67-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:23:9-81
-68        android:protectionLevel="signature" />
-68-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:24:9-44
-69
-70    <uses-permission android:name="com.datacollector.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
-70-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:26:5-97
-70-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:26:22-94
-71
-72    <application
-72-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:60:5-120:19
-73        android:allowBackup="true"
-73-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:61:9-35
-74        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
-74-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:28:18-86
-75        android:debuggable="true"
-76        android:extractNativeLibs="false"
-77        android:icon="@mipmap/ic_launcher"
-77-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:62:9-43
-78        android:label="@string/app_name"
-78-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:63:9-41
-79        android:testOnly="true"
-80        android:theme="@style/AppTheme" >
-80-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:64:9-40
-81
-82        <!-- Launcher启动器主活动 - 唯一的启动入口 -->
-83        <activity
-83-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:67:9-80:20
-84            android:name="com.datacollector.android.activities.LauncherActivity"
-84-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:68:13-56
-85            android:exported="true"
-85-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:69:13-36
-86            android:label="CATIA3 Launcher"
-86-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:70:13-44
-87            android:launchMode="singleTask"
-87-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:71:13-44
-88            android:stateNotNeeded="true"
-88-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:72:13-42
-89            android:theme="@style/LauncherTheme" >
-89-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:73:13-49
-90            <intent-filter android:priority="1000" >
-90-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:74:13-79:29
-90-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:74:28-51
-91                <action android:name="android.intent.action.MAIN" />
-91-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:75:17-69
-91-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:75:25-66
-92
-93                <category android:name="android.intent.category.HOME" />
-93-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:76:17-73
-93-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:76:27-70
-94                <category android:name="android.intent.category.DEFAULT" />
-94-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:77:17-76
-94-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:77:27-73
-95                <category android:name="android.intent.category.LAUNCHER" />
-95-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:78:17-77
-95-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:78:27-74
-96            </intent-filter>
-97        </activity>
-98
-99        <!-- 全部应用列表活动 -->
-100        <activity
-100-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:83:9-87:52
-101            android:name="com.datacollector.android.activities.AllAppsActivity"
-101-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:84:13-55
-102            android:exported="false"
-102-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:85:13-37
-103            android:label="所有应用"
-103-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:86:13-33
-104            android:theme="@style/LauncherTheme" />
-104-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:87:13-49
-105
-106        <!-- 数据收集管理界面 - 只能通过内部跳转访问 -->
-107        <activity
-107-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:90:9-93:38
-108            android:name="com.datacollector.android.activities.AndroidDataCollector"
-108-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:91:13-60
-109            android:exported="false"
-109-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:92:13-37
-110            android:label="数据收集管理" />
-110-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:93:13-35
-111
-112        <!-- 服务健康监控界面 -->
-113        <activity
-113-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:96:9-99:38
-114            android:name="com.datacollector.android.activities.ServiceHealthActivity"
-114-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:97:13-61
-115            android:exported="false"
-115-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:98:13-37
-116            android:label="服务健康监控" />
-116-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:99:13-35
-117
-118        <!-- 数据收集服务 -->
-119        <service
-119-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:102:9-105:56
-120            android:name="com.datacollector.android.services.DataCollectionService"
-120-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:103:13-59
-121            android:exported="false"
-121-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:104:13-37
-122            android:foregroundServiceType="dataSync" />
-122-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:105:13-53
-123
-124        <!-- 无障碍服务 -->
-125        <service
-125-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:108:9-118:19
-126            android:name="com.datacollector.android.services.AccessibilityDataService"
-126-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:109:13-62
-127            android:exported="false"
-127-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:110:13-37
-128            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
-128-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:111:13-79
-129            <intent-filter>
-129-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:112:13-114:29
-130                <action android:name="android.accessibilityservice.AccessibilityService" />
-130-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:113:17-92
-130-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:113:25-89
-131            </intent-filter>
-132
-133            <meta-data
-133-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:115:13-117:72
-134                android:name="android.accessibilityservice"
-134-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:116:17-60
-135                android:resource="@xml/accessibility_service_config" />
-135-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:117:17-69
-136        </service>
-137
-138        <provider
-138-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
-139            android:name="androidx.startup.InitializationProvider"
-139-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:25:13-67
-140            android:authorities="com.datacollector.android.androidx-startup"
-140-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:26:13-68
-141            android:exported="false" >
-141-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:27:13-37
+66    <!-- 壁纸权限 -->
+67    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+67-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:61:5-72
+67-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:61:22-69
+68
+69    <permission
+69-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:22:5-24:47
+70        android:name="com.datacollector.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+70-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:23:9-81
+71        android:protectionLevel="signature" />
+71-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:24:9-44
+72
+73    <uses-permission android:name="com.datacollector.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+73-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:26:5-97
+73-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:26:22-94
+74
+75    <application
+75-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:63:5-117:19
+76        android:allowBackup="true"
+76-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:64:9-35
+77        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+77-->[androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:28:18-86
+78        android:debuggable="true"
+79        android:extractNativeLibs="false"
+80        android:icon="@mipmap/ic_launcher"
+80-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:65:9-43
+81        android:label="@string/app_name"
+81-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:66:9-41
+82        android:testOnly="true"
+83        android:theme="@style/AppTheme" >
+83-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:67:9-40
+84
+85        <!-- 主控制面板 - 唯一的启动入口 -->
+86        <activity
+86-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:70:9-79:20
+87            android:name="com.datacollector.android.activities.MainActivity"
+87-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:71:13-52
+88            android:exported="true"
+88-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:72:13-36
+89            android:label="CATIA3"
+89-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:73:13-35
+90            android:launchMode="singleTask" >
+90-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:74:13-44
+91            <intent-filter>
+91-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:75:13-78:29
+92                <action android:name="android.intent.action.MAIN" />
+92-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:76:17-69
+92-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:76:25-66
+93
+94                <category android:name="android.intent.category.LAUNCHER" />
+94-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:77:17-77
+94-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:77:27-74
+95            </intent-filter>
+96        </activity>
+97
+98        <!-- 数据收集管理界面 -->
+99        <activity
+99-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:82:9-85:38
+100            android:name="com.datacollector.android.activities.AndroidDataCollector"
+100-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:83:13-60
+101            android:exported="false"
+101-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:84:13-37
+102            android:label="数据收集管理" />
+102-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:85:13-35
+103
+104        <!-- 服务健康监控界面 -->
+105        <activity
+105-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:88:9-91:38
+106            android:name="com.datacollector.android.activities.ServiceHealthActivity"
+106-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:89:13-61
+107            android:exported="false"
+107-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:90:13-37
+108            android:label="服务健康监控" />
+108-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:91:13-35
+109
+110        <!-- 数据收集服务 -->
+111        <service
+111-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:94:9-97:56
+112            android:name="com.datacollector.android.services.DataCollectionService"
+112-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:95:13-59
+113            android:exported="false"
+113-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:96:13-37
+114            android:foregroundServiceType="dataSync" />
+114-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:97:13-53
+115
+116        <!-- 悬浮窗口服务 -->
+117        <service
+117-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:100:9-102:40
+118            android:name="com.datacollector.android.services.FloatingOverlayService"
+118-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:101:13-60
+119            android:exported="false" />
+119-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:102:13-37
+120
+121        <!-- 无障碍服务 -->
+122        <service
+122-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:105:9-115:19
+123            android:name="com.datacollector.android.services.AccessibilityDataService"
+123-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:106:13-62
+124            android:exported="false"
+124-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:107:13-37
+125            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
+125-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:108:13-79
+126            <intent-filter>
+126-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:109:13-111:29
+127                <action android:name="android.accessibilityservice.AccessibilityService" />
+127-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:110:17-92
+127-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:110:25-89
+128            </intent-filter>
+129
+130            <meta-data
+130-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:112:13-114:72
+131                android:name="android.accessibilityservice"
+131-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:113:17-60
+132                android:resource="@xml/accessibility_service_config" />
+132-->C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:114:17-69
+133        </service>
+134
+135        <provider
+135-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
+136            android:name="androidx.startup.InitializationProvider"
+136-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:25:13-67
+137            android:authorities="com.datacollector.android.androidx-startup"
+137-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:26:13-68
+138            android:exported="false" >
+138-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:27:13-37
+139            <meta-data
+139-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:29:13-31:52
+140                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+140-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:30:17-75
+141                android:value="androidx.startup" />
+141-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:31:17-49
 142            <meta-data
-142-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:29:13-31:52
-143                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-143-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:30:17-75
+142-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:31:13-33:52
+143                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+143-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:32:17-78
 144                android:value="androidx.startup" />
-144-->[androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:31:17-49
-145            <meta-data
-145-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:31:13-33:52
-146                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-146-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:32:17-78
-147                android:value="androidx.startup" />
-147-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:33:17-49
-148        </provider>
-149    </application>
-150
-151</manifest>
+144-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:33:17-49
+145        </provider>
+146    </application>
+147
+148</manifest>

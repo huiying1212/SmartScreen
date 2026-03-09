@@ -27,6 +27,7 @@ android {
         // Inject API keys via BuildConfig - keys live in local.properties, not source code
         buildConfigField "String", "GEMINI_API_KEY", "\"${localProperties.getProperty('GEMINI_API_KEY', '')}\""
         buildConfigField "String", "DEEPSEEK_API_KEY", "\"${localProperties.getProperty('DEEPSEEK_API_KEY', '')}\""
+        buildConfigField "String", "QWEN_IMAGE_API_KEY", "\"${localProperties.getProperty('QWEN_IMAGE_API_KEY', '')}\""
     }
 
     buildTypes {
