@@ -8,30 +8,29 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
-import com.datacollector.android.collectors.ActivityRecognitionCollector;
-import com.datacollector.android.collectors.BluetoothDataCollector;
-import com.datacollector.android.collectors.CalendarDataCollector;
-import com.datacollector.android.collectors.LocationDataCollector;
-import com.datacollector.android.collectors.ReminderDataCollector;
-import com.datacollector.android.collectors.ScreenContentCollector;
-import com.datacollector.android.collectors.ScreenUsageCollector;
-import com.datacollector.android.collectors.WiFiDataCollector;
-import com.datacollector.android.managers.DataCollectorManager;
-import com.datacollector.android.managers.WallpaperGenerationManager;
+import com.datacollector.android.R;
 import com.datacollector.android.activities.MainActivity;
 import com.datacollector.android.api.DeepSeekApiClient;
+import com.datacollector.android.collectors.ActivityRecognitionCollector;
+import com.datacollector.android.collectors.CalendarDataCollector;
+import com.datacollector.android.collectors.LocationDataCollector;
+import com.datacollector.android.collectors.ScreenUsageCollector;
+import com.datacollector.android.managers.DataCollectorManager;
+import com.datacollector.android.managers.WallpaperGenerationManager;
+import com.datacollector.android.utils.AppCategoryClassifier;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.CollectionStats;
 import com.datacollector.android.utils.DataCleanupManager;
 import com.datacollector.android.utils.DataEncryptor;
 import com.datacollector.android.utils.ErrorCollector;
-import com.datacollector.android.R;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -44,18 +43,14 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * 数据收集服务（升级版）
- * 借鉴Beiwe的改进：
- * - 数据加密存储（AES-GCM）
- * - GZIP压缩减少存储占用
- * - ErrorCollector独立错误处理（单个collector失败不影响整体）
- * - 采集统计追踪
- * - 可配置的采集参数
+ * 数据收集服务 —— 每 10 分钟自动采集一次结构化数据：
+ *   screenTime, unlockCount, currentApp, appCategory,
+ *   userActivity, locationContext, calendar
+ *
+ * 采集完成后触发壁纸引擎检查和可选的 LLM 分析。
  */
 public class DataCollectionService extends Service implements DataCollectorManager.DataCollectionCallback {
 
@@ -64,19 +59,17 @@ public class DataCollectionService extends Service implements DataCollectorManag
     private static final int NOTIFICATION_ID = 1001;
 
     private DataCollectorManager collectorManager;
-    private ScreenContentCollector screenCollector;
     private DeepSeekApiClient deepSeekApiClient;
     private DataCleanupManager dataCleanupManager;
     private DataEncryptor dataEncryptor;
     private CollectionConfig collectionConfig;
     private CollectionStats collectionStats;
-
     private WallpaperGenerationManager wallpaperGenerationManager;
 
     private JSONObject currentContextData;
-    private Timer dataCollectionTimer;
-    private String lastTriggerReason = "unknown";
-    private boolean autoAnalysisEnabled = true;
+    private Handler collectionHandler;
+    private Runnable periodicCollectionRunnable;
+    private boolean autoAnalysisEnabled = false;
     private PowerManager.WakeLock wakeLock;
 
     public class DataCollectionBinder extends Binder {
@@ -102,9 +95,10 @@ public class DataCollectionService extends Service implements DataCollectorManag
         collectionConfig = CollectionConfig.getInstance(this);
         collectionStats = CollectionStats.getInstance(this);
         dataEncryptor = new DataEncryptor(this);
+        collectionHandler = new Handler(Looper.getMainLooper());
 
         initializeCollectors();
-        startDataCollection();
+        startPeriodicCollection();
     }
 
     @Override
@@ -120,88 +114,31 @@ public class DataCollectionService extends Service implements DataCollectorManag
         if (intent != null && intent.hasExtra("action")) {
             String action = intent.getStringExtra("action");
             if ("trigger_collection".equals(action)) {
-                String triggerReason = intent.getStringExtra("trigger_reason");
-                Log.i(TAG, "Manual data collection triggered: " + triggerReason);
-                collectCurrentContextData(triggerReason);
+                String reason = intent.getStringExtra("trigger_reason");
+                Log.i(TAG, "Manual collection triggered: " + reason);
+                collectCurrentContextData(reason != null ? reason : "manual");
             }
         }
 
         return START_STICKY;
     }
 
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "数据收集服务", NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("CATIA3 后台数据收集服务");
-            channel.setShowBadge(false);
-            channel.setSound(null, null);
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
-            }
-        }
-    }
-
-    private void startForegroundService() {
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                this, 0, notificationIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("CATIA3 数据收集")
-                .setContentText("正在后台收集用户行为数据")
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setSound(null)
-                .build();
-
-        startForeground(NOTIFICATION_ID, notification);
-    }
-
-    private void acquireWakeLock() {
-        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
-        if (powerManager != null) {
-            wakeLock = powerManager.newWakeLock(
-                    PowerManager.PARTIAL_WAKE_LOCK, "CATIA3::DataCollectionWakeLock");
-            wakeLock.acquire(10 * 60 * 1000L);
-        }
-    }
-
-    private void releaseWakeLock() {
-        if (wakeLock != null && wakeLock.isHeld()) {
-            wakeLock.release();
-        }
-    }
+    // ── 初始化 ───────────────────────────────────────────────
 
     private void initializeCollectors() {
         collectorManager = new DataCollectorManager(this);
         collectorManager.setCallback(this);
 
-        // Use ErrorCollector so one failed collector doesn't block others
         ErrorCollector initErrors = new ErrorCollector("collector_init");
 
         initErrors.runSafely("location", () ->
                 collectorManager.registerCollector(new LocationDataCollector(this)));
-        initErrors.runSafely("bluetooth", () ->
-                collectorManager.registerCollector(new BluetoothDataCollector(this)));
-        initErrors.runSafely("wifi", () ->
-                collectorManager.registerCollector(new WiFiDataCollector(this)));
         initErrors.runSafely("activity", () ->
                 collectorManager.registerCollector(new ActivityRecognitionCollector(this)));
-        initErrors.runSafely("calendar", () ->
-                collectorManager.registerCollector(new CalendarDataCollector(this)));
-        initErrors.runSafely("reminders", () ->
-                collectorManager.registerCollector(new ReminderDataCollector(this)));
         initErrors.runSafely("screen_usage", () ->
                 collectorManager.registerCollector(new ScreenUsageCollector(this)));
-
-        initErrors.runSafely("screen_content", () -> {
-            screenCollector = new ScreenContentCollector(this);
-        });
+        initErrors.runSafely("calendar", () ->
+                collectorManager.registerCollector(new CalendarDataCollector(this)));
 
         if (initErrors.hasErrors()) {
             Log.w(TAG, initErrors.getSummary());
@@ -212,29 +149,31 @@ public class DataCollectionService extends Service implements DataCollectorManag
         wallpaperGenerationManager = new WallpaperGenerationManager(this);
         currentContextData = new JSONObject();
 
-        Log.i(TAG, "Initialized " + collectorManager.getCollectorIds().size() + " data collectors");
-    }
-
-    private void startDataCollection() {
         collectorManager.startAllCollectors();
-        if (screenCollector != null) {
-            screenCollector.startCollection();
-        }
-        Log.i(TAG, "Started data collection (manual trigger mode)");
+        Log.i(TAG, "Initialized " + collectorManager.getCollectorIds().size() + " collectors");
     }
 
-    @Deprecated
-    private void startPeriodicDataCollection() {
-        Log.i(TAG, "Periodic data collection disabled - using manual trigger mode");
+    // ── 定期采集（每 10 分钟）──────────────────────────────
+
+    private void startPeriodicCollection() {
+        long interval = collectionConfig.getLong(
+                CollectionConfig.KEY_COLLECTION_INTERVAL_MS, 10 * 60_000L);
+
+        periodicCollectionRunnable = new Runnable() {
+            @Override
+            public void run() {
+                collectCurrentContextData("periodic");
+                collectionHandler.postDelayed(this, interval);
+            }
+        };
+
+        // 首次延迟 30 秒让 collectors 初始化完成
+        collectionHandler.postDelayed(periodicCollectionRunnable, 30_000L);
+        Log.i(TAG, "Periodic collection started (interval=" + interval / 60000 + "min)");
     }
 
-    private void collectCurrentContextData() {
-        collectCurrentContextData("manual_call");
-    }
+    // ── 数据采集 ─────────────────────────────────────────────
 
-    /**
-     * 使用ErrorCollector确保单个采集器失败不会影响整体流程
-     */
     private void collectCurrentContextData(String triggerReason) {
         ErrorCollector errors = new ErrorCollector("data_collection");
 
@@ -244,9 +183,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
             contextData.put("date_time", getCurrentDateTime());
             contextData.put("day_of_week", getCurrentDayOfWeek());
             contextData.put("trigger_reason", triggerReason);
-            contextData.put("collection_mode", "manual_trigger");
 
-            // Each collector runs independently - failure in one doesn't block others
             JSONObject collectorData = new JSONObject();
 
             for (String collectorId : collectorManager.getCollectorIds()) {
@@ -267,19 +204,9 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
             mergeCollectorData(contextData, collectorData);
 
-            errors.runSafely("screen_content", () -> {
-                if (screenCollector != null) {
-                    try {
-                        contextData.put("screen_content", screenCollector.getRecentScreenContent());
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            });
+            // 推断位置上下文
+            contextData.put("location_context", inferLocationContext(contextData));
 
-            contextData.put("current_app", getCurrentAppInfo());
-
-            // Record collection errors as metadata for transparency
             if (errors.hasErrors()) {
                 contextData.put("collection_errors", errors.getErrorCount());
                 Log.w(TAG, errors.getSummary());
@@ -287,7 +214,6 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
             saveContextData(contextData);
             collectionStats.recordCollectionAttempt(true);
-            lastTriggerReason = triggerReason;
 
         } catch (JSONException e) {
             Log.e(TAG, "Error collecting context data", e);
@@ -295,46 +221,51 @@ public class DataCollectionService extends Service implements DataCollectorManag
         }
     }
 
-    private void mergeCollectorData(JSONObject contextData, JSONObject collectorData) throws JSONException {
-        if (collectorData.has("location"))
-            contextData.put("location", collectorData.get("location"));
-        if (collectorData.has("bluetooth"))
-            contextData.put("bluetooth_devices", collectorData.get("bluetooth"));
-        if (collectorData.has("wifi"))
-            contextData.put("wifi_info", collectorData.get("wifi"));
-        if (collectorData.has("activity_recognition"))
-            contextData.put("activity", collectorData.get("activity_recognition"));
-        if (collectorData.has("calendar"))
-            contextData.put("calendar", collectorData.get("calendar"));
-        if (collectorData.has("reminders"))
-            contextData.put("reminders", collectorData.get("reminders"));
-        if (collectorData.has("screen_usage"))
-            contextData.put("screen_usage", collectorData.get("screen_usage"));
-        contextData.put("collectors_status", collectorManager.getCollectorsStatus());
-    }
-
-    private String getCurrentDateTime() {
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
-    }
-
-    private String getCurrentDayOfWeek() {
-        return new SimpleDateFormat("EEEE", Locale.getDefault()).format(new Date());
-    }
-
-    private JSONObject getCurrentAppInfo() {
-        try {
-            JSONObject appInfo = new JSONObject();
-            appInfo.put("package_name", getPackageName());
-            appInfo.put("service_name", TAG);
-            return appInfo;
-        } catch (JSONException e) {
-            return null;
-        }
+    private void mergeCollectorData(JSONObject ctx, JSONObject raw) throws JSONException {
+        if (raw.has("location"))
+            ctx.put("location", raw.get("location"));
+        if (raw.has("activity_recognition"))
+            ctx.put("user_activity", raw.get("activity_recognition"));
+        if (raw.has("screen_usage"))
+            ctx.put("screen_usage", raw.get("screen_usage"));
+        if (raw.has("calendar"))
+            ctx.put("calendar", raw.get("calendar"));
+        ctx.put("collectors_status", collectorManager.getCollectorsStatus());
     }
 
     /**
-     * 保存数据：支持可选的加密和GZIP压缩
+     * 从位置 + 活动数据推断粗略位置上下文（家/公司/户外）。
      */
+    private String inferLocationContext(JSONObject contextData) {
+        try {
+            JSONObject activity = contextData.optJSONObject("user_activity");
+            String actType = activity != null ? activity.optString("activity_type", "unknown") : "unknown";
+
+            if ("driving".equals(actType) || "cycling".equals(actType)) {
+                return "通勤中";
+            }
+            if ("walking".equals(actType) || "running".equals(actType)) {
+                return "户外";
+            }
+
+            JSONObject location = contextData.optJSONObject("location");
+            if (location != null) {
+                double accuracy = location.optDouble("accuracy", 999);
+                if (accuracy > 100) return "室内";
+            }
+
+            int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+            if (hour >= 22 || hour < 7) return "家";
+            if (hour >= 9 && hour < 18) return "公司/学校";
+            return "未知";
+
+        } catch (Exception e) {
+            return "未知";
+        }
+    }
+
+    // ── 数据保存 ─────────────────────────────────────────────
+
     private void saveContextData(JSONObject contextData) {
         try {
             JSONObject outputData = new JSONObject();
@@ -345,7 +276,6 @@ public class DataCollectionService extends Service implements DataCollectorManag
             if (!dataDir.exists()) dataDir.mkdirs();
 
             String jsonString = outputData.toString(4);
-
             boolean encryptionEnabled = collectionConfig.getBoolean(
                     CollectionConfig.KEY_DATA_ENCRYPTION, true);
             boolean compressionEnabled = collectionConfig.getBoolean(
@@ -355,11 +285,8 @@ public class DataCollectionService extends Service implements DataCollectorManag
             File dataFile;
 
             if (encryptionEnabled) {
-                // Compress then encrypt
                 byte[] data = jsonString.getBytes("UTF-8");
-                if (compressionEnabled) {
-                    data = compressGzip(data);
-                }
+                if (compressionEnabled) data = compressGzip(data);
                 byte[] encrypted = dataEncryptor.encryptBytes(data);
                 if (encrypted != null) {
                     dataFile = new File(dataDir, fileName + ".enc");
@@ -367,11 +294,8 @@ public class DataCollectionService extends Service implements DataCollectorManag
                         fos.write(encrypted);
                     }
                 } else {
-                    // Encryption failed, fall back to plaintext
                     dataFile = new File(dataDir, fileName + ".json");
-                    try (FileWriter fw = new FileWriter(dataFile)) {
-                        fw.write(jsonString);
-                    }
+                    try (FileWriter fw = new FileWriter(dataFile)) { fw.write(jsonString); }
                 }
             } else if (compressionEnabled) {
                 dataFile = new File(dataDir, fileName + ".json.gz");
@@ -381,35 +305,24 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 }
             } else {
                 dataFile = new File(dataDir, fileName + ".json");
-                try (FileWriter fw = new FileWriter(dataFile)) {
-                    fw.write(jsonString);
-                }
+                try (FileWriter fw = new FileWriter(dataFile)) { fw.write(jsonString); }
             }
 
             this.currentContextData = outputData;
             collectionStats.recordFileSaved(dataFile.length());
+            Log.d(TAG, "Saved: " + dataFile.getName());
 
-            Log.d(TAG, "Saved context data to: " + dataFile.getName() +
-                    " (encrypted=" + encryptionEnabled + ", compressed=" + compressionEnabled + ")");
-
-            // Also save a plaintext copy for LLM analysis (auto-cleaned quickly)
+            // 明文副本（LLM 分析 + DataAggregator 使用）
             File plainFile = new File(dataDir, "context_data_" + System.currentTimeMillis() + ".json");
-            try (FileWriter fw = new FileWriter(plainFile)) {
-                fw.write(jsonString);
-            }
+            try (FileWriter fw = new FileWriter(plainFile)) { fw.write(jsonString); }
 
+            // 可选 LLM 分析
             if (autoAnalysisEnabled && deepSeekApiClient != null) {
-                try {
-                    deepSeekApiClient.analyzeContextData(outputData);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error performing LLM analysis", e);
-                }
+                try { deepSeekApiClient.analyzeContextData(outputData); }
+                catch (Exception e) { Log.e(TAG, "LLM analysis error", e); }
             }
 
-            // Notify floating overlay of updated screen time
-            notifyOverlayUpdate(contextData);
-
-            // Trigger wallpaper generation if interval has elapsed
+            // 壁纸引擎检查
             triggerWallpaperGenerationIfNeeded();
 
         } catch (IOException | JSONException e) {
@@ -417,133 +330,124 @@ public class DataCollectionService extends Service implements DataCollectorManag
         }
     }
 
-    private void notifyOverlayUpdate(JSONObject contextData) {
-        try {
-            JSONObject screenUsage = contextData.optJSONObject("screen_usage");
-            if (screenUsage != null) {
-                long screenTimeMs = screenUsage.optLong("today_screen_time_ms", 0);
-                FloatingOverlayService.sendMoodUpdate(this, screenTimeMs);
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Error notifying overlay", e);
-        }
-    }
-
     private void triggerWallpaperGenerationIfNeeded() {
-        if (wallpaperGenerationManager == null) return;
-        if (!wallpaperGenerationManager.shouldGenerate()) return;
+        if (wallpaperGenerationManager == null || !wallpaperGenerationManager.shouldGenerate()) return;
 
-        Log.i(TAG, "Triggering periodic wallpaper generation");
+        Log.i(TAG, "Triggering wallpaper generation");
         wallpaperGenerationManager.generateAndSetWallpaper(
                 new WallpaperGenerationManager.WallpaperGenerationCallback() {
-                    @Override
-                    public void onSuccess(String message) {
-                        Log.i(TAG, "Wallpaper generated: " + message);
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        Log.w(TAG, "Wallpaper generation failed: " + error);
-                    }
-
-                    @Override
-                    public void onProgress(String status) {
-                        Log.d(TAG, "Wallpaper generation: " + status);
-                    }
+                    @Override public void onSuccess(String msg) { Log.i(TAG, "Wallpaper: " + msg); }
+                    @Override public void onError(String err)   { Log.w(TAG, "Wallpaper error: " + err); }
+                    @Override public void onProgress(String s)  { Log.d(TAG, "Wallpaper: " + s); }
                 });
     }
 
+    // ── 工具方法 ─────────────────────────────────────────────
+
     private byte[] compressGzip(byte[] data) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        try (GZIPOutputStream gzos = new GZIPOutputStream(bos)) {
-            gzos.write(data);
-        }
+        try (GZIPOutputStream gzos = new GZIPOutputStream(bos)) { gzos.write(data); }
         return bos.toByteArray();
     }
+
+    private String getCurrentDateTime() {
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
+    }
+
+    private String getCurrentDayOfWeek() {
+        return new SimpleDateFormat("EEEE", Locale.getDefault()).format(new Date());
+    }
+
+    // ── 通知与电源 ───────────────────────────────────────────
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID, "数据收集服务", NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription("CATIA3 后台数据收集");
+            channel.setShowBadge(false);
+            channel.setSound(null, null);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) manager.createNotificationChannel(channel);
+        }
+    }
+
+    private void startForegroundService() {
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("CATIA3 数据收集")
+                .setContentText("每10分钟自动采集使用数据")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setSound(null)
+                .build();
+
+        startForeground(NOTIFICATION_ID, notification);
+    }
+
+    private void acquireWakeLock() {
+        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+        if (pm != null) {
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "CATIA3::DataCollectionWakeLock");
+            wakeLock.acquire(10 * 60 * 1000L);
+        }
+    }
+
+    private void releaseWakeLock() {
+        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+    }
+
+    // ── Binder 暴露的 API ────────────────────────────────────
 
     public JSONObject getCompleteContextData() {
         collectCurrentContextData("external_api_call");
         return currentContextData;
     }
 
-    public DataCollectorManager getCollectorManager() {
-        return collectorManager;
-    }
+    public DataCollectorManager getCollectorManager() { return collectorManager; }
 
     public void setAutoAnalysisEnabled(boolean enabled) {
         this.autoAnalysisEnabled = enabled;
         collectionConfig.setBoolean(CollectionConfig.KEY_AUTO_ANALYSIS, enabled);
     }
 
-    public boolean isAutoAnalysisEnabled() {
-        return autoAnalysisEnabled;
-    }
+    public boolean isAutoAnalysisEnabled() { return autoAnalysisEnabled; }
 
     public String getDataCleanupStats() {
-        return dataCleanupManager != null ? dataCleanupManager.getCleanupStats() : "数据清理管理器未初始化";
+        return dataCleanupManager != null ? dataCleanupManager.getCleanupStats() : "未初始化";
     }
 
     public void performManualCleanup() {
-        if (dataCleanupManager != null) {
-            dataCleanupManager.performImmediateCleanup();
-        }
+        if (dataCleanupManager != null) dataCleanupManager.performImmediateCleanup();
     }
 
-    public void triggerManualAnalysis() {
-        if (deepSeekApiClient != null && currentContextData != null) {
-            deepSeekApiClient.analyzeContextData(currentContextData);
-        }
-    }
+    public String getCollectionStatsSummary() { return collectionStats.getStatsSummary(); }
 
-    /**
-     * 获取采集统计摘要
-     */
-    public String getCollectionStatsSummary() {
-        return collectionStats.getStatsSummary();
-    }
+    public JSONObject getCurrentConfig() { return collectionConfig.exportConfig(); }
 
-    /**
-     * 获取当前配置JSON
-     */
-    public JSONObject getCurrentConfig() {
-        return collectionConfig.exportConfig();
-    }
-
-    /** 屏幕内容统计（OCR 已移除，仅返回无障碍文本条数） */
-    public JSONObject getOcrStatistics() {
-        if (screenCollector != null) {
-            return screenCollector.getOcrStatistics();
-        }
-        JSONObject emptyStats = new JSONObject();
-        try {
-            emptyStats.put("total_items", 0);
-            emptyStats.put("ocr_enabled", false);
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating empty statistics", e);
-        }
-        return emptyStats;
-    }
+    // ── Callbacks ────────────────────────────────────────────
 
     @Override
     public void onDataCollected(String collectorId, Object data) {
-        Log.d(TAG, "Data collected from: " + collectorId);
+        Log.d(TAG, "Data from: " + collectorId);
     }
 
     @Override
     public void onCollectionError(String collectorId, Exception error) {
-        Log.e(TAG, "Collection error from: " + collectorId, error);
+        Log.e(TAG, "Error from: " + collectorId, error);
         collectionStats.recordCollectorResult(collectorId, false);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (collectionHandler != null) collectionHandler.removeCallbacksAndMessages(null);
         if (collectorManager != null) collectorManager.stopAllCollectors();
-        if (screenCollector != null) screenCollector.stopCollection();
-        if (dataCollectionTimer != null) {
-            dataCollectionTimer.cancel();
-            dataCollectionTimer = null;
-        }
         if (deepSeekApiClient != null) deepSeekApiClient.shutdown();
         if (wallpaperGenerationManager != null) wallpaperGenerationManager.shutdown();
         if (dataCleanupManager != null) dataCleanupManager.stopCleanup();

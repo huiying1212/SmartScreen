@@ -16,6 +16,7 @@ import android.provider.Settings;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,7 +32,7 @@ import com.datacollector.android.utils.MoodMapper;
 import org.json.JSONObject;
 
 /**
- * 主控制面板：管理悬浮图标、壁纸生成、权限请求和数据收集服务
+ * 主控制面板：管理悬浮窗、壁纸引擎、权重偏好、权限和数据收集服务。
  */
 public class MainActivity extends Activity {
 
@@ -44,18 +45,17 @@ public class MainActivity extends Activity {
     private ScreenUsageCollector screenUsageCollector;
     private Handler uiHandler;
 
-    // UI components
+    // UI
     private ImageView headerMoodIcon;
-    private TextView tvMoodStatus;
-    private TextView tvScreenTime;
-    private TextView tvMoodLabel;
-    private Switch switchOverlay;
-    private Switch switchWallpaper;
-    private Button btnInterval30m, btnInterval1h, btnInterval2h;
+    private TextView tvMoodStatus, tvScreenTime, tvMoodLabel;
+    private Switch switchOverlay, switchWallpaper;
     private Button btnGenerateNow;
     private TextView tvGenerationStatus;
-    private Button btnPermOverlay, btnPermUsage, btnStartCollection;
-    private Button btnDataManagement;
+    private Button btnPermOverlay, btnPermUsage, btnStartCollection, btnDataManagement;
+
+    // 权重滑块
+    private SeekBar seekProductivity, seekEntertainment, seekHealth, seekSocial;
+    private TextView tvWeightProductivity, tvWeightEntertainment, tvWeightHealth, tvWeightSocial;
 
     private DataCollectionService dataCollectionService;
     private boolean serviceBound = false;
@@ -67,7 +67,6 @@ public class MainActivity extends Activity {
                     (DataCollectionService.DataCollectionBinder) service;
             dataCollectionService = binder.getService();
             serviceBound = true;
-            Log.d(TAG, "DataCollectionService bound");
         }
 
         @Override
@@ -102,37 +101,33 @@ public class MainActivity extends Activity {
         tvMoodLabel = findViewById(R.id.tv_mood_label);
         switchOverlay = findViewById(R.id.switch_overlay);
         switchWallpaper = findViewById(R.id.switch_wallpaper);
-        btnInterval30m = findViewById(R.id.btn_interval_30m);
-        btnInterval1h = findViewById(R.id.btn_interval_1h);
-        btnInterval2h = findViewById(R.id.btn_interval_2h);
         btnGenerateNow = findViewById(R.id.btn_generate_now);
         tvGenerationStatus = findViewById(R.id.tv_generation_status);
         btnPermOverlay = findViewById(R.id.btn_perm_overlay);
         btnPermUsage = findViewById(R.id.btn_perm_usage);
         btnStartCollection = findViewById(R.id.btn_start_collection);
         btnDataManagement = findViewById(R.id.btn_data_management);
+
+        seekProductivity = findViewById(R.id.seek_productivity);
+        seekEntertainment = findViewById(R.id.seek_entertainment);
+        seekHealth = findViewById(R.id.seek_health);
+        seekSocial = findViewById(R.id.seek_social);
+        tvWeightProductivity = findViewById(R.id.tv_weight_productivity);
+        tvWeightEntertainment = findViewById(R.id.tv_weight_entertainment);
+        tvWeightHealth = findViewById(R.id.tv_weight_health);
+        tvWeightSocial = findViewById(R.id.tv_weight_social);
     }
 
     private void setupListeners() {
-        switchOverlay.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, isChecked);
-            if (isChecked) {
-                startOverlayService();
-            } else {
-                stopOverlayService();
-            }
+        switchOverlay.setOnCheckedChangeListener((btn, checked) -> {
+            config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, checked);
+            if (checked) startOverlayService(); else stopOverlayService();
         });
 
-        switchWallpaper.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, isChecked);
-        });
-
-        btnInterval30m.setOnClickListener(v -> setInterval(30 * 60_000L));
-        btnInterval1h.setOnClickListener(v -> setInterval(60 * 60_000L));
-        btnInterval2h.setOnClickListener(v -> setInterval(120 * 60_000L));
+        switchWallpaper.setOnCheckedChangeListener((btn, checked) ->
+                config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, checked));
 
         btnGenerateNow.setOnClickListener(v -> generateWallpaperNow());
-
         btnPermOverlay.setOnClickListener(v -> requestOverlayPermission());
         btnPermUsage.setOnClickListener(v -> requestUsageStatsPermission());
 
@@ -141,9 +136,41 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "数据收集服务已启动", Toast.LENGTH_SHORT).show();
         });
 
-        btnDataManagement.setOnClickListener(v -> {
-            startActivity(new Intent(this, AndroidDataCollector.class));
-        });
+        btnDataManagement.setOnClickListener(v ->
+                startActivity(new Intent(this, AndroidDataCollector.class)));
+
+        setupWeightSeekBars();
+    }
+
+    private void setupWeightSeekBars() {
+        SeekBar.OnSeekBarChangeListener weightListener = new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (!fromUser) return;
+                float value = progress / 100f;
+                int id = seekBar.getId();
+                if (id == R.id.seek_productivity) {
+                    config.setFloat(CollectionConfig.KEY_WEIGHT_PRODUCTIVITY, value);
+                    tvWeightProductivity.setText(String.format("生产力: %.0f%%", value * 100));
+                } else if (id == R.id.seek_entertainment) {
+                    config.setFloat(CollectionConfig.KEY_WEIGHT_ENTERTAINMENT, value);
+                    tvWeightEntertainment.setText(String.format("娱乐: %.0f%%", value * 100));
+                } else if (id == R.id.seek_health) {
+                    config.setFloat(CollectionConfig.KEY_WEIGHT_HEALTH, value);
+                    tvWeightHealth.setText(String.format("健康: %.0f%%", value * 100));
+                } else if (id == R.id.seek_social) {
+                    config.setFloat(CollectionConfig.KEY_WEIGHT_SOCIAL, value);
+                    tvWeightSocial.setText(String.format("社交: %.0f%%", value * 100));
+                }
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        };
+
+        seekProductivity.setOnSeekBarChangeListener(weightListener);
+        seekEntertainment.setOnSeekBarChangeListener(weightListener);
+        seekHealth.setOnSeekBarChangeListener(weightListener);
+        seekSocial.setOnSeekBarChangeListener(weightListener);
     }
 
     private void loadSavedState() {
@@ -151,68 +178,61 @@ public class MainActivity extends Activity {
         switchWallpaper.setChecked(config.getBoolean(
                 CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, true));
 
-        long interval = config.getLong(CollectionConfig.KEY_WALLPAPER_GENERATION_INTERVAL_MS, 3600_000L);
-        highlightIntervalButton(interval);
+        int wp = (int) (config.getFloat(CollectionConfig.KEY_WEIGHT_PRODUCTIVITY, 0.4f) * 100);
+        int we = (int) (config.getFloat(CollectionConfig.KEY_WEIGHT_ENTERTAINMENT, 0.2f) * 100);
+        int wh = (int) (config.getFloat(CollectionConfig.KEY_WEIGHT_HEALTH, 0.2f) * 100);
+        int ws = (int) (config.getFloat(CollectionConfig.KEY_WEIGHT_SOCIAL, 0.2f) * 100);
+
+        seekProductivity.setProgress(wp);
+        seekEntertainment.setProgress(we);
+        seekHealth.setProgress(wh);
+        seekSocial.setProgress(ws);
+
+        tvWeightProductivity.setText(String.format("生产力: %d%%", wp));
+        tvWeightEntertainment.setText(String.format("娱乐: %d%%", we));
+        tvWeightHealth.setText(String.format("健康: %d%%", wh));
+        tvWeightSocial.setText(String.format("社交: %d%%", ws));
 
         updatePermissionButtons();
-    }
-
-    private void setInterval(long intervalMs) {
-        config.setLong(CollectionConfig.KEY_WALLPAPER_GENERATION_INTERVAL_MS, intervalMs);
-        highlightIntervalButton(intervalMs);
-    }
-
-    private void highlightIntervalButton(long intervalMs) {
-        int activeColor = 0xFF03DAC5;
-        int inactiveColor = 0xFF3F3F3F;
-        int activeTextColor = 0xFF000000;
-        int inactiveTextColor = 0xFFFFFFFF;
-
-        btnInterval30m.setBackgroundColor(intervalMs <= 30 * 60_000L ? activeColor : inactiveColor);
-        btnInterval30m.setTextColor(intervalMs <= 30 * 60_000L ? activeTextColor : inactiveTextColor);
-
-        boolean is1h = intervalMs > 30 * 60_000L && intervalMs <= 60 * 60_000L;
-        btnInterval1h.setBackgroundColor(is1h ? activeColor : inactiveColor);
-        btnInterval1h.setTextColor(is1h ? activeTextColor : inactiveTextColor);
-
-        btnInterval2h.setBackgroundColor(intervalMs > 60 * 60_000L ? activeColor : inactiveColor);
-        btnInterval2h.setTextColor(intervalMs > 60 * 60_000L ? activeTextColor : inactiveTextColor);
     }
 
     private void generateWallpaperNow() {
         btnGenerateNow.setEnabled(false);
         btnGenerateNow.setText("生成中...");
 
-        wallpaperManager.generateAndSetWallpaper(new WallpaperGenerationManager.WallpaperGenerationCallback() {
-            @Override
-            public void onSuccess(String message) {
-                uiHandler.post(() -> {
-                    tvGenerationStatus.setText(message);
-                    tvGenerationStatus.setTextColor(0xFF03DAC5);
-                    btnGenerateNow.setEnabled(true);
-                    btnGenerateNow.setText("立即生成壁纸");
-                });
-            }
+        wallpaperManager.generateAndSetWallpaper(
+                new WallpaperGenerationManager.WallpaperGenerationCallback() {
+                    @Override
+                    public void onSuccess(String msg) {
+                        uiHandler.post(() -> {
+                            tvGenerationStatus.setText(msg);
+                            tvGenerationStatus.setTextColor(0xFF03DAC5);
+                            btnGenerateNow.setEnabled(true);
+                            btnGenerateNow.setText("立即生成壁纸");
+                        });
+                    }
 
-            @Override
-            public void onError(String error) {
-                uiHandler.post(() -> {
-                    tvGenerationStatus.setText(error);
-                    tvGenerationStatus.setTextColor(0xFFFF5252);
-                    btnGenerateNow.setEnabled(true);
-                    btnGenerateNow.setText("立即生成壁纸");
-                });
-            }
+                    @Override
+                    public void onError(String err) {
+                        uiHandler.post(() -> {
+                            tvGenerationStatus.setText(err);
+                            tvGenerationStatus.setTextColor(0xFFFF5252);
+                            btnGenerateNow.setEnabled(true);
+                            btnGenerateNow.setText("立即生成壁纸");
+                        });
+                    }
 
-            @Override
-            public void onProgress(String status) {
-                uiHandler.post(() -> {
-                    tvGenerationStatus.setText(status);
-                    tvGenerationStatus.setTextColor(0xFFB0B0B0);
+                    @Override
+                    public void onProgress(String s) {
+                        uiHandler.post(() -> {
+                            tvGenerationStatus.setText(s);
+                            tvGenerationStatus.setTextColor(0xFFB0B0B0);
+                        });
+                    }
                 });
-            }
-        });
     }
+
+    // ── 服务管理 ─────────────────────────────────────────────
 
     private void startOverlayService() {
         if (!Settings.canDrawOverlays(this)) {
@@ -246,22 +266,20 @@ public class MainActivity extends Activity {
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
+    // ── 权限 ─────────────────────────────────────────────────
+
     private void requestOverlayPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION);
-            } else {
-                Toast.makeText(this, "悬浮窗权限已授权", Toast.LENGTH_SHORT).show();
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            startActivityForResult(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName())), REQUEST_OVERLAY_PERMISSION);
+        } else {
+            Toast.makeText(this, "悬浮窗权限已授权", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void requestUsageStatsPermission() {
         if (!hasUsageStatsPermission()) {
-            startActivityForResult(
-                    new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS), REQUEST_USAGE_STATS);
+            startActivityForResult(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS), REQUEST_USAGE_STATS);
         } else {
             Toast.makeText(this, "使用情况访问已授权", Toast.LENGTH_SHORT).show();
         }
@@ -284,6 +302,8 @@ public class MainActivity extends Activity {
         btnPermUsage.setText(usageOk ? "使用情况访问 ✓" : "授权使用情况访问");
         btnPermUsage.setEnabled(!usageOk);
     }
+
+    // ── 生命周期 ─────────────────────────────────────────────
 
     @Override
     protected void onResume() {
@@ -310,11 +330,15 @@ public class MainActivity extends Activity {
                 if (data != null) {
                     long screenTimeMs = data.optLong("today_screen_time_ms", 0);
                     String readable = data.optString("today_screen_time_readable", "--");
+                    int unlockCount = data.optInt("unlock_count_last_hour", 0);
+                    String appCat = data.optString("foreground_app_category", "");
                     MoodMapper.Mood mood = MoodMapper.fromScreenTime(screenTimeMs);
 
                     uiHandler.post(() -> {
                         tvScreenTime.setText(readable);
-                        tvMoodLabel.setText("心情：" + mood.labelCn);
+                        tvMoodLabel.setText("心情: " + mood.labelCn
+                                + " | 解锁: " + unlockCount + "次/小时"
+                                + (appCat.isEmpty() ? "" : " | " + appCat));
                         tvMoodStatus.setText(mood.labelCn + " | 数字健康伙伴");
                         headerMoodIcon.setImageResource(mood.drawableRes);
                     });
@@ -336,12 +360,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (serviceBound) {
-            unbindService(serviceConnection);
-            serviceBound = false;
-        }
-        if (wallpaperManager != null) {
-            wallpaperManager.shutdown();
-        }
+        if (serviceBound) { unbindService(serviceConnection); serviceBound = false; }
+        if (wallpaperManager != null) wallpaperManager.shutdown();
     }
 }

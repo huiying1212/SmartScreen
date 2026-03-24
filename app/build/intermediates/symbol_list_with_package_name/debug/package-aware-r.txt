@@ -2726,6 +2726,7 @@ drawable btn_radio_off_mtrl
 drawable btn_radio_off_to_on_mtrl_animation
 drawable btn_radio_on_mtrl
 drawable btn_radio_on_to_off_mtrl_animation
+drawable bubble_background
 drawable design_fab_background
 drawable design_ic_visibility
 drawable design_ic_visibility_off
@@ -2909,21 +2910,6 @@ id animateToEnd
 id animateToStart
 id antiClockwise
 id anticipate
-id app_icon
-id app_icon_1
-id app_icon_2
-id app_icon_3
-id app_icon_4
-id app_label
-id app_name_1
-id app_name_2
-id app_name_3
-id app_name_4
-id app_shortcut_1
-id app_shortcut_2
-id app_shortcut_3
-id app_shortcut_4
-id apps_grid
 id arc
 id asConfigured
 id async
@@ -2931,7 +2917,6 @@ id auto
 id autoComplete
 id autoCompleteToEnd
 id autoCompleteToStart
-id back_button
 id barrier
 id baseline
 id beginOnFirstDraw
@@ -2939,7 +2924,6 @@ id beginning
 id bestChoice
 id blocking
 id bottom
-id bottom_apps_section
 id bounce
 id bounceBoth
 id bounceEnd
@@ -2948,9 +2932,6 @@ id btn_call_deepseek
 id btn_call_gemini
 id btn_data_management
 id btn_generate_now
-id btn_interval_1h
-id btn_interval_2h
-id btn_interval_30m
 id btn_perm_overlay
 id btn_perm_usage
 id btn_start_collection
@@ -2999,8 +2980,6 @@ id date_picker_actions
 id decelerate
 id decelerateAndComplete
 id decor_content_parent
-id deepseek_result_text
-id deepseek_section
 id default_activity_button
 id deltaRelative
 id dependency_ordering
@@ -3026,7 +3005,6 @@ id dragRight
 id dragStart
 id dragUp
 id dropdown_menu
-id dynamic_widgets_container
 id easeIn
 id easeInOut
 id easeOut
@@ -3039,7 +3017,6 @@ id endToStart
 id enterAlways
 id enterAlwaysCollapsed
 id exitUntilCollapsed
-id exit_launcher_button
 id expand_activities_button
 id expanded_menu
 id fade
@@ -3183,6 +3160,7 @@ id on
 id onInterceptTouchReturnSwipe
 id outline
 id outward
+id overlay_bubble_text
 id overlay_mood_icon
 id overshoot
 id packed
@@ -3246,10 +3224,13 @@ id search_view_status_bar_spacer
 id search_view_toolbar
 id search_view_toolbar_container
 id search_voice_btn
+id seek_entertainment
+id seek_health
+id seek_productivity
+id seek_social
 id select_dialog_listview
 id selected
 id selection_type
-id settings_button
 id sharedValueSet
 id sharedValueUnset
 id shortcut
@@ -3323,12 +3304,10 @@ id textinput_suffix_text
 id time
 id title
 id titleDividerNoCustom
-id title_bar
 id title_template
 id toggle
 id top
 id topPanel
-id top_left_controls
 id touch_outside
 id transitionToEnd
 id transitionToStart
@@ -3344,6 +3323,10 @@ id tv_mood_label
 id tv_mood_status
 id tv_screen_time
 id tv_status
+id tv_weight_entertainment
+id tv_weight_health
+id tv_weight_productivity
+id tv_weight_social
 id unchecked
 id uniform
 id unlabeled
@@ -3359,12 +3342,6 @@ id view_tree_view_model_store_owner
 id visible
 id visible_removing_fragment_view_tag
 id west
-id widget_action_text
-id widget_app_icon
-id widget_app_name
-id widgets_container
-id widgets_placeholder_text
-id widgets_section
 id withText
 id with_icon
 id withinBounds
@@ -3479,11 +3456,8 @@ layout abc_search_dropdown_item_icons_2line
 layout abc_search_view
 layout abc_select_dialog_material
 layout abc_tooltip
-layout activity_all_apps
-layout activity_launcher
 layout activity_main
 layout activity_main_setup
-layout app_item
 layout custom_dialog
 layout design_bottom_navigation_item
 layout design_bottom_sheet_dialog
@@ -3562,7 +3536,6 @@ layout select_dialog_item_material
 layout select_dialog_multichoice_material
 layout select_dialog_singlechoice_material
 layout support_simple_spinner_dropdown_item
-layout widget_item
 mipmap ic_launcher
 mipmap ic_launcher_round
 plurals mtrl_badge_content_description
@@ -4976,4 +4949,3 @@ styleable ViewPager2 android_orientation
 styleable ViewStubCompat android_id android_layout android_inflatedId
 styleable ViewTransition android_id SharedValue SharedValueId clearsTag duration ifTagNotSet ifTagSet motionInterpolator motionTarget onStateTransition pathMotionArc setsTag transitionDisable upDuration viewTransitionMode
 styleable include constraintSet
-xml accessibility_service_config

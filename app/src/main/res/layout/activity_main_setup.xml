@@ -105,14 +105,14 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="悬浮心情图标"
+                    android:text="实时反思悬浮窗"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="始终显示在屏幕上方，反映使用状态"
+                    android:text="拟人表情随 UUT 变化，点击获取 AI 提醒"
                     android:textColor="#888888"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -143,14 +143,14 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="自动壁纸生成"
+                    android:text="阶段性反思壁纸"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="定期根据使用数据生成AI壁纸"
+                    android:text="定时生成 AI 隐喻壁纸反映使用状态"
                     android:textColor="#888888"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -162,7 +162,7 @@
                 android:checked="true" />
         </LinearLayout>
 
-        <!-- Generation interval selector -->
+        <!-- Update schedule -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -174,10 +174,10 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="壁纸更新频率"
+                android:text="壁纸更新时间"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="10dp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -185,37 +185,42 @@
                 android:orientation="horizontal"
                 android:gravity="center">
 
-                <Button
-                    android:id="@+id/btn_interval_30m"
+                <TextView
                     android:layout_width="0dp"
-                    android:layout_height="40dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="30分钟"
-                    android:textSize="12sp"
-                    android:layout_marginEnd="6dp"
-                    android:backgroundTint="#3F3F3F"
-                    android:textColor="#FFFFFF" />
+                    android:text="08:00"
+                    android:textColor="#03DAC5"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:background="#1A03DAC5"
+                    android:padding="8dp" />
 
-                <Button
-                    android:id="@+id/btn_interval_1h"
+                <TextView
                     android:layout_width="0dp"
-                    android:layout_height="40dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="1小时"
-                    android:textSize="12sp"
-                    android:layout_marginEnd="6dp"
-                    android:backgroundTint="#03DAC5"
-                    android:textColor="#000000" />
+                    android:text="12:00"
+                    android:textColor="#03DAC5"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:background="#1A03DAC5"
+                    android:padding="8dp"
+                    android:layout_marginHorizontal="8dp" />
 
-                <Button
-                    android:id="@+id/btn_interval_2h"
+                <TextView
                     android:layout_width="0dp"
-                    android:layout_height="40dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="2小时"
-                    android:textSize="12sp"
-                    android:backgroundTint="#3F3F3F"
-                    android:textColor="#FFFFFF" />
+                    android:text="20:00"
+                    android:textColor="#03DAC5"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:background="#1A03DAC5"
+                    android:padding="8dp" />
             </LinearLayout>
         </LinearLayout>
 
@@ -229,9 +234,8 @@
             android:textStyle="bold"
             android:textColor="#000000"
             android:backgroundTint="#03DAC5"
-            android:layout_marginBottom="12dp" />
+            android:layout_marginBottom="8dp" />
 
-        <!-- Status text -->
         <TextView
             android:id="@+id/tv_generation_status"
             android:layout_width="match_parent"
@@ -240,6 +244,92 @@
             android:textColor="#B0B0B0"
             android:textSize="13sp"
             android:gravity="center"
+            android:layout_marginBottom="20dp" />
+
+        <!-- Weight preferences (black-box weights) -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="壁纸偏好权重"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="调整各维度权重影响壁纸关键词生成"
+            android:textColor="#888888"
+            android:textSize="12sp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Productivity weight -->
+        <TextView
+            android:id="@+id/tv_weight_productivity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="生产力: 40%"
+            android:textColor="#B0B0B0"
+            android:textSize="13sp" />
+
+        <SeekBar
+            android:id="@+id/seek_productivity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="40"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Entertainment weight -->
+        <TextView
+            android:id="@+id/tv_weight_entertainment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="娱乐: 20%"
+            android:textColor="#B0B0B0"
+            android:textSize="13sp" />
+
+        <SeekBar
+            android:id="@+id/seek_entertainment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="20"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Health weight -->
+        <TextView
+            android:id="@+id/tv_weight_health"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="健康: 20%"
+            android:textColor="#B0B0B0"
+            android:textSize="13sp" />
+
+        <SeekBar
+            android:id="@+id/seek_health"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="20"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Social weight -->
+        <TextView
+            android:id="@+id/tv_weight_social"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="社交: 20%"
+            android:textColor="#B0B0B0"
+            android:textSize="13sp" />
+
+        <SeekBar
+            android:id="@+id/seek_social"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="20"
             android:layout_marginBottom="24dp" />
 
         <!-- Permissions section -->
@@ -282,7 +372,6 @@
             android:backgroundTint="#3F3F3F"
             android:layout_marginBottom="24dp" />
 
-        <!-- Data management link -->
         <Button
             android:id="@+id/btn_data_management"
             android:layout_width="match_parent"

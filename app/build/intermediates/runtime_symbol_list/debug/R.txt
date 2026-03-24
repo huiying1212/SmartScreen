@@ -2725,6 +2725,7 @@ int drawable btn_radio_off_mtrl 0x7f07007f
 int drawable btn_radio_off_to_on_mtrl_animation 0x7f070080
 int drawable btn_radio_on_mtrl 0x7f070081
 int drawable btn_radio_on_to_off_mtrl_animation 0x7f070082
+int drawable bubble_background 0x7f0700ea
 int drawable design_fab_background 0x7f070083
 int drawable design_ic_visibility 0x7f070084
 int drawable design_ic_visibility_off 0x7f070085
@@ -2908,21 +2909,6 @@ int id animateToEnd 0x7f08004c
 int id animateToStart 0x7f08004d
 int id antiClockwise 0x7f08004e
 int id anticipate 0x7f08004f
-int id app_icon 0x7f080050
-int id app_icon_1 0x7f080051
-int id app_icon_2 0x7f080052
-int id app_icon_3 0x7f080053
-int id app_icon_4 0x7f080054
-int id app_label 0x7f080055
-int id app_name_1 0x7f080056
-int id app_name_2 0x7f080057
-int id app_name_3 0x7f080058
-int id app_name_4 0x7f080059
-int id app_shortcut_1 0x7f08005a
-int id app_shortcut_2 0x7f08005b
-int id app_shortcut_3 0x7f08005c
-int id app_shortcut_4 0x7f08005d
-int id apps_grid 0x7f08005e
 int id arc 0x7f08005f
 int id asConfigured 0x7f080060
 int id async 0x7f080061
@@ -2930,7 +2916,6 @@ int id auto 0x7f080062
 int id autoComplete 0x7f080063
 int id autoCompleteToEnd 0x7f080064
 int id autoCompleteToStart 0x7f080065
-int id back_button 0x7f080066
 int id barrier 0x7f080067
 int id baseline 0x7f080068
 int id beginOnFirstDraw 0x7f080069
@@ -2938,7 +2923,6 @@ int id beginning 0x7f08006a
 int id bestChoice 0x7f08006b
 int id blocking 0x7f08006c
 int id bottom 0x7f08006d
-int id bottom_apps_section 0x7f08006e
 int id bounce 0x7f08006f
 int id bounceBoth 0x7f080070
 int id bounceEnd 0x7f080071
@@ -2947,9 +2931,6 @@ int id btn_call_deepseek 0x7f080073
 int id btn_call_gemini 0x7f080074
 int id btn_data_management 0x7f080211
 int id btn_generate_now 0x7f080212
-int id btn_interval_1h 0x7f080213
-int id btn_interval_2h 0x7f080214
-int id btn_interval_30m 0x7f080215
 int id btn_perm_overlay 0x7f080216
 int id btn_perm_usage 0x7f080217
 int id btn_start_collection 0x7f080075
@@ -2998,8 +2979,6 @@ int id date_picker_actions 0x7f08009f
 int id decelerate 0x7f0800a0
 int id decelerateAndComplete 0x7f0800a1
 int id decor_content_parent 0x7f0800a2
-int id deepseek_result_text 0x7f0800a3
-int id deepseek_section 0x7f0800a4
 int id default_activity_button 0x7f0800a5
 int id deltaRelative 0x7f0800a6
 int id dependency_ordering 0x7f0800a7
@@ -3025,7 +3004,6 @@ int id dragRight 0x7f0800ba
 int id dragStart 0x7f0800bb
 int id dragUp 0x7f0800bc
 int id dropdown_menu 0x7f0800bd
-int id dynamic_widgets_container 0x7f0800be
 int id easeIn 0x7f0800bf
 int id easeInOut 0x7f0800c0
 int id easeOut 0x7f0800c1
@@ -3038,7 +3016,6 @@ int id endToStart 0x7f0800c7
 int id enterAlways 0x7f0800c8
 int id enterAlwaysCollapsed 0x7f0800c9
 int id exitUntilCollapsed 0x7f0800ca
-int id exit_launcher_button 0x7f0800cb
 int id expand_activities_button 0x7f0800cc
 int id expanded_menu 0x7f0800cd
 int id fade 0x7f0800ce
@@ -3182,6 +3159,7 @@ int id on 0x7f080156
 int id onInterceptTouchReturnSwipe 0x7f080157
 int id outline 0x7f080158
 int id outward 0x7f080159
+int id overlay_bubble_text 0x7f080220
 int id overlay_mood_icon 0x7f080219
 int id overshoot 0x7f08015a
 int id packed 0x7f08015b
@@ -3245,10 +3223,13 @@ int id search_view_status_bar_spacer 0x7f080194
 int id search_view_toolbar 0x7f080195
 int id search_view_toolbar_container 0x7f080196
 int id search_voice_btn 0x7f080197
+int id seek_entertainment 0x7f080221
+int id seek_health 0x7f080222
+int id seek_productivity 0x7f080223
+int id seek_social 0x7f080224
 int id select_dialog_listview 0x7f080198
 int id selected 0x7f080199
 int id selection_type 0x7f08019a
-int id settings_button 0x7f08019b
 int id sharedValueSet 0x7f08019c
 int id sharedValueUnset 0x7f08019d
 int id shortcut 0x7f08019e
@@ -3322,12 +3303,10 @@ int id textinput_suffix_text 0x7f0801df
 int id time 0x7f0801e0
 int id title 0x7f0801e1
 int id titleDividerNoCustom 0x7f0801e2
-int id title_bar 0x7f0801e3
 int id title_template 0x7f0801e4
 int id toggle 0x7f0801e5
 int id top 0x7f0801e6
 int id topPanel 0x7f0801e7
-int id top_left_controls 0x7f0801e8
 int id touch_outside 0x7f0801e9
 int id transitionToEnd 0x7f0801ea
 int id transitionToStart 0x7f0801eb
@@ -3343,6 +3322,10 @@ int id tv_mood_label 0x7f08021d
 int id tv_mood_status 0x7f08021e
 int id tv_screen_time 0x7f08021f
 int id tv_status 0x7f0801f3
+int id tv_weight_entertainment 0x7f080225
+int id tv_weight_health 0x7f080226
+int id tv_weight_productivity 0x7f080227
+int id tv_weight_social 0x7f080228
 int id unchecked 0x7f0801f4
 int id uniform 0x7f0801f5
 int id unlabeled 0x7f0801f6
@@ -3358,12 +3341,6 @@ int id view_tree_view_model_store_owner 0x7f0801ff
 int id visible 0x7f080200
 int id visible_removing_fragment_view_tag 0x7f080201
 int id west 0x7f080202
-int id widget_action_text 0x7f080203
-int id widget_app_icon 0x7f080204
-int id widget_app_name 0x7f080205
-int id widgets_container 0x7f080206
-int id widgets_placeholder_text 0x7f080207
-int id widgets_section 0x7f080208
 int id withText 0x7f080209
 int id with_icon 0x7f08020a
 int id withinBounds 0x7f08020b
@@ -3478,11 +3455,8 @@ int layout abc_search_dropdown_item_icons_2line 0x7f0b0018
 int layout abc_search_view 0x7f0b0019
 int layout abc_select_dialog_material 0x7f0b001a
 int layout abc_tooltip 0x7f0b001b
-int layout activity_all_apps 0x7f0b001c
-int layout activity_launcher 0x7f0b001d
 int layout activity_main 0x7f0b001e
 int layout activity_main_setup 0x7f0b006e
-int layout app_item 0x7f0b001f
 int layout custom_dialog 0x7f0b0020
 int layout design_bottom_navigation_item 0x7f0b0021
 int layout design_bottom_sheet_dialog 0x7f0b0022
@@ -3561,7 +3535,6 @@ int layout select_dialog_item_material 0x7f0b0069
 int layout select_dialog_multichoice_material 0x7f0b006a
 int layout select_dialog_singlechoice_material 0x7f0b006b
 int layout support_simple_spinner_dropdown_item 0x7f0b006c
-int layout widget_item 0x7f0b006d
 int mipmap ic_launcher 0x7f0d0000
 int mipmap ic_launcher_round 0x7f0d0001
 int plurals mtrl_badge_content_description 0x7f0e0000
@@ -6861,4 +6834,3 @@ int styleable ViewTransition_upDuration 13
 int styleable ViewTransition_viewTransitionMode 14
 int[] styleable include { 0x7f030110 }
 int styleable include_constraintSet 0
-int xml accessibility_service_config 0x7f120000

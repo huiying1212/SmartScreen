@@ -36,10 +36,6 @@
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\launcher_exit_button_bg.xml"
     },
     {
-        "merged": "com.datacollector.android.app-merged_res-29:/drawable_mood_concerned.xml.flat",
-        "source": "com.datacollector.android.app-main-31:/drawable/mood_concerned.xml"
-    },
-    {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_mood_exhausted.xml.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_exhausted.xml"
     },
@@ -50,14 +46,6 @@
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_mood_happy.xml.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_happy.xml"
-    },
-    {
-        "merged": "com.datacollector.android.app-merged_res-29:/drawable_mood_exhausted.xml.flat",
-        "source": "com.datacollector.android.app-main-31:/drawable/mood_exhausted.xml"
-    },
-    {
-        "merged": "com.datacollector.android.app-merged_res-29:/drawable_mood_tired.xml.flat",
-        "source": "com.datacollector.android.app-main-31:/drawable/mood_tired.xml"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\layout_activity_main.xml.flat",
@@ -84,10 +72,6 @@
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\launcher_button_bg.xml"
     },
     {
-        "merged": "com.datacollector.android.app-merged_res-29:/drawable_mood_energetic.xml.flat",
-        "source": "com.datacollector.android.app-main-31:/drawable/mood_energetic.xml"
-    },
-    {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_mood_energetic.xml.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_energetic.xml"
     },
@@ -98,6 +82,10 @@
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\layout_floating_overlay.xml.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\layout\\floating_overlay.xml"
+    },
+    {
+        "merged": "com.datacollector.android.app-merged_res-29:/drawable_bubble_background.xml.flat",
+        "source": "com.datacollector.android.app-main-31:/drawable/bubble_background.xml"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-xxhdpi_ic_launcher.webp.flat",
@@ -140,10 +128,6 @@
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\app_item_bg.xml"
     },
     {
-        "merged": "com.datacollector.android.app-merged_res-29:/drawable_mood_happy.xml.flat",
-        "source": "com.datacollector.android.app-main-31:/drawable/mood_happy.xml"
-    },
-    {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\layout_activity_main_setup.xml.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\layout\\activity_main_setup.xml"
     },
@@ -154,10 +138,6 @@
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-xxxhdpi_ic_launcher_round.webp.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-xxxhdpi\\ic_launcher_round.webp"
-    },
-    {
-        "merged": "com.datacollector.android.app-merged_res-29:/drawable_mood_neutral.xml.flat",
-        "source": "com.datacollector.android.app-main-31:/drawable/mood_neutral.xml"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-xhdpi_ic_launcher_round.webp.flat",

@@ -5,14 +5,12 @@ import android.app.usage.UsageEvents;
 import android.app.usage.UsageStats;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.BatteryManager;
 import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import com.datacollector.android.utils.AppCategoryClassifier;
 import com.datacollector.android.utils.CollectionConfig;
 
 import org.json.JSONArray;
@@ -29,14 +27,13 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 屏幕使用时长收集器
- *
- * 收集三个维度的数据：
- * 1. 今日屏幕总使用时长（亮屏时间）
- * 2. 本次解锁后的使用时长（当前 session）
- * 3. 今日各 App 的前台使用时长（Top N）
- *
- * 依赖：PACKAGE_USAGE_STATS（特殊权限，需用户在「设置-有权查看使用情况的应用」手动开启）
+ * 屏幕使用数据收集器，采集：
+ *   screenTime    — 今日累计屏幕使用时长
+ *   unlockCount   — 过去一小时内解锁次数
+ *   currentApp    — 当前前台 App 包名
+ *   appCategory   — 当前 App 分类（社交/娱乐/生产力/工具等）
+ *   topApps       — 今日各 App 前台使用时长 Top N
+ *   sessionTime   — 本次解锁后的使用时长
  */
 public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
 
@@ -46,8 +43,11 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
     private final SimpleDateFormat dateFormat =
             new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
 
+    private final AppCategoryClassifier categoryClassifier;
+
     public ScreenUsageCollector(Context context) {
         super(context, COLLECTOR_ID);
+        this.categoryClassifier = new AppCategoryClassifier(context);
     }
 
     @Override
@@ -70,10 +70,6 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
         return hasUsageStatsPermission();
     }
 
-    /**
-     * 检查 PACKAGE_USAGE_STATS 权限（该权限不能通过 checkSelfPermission 判断，
-     * 需要通过 AppOpsManager 判断）
-     */
     private boolean hasUsageStatsPermission() {
         AppOpsManager appOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
         if (appOps == null) return false;
@@ -92,7 +88,6 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
         try {
             long now = System.currentTimeMillis();
 
-            // 今天零点时间戳
             Calendar cal = Calendar.getInstance();
             cal.set(Calendar.HOUR_OF_DAY, 0);
             cal.set(Calendar.MINUTE, 0);
@@ -107,36 +102,48 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
                 return result;
             }
 
-            // ── 1. 今日各 App 前台使用时长 ──────────────────────────────
             JSONArray topApps = collectTopApps(usm, todayStartMs, now);
-
-            // ── 2-4. 单次遍历 UsageEvents，同时计算：
-            //    屏幕总时长 / 本次 session / 当前 App 及其本次打开时长 ──────
             EventScanResult scan = scanEvents(usm, todayStartMs, now);
 
-            // ── 5. 当前前台 App 今日累计使用时长 ─────────────────────────
             long foregroundAppTodayMs = 0;
             if (scan.foregroundPkg != null) {
                 foregroundAppTodayMs = getAppUsageToday(usm, scan.foregroundPkg, todayStartMs, now);
             }
 
+            // App 分类
+            String appCategoryLabel = "未知";
+            String appCategoryEn = "other";
+            if (scan.foregroundPkg != null) {
+                AppCategoryClassifier.AppCategory cat =
+                        categoryClassifier.classify(scan.foregroundPkg);
+                appCategoryLabel = cat.labelCn;
+                appCategoryEn = cat.labelEn;
+            }
+
             result.put("collection_time", dateFormat.format(new Date(now)));
             result.put("today_start", dateFormat.format(new Date(todayStartMs)));
 
+            // screenTime
             result.put("today_screen_time_ms", scan.todayScreenMs);
             result.put("today_screen_time_minutes", scan.todayScreenMs / 60000);
             result.put("today_screen_time_readable", formatDuration(scan.todayScreenMs));
 
+            // unlockCount（过去一小时）
+            result.put("unlock_count_last_hour", scan.unlockCountLastHour);
+
+            // session
             result.put("current_session_ms", scan.sessionMs);
             result.put("current_session_minutes", scan.sessionMs / 60000);
             result.put("current_session_readable", formatDuration(scan.sessionMs));
 
+            // currentApp & appCategory
             result.put("foreground_app_package", scan.foregroundPkg);
+            result.put("foreground_app_category", appCategoryLabel);
+            result.put("foreground_app_category_en", appCategoryEn);
             result.put("foreground_app_today_ms", foregroundAppTodayMs);
-            result.put("foreground_app_today_minutes", foregroundAppTodayMs / 60000);
             result.put("foreground_app_today_readable", formatDuration(foregroundAppTodayMs));
 
-            // 当前这次打开 App 的持续时长
+            // 当前这次打开的持续时长
             result.put("foreground_app_current_open_ms", scan.currentOpenMs);
             result.put("foreground_app_current_open_minutes", scan.currentOpenMs / 60000);
             result.put("foreground_app_current_open_readable", formatDuration(scan.currentOpenMs));
@@ -147,12 +154,6 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
 
             result.put("top_apps_today", topApps);
 
-            Log.d(TAG, "screen_usage collected:"
-                    + " today=" + formatDuration(scan.todayScreenMs)
-                    + " session=" + formatDuration(scan.sessionMs)
-                    + " foreground=" + scan.foregroundPkg
-                    + " current_open=" + formatDuration(scan.currentOpenMs));
-
         } catch (JSONException e) {
             Log.e(TAG, "doCollectData error", e);
         }
@@ -160,24 +161,16 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
         return result;
     }
 
-    /**
-     * 收集今日前台使用时长 Top N 的 App
-     */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP_MR1)
     private JSONArray collectTopApps(UsageStatsManager usm, long startMs, long endMs) {
         JSONArray out = new JSONArray();
         int topN = configuration.optInt("top_apps_count", DEFAULT_TOP_APPS);
         boolean includeSystem = configuration.optBoolean("include_system_apps", false);
 
-        Map<String, UsageStats> statsMap =
-                usm.queryAndAggregateUsageStats(startMs, endMs);
-        if (statsMap == null || statsMap.isEmpty()) {
-            Log.d(TAG, "collectTopApps: no usage stats returned");
-            return out;
-        }
+        Map<String, UsageStats> statsMap = usm.queryAndAggregateUsageStats(startMs, endMs);
+        if (statsMap == null || statsMap.isEmpty()) return out;
 
         List<UsageStats> statsList = new ArrayList<>(statsMap.values());
-        // 按前台时间降序排列
         Collections.sort(statsList,
                 (a, b) -> Long.compare(b.getTotalTimeInForeground(), a.getTotalTimeInForeground()));
 
@@ -189,48 +182,35 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
 
             String pkg = stats.getPackageName();
             if (!includeSystem && isSystemPackage(pkg)) continue;
-            // 排除自身
             if (pkg.equals(context.getPackageName())) continue;
 
             try {
+                AppCategoryClassifier.AppCategory cat = categoryClassifier.classify(pkg);
                 JSONObject app = new JSONObject();
                 app.put("package_name", pkg);
+                app.put("category", cat.labelCn);
+                app.put("category_en", cat.labelEn);
                 app.put("usage_ms", foregroundMs);
                 app.put("usage_minutes", foregroundMs / 60000);
                 app.put("usage_readable", formatDuration(foregroundMs));
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    app.put("last_time_visible", dateFormat.format(
-                            new Date(stats.getLastTimeVisible())));
-                } else {
-                    app.put("last_time_used", dateFormat.format(
-                            new Date(stats.getLastTimeUsed())));
-                }
                 out.put(app);
                 count++;
             } catch (JSONException e) {
                 e.printStackTrace();
             }
         }
-        Log.d(TAG, "collectTopApps: " + out.length() + " apps");
         return out;
     }
 
-    /** 单次 UsageEvents 扫描的结果 */
     private static class EventScanResult {
-        long todayScreenMs = 0;   // 今日总亮屏时长
-        long sessionMs = 0;       // 本次解锁后时长
-        String foregroundPkg = null;    // 当前前台 App 包名
-        long currentOpenMs = 0;         // 当前这次打开 App 的持续时长
-        long currentOpenSince = -1;     // 当前这次打开的起始时间戳
+        long todayScreenMs = 0;
+        long sessionMs = 0;
+        int unlockCountLastHour = 0;
+        String foregroundPkg = null;
+        long currentOpenMs = 0;
+        long currentOpenSince = -1;
     }
 
-    /**
-     * 单次遍历 UsageEvents，同时计算：
-     *  - 今日总亮屏时长
-     *  - 本次解锁 session 时长
-     *  - 当前前台 App 包名
-     *  - 当前这次打开 App 的持续时长（MOVE_TO_FOREGROUND → 现在）
-     */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP_MR1)
     private EventScanResult scanEvents(UsageStatsManager usm, long startMs, long endMs) {
         EventScanResult result = new EventScanResult();
@@ -240,9 +220,9 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
 
         long screenOnStart = -1;
         long lastUnlockTime = -1;
-        // 追踪当前 App：记录其最近一次进入前台的时间
         String lastFgPkg = null;
         long lastFgTime = -1;
+        long oneHourAgo = endMs - 3600_000L;
 
         UsageEvents.Event event = new UsageEvents.Event();
         while (events.hasNextEvent()) {
@@ -263,18 +243,18 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
                     break;
 
                 case UsageEvents.Event.KEYGUARD_HIDDEN:
-                    // 解锁成功
                     lastUnlockTime = ts;
+                    if (ts >= oneHourAgo) {
+                        result.unlockCountLastHour++;
+                    }
                     break;
 
                 case UsageEvents.Event.MOVE_TO_FOREGROUND:
-                    // 新 App 进入前台：记录包名和时间
                     lastFgPkg = event.getPackageName();
                     lastFgTime = ts;
                     break;
 
                 case UsageEvents.Event.MOVE_TO_BACKGROUND:
-                    // 如果离开前台的是我们正在追踪的 App，清除（表示它已不在前台）
                     if (lastFgPkg != null && lastFgPkg.equals(event.getPackageName())) {
                         lastFgPkg = null;
                         lastFgTime = -1;
@@ -283,38 +263,26 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
             }
         }
 
-        // 屏幕仍亮着
         if (screenOnStart > 0) {
             result.todayScreenMs += endMs - screenOnStart;
         }
-        // 回退：ROM 不暴露屏幕事件时用前台时间近似
         if (result.todayScreenMs == 0) {
             result.todayScreenMs = calcScreenTimeFromForeground(usm, startMs, endMs);
         }
 
-        // 本次 session
         if (lastUnlockTime > 0) {
             result.sessionMs = endMs - lastUnlockTime;
-            Log.d(TAG, "session: unlocked at " + dateFormat.format(new Date(lastUnlockTime))
-                    + " duration=" + formatDuration(result.sessionMs));
         }
 
-        // 当前前台 App（lastFgPkg != null 意味着它还在前台）
         if (lastFgPkg != null && !lastFgPkg.equals(context.getPackageName())) {
             result.foregroundPkg = lastFgPkg;
             result.currentOpenSince = lastFgTime;
             result.currentOpenMs = lastFgTime > 0 ? endMs - lastFgTime : 0;
-            Log.d(TAG, "foreground app: " + lastFgPkg
-                    + " open since=" + (lastFgTime > 0 ? dateFormat.format(new Date(lastFgTime)) : "unknown")
-                    + " duration=" + formatDuration(result.currentOpenMs));
         }
 
         return result;
     }
 
-    /**
-     * 回退方案：用各 App 前台时间的最大值近似屏幕使用时长
-     */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP_MR1)
     private long calcScreenTimeFromForeground(UsageStatsManager usm, long startMs, long endMs) {
         Map<String, UsageStats> statsMap = usm.queryAndAggregateUsageStats(startMs, endMs);
@@ -328,21 +296,15 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
         return total;
     }
 
-    /**
-     * 获取指定 App 今日的前台使用时长
-     */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP_MR1)
     private long getAppUsageToday(UsageStatsManager usm, String packageName,
-            long startMs, long endMs) {
+                                  long startMs, long endMs) {
         Map<String, UsageStats> statsMap = usm.queryAndAggregateUsageStats(startMs, endMs);
         if (statsMap == null) return 0;
         UsageStats stats = statsMap.get(packageName);
         return stats != null ? stats.getTotalTimeInForeground() : 0;
     }
 
-    /**
-     * 粗略判断是否为系统包（launcher、设置、系统 UI 等），过滤掉噪音数据
-     */
     private boolean isSystemPackage(String packageName) {
         if (packageName == null) return true;
         return packageName.startsWith("com.android.")
@@ -354,17 +316,12 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
                 || packageName.contains(".systemui");
     }
 
-    /**
-     * 将毫秒格式化为 "Xh Ym" 的可读字符串
-     */
     private String formatDuration(long ms) {
         if (ms <= 0) return "0m";
         long totalMin = ms / 60000;
         long hours = totalMin / 60;
         long minutes = totalMin % 60;
-        if (hours > 0) {
-            return hours + "h " + minutes + "m";
-        }
+        if (hours > 0) return hours + "h " + minutes + "m";
         return minutes + "m";
     }
 }

@@ -9,599 +9,278 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.datacollector.android.R;
 import com.datacollector.android.managers.DataCollectorManager;
 import com.datacollector.android.services.DataCollectionService;
-import com.datacollector.android.api.GeminiApiClient;
-import com.datacollector.android.api.DeepSeekApiClient;
-import com.datacollector.android.activities.AllAppsActivity;
-import com.datacollector.android.R;
 
 import org.json.JSONObject;
 
 /**
- * 安卓用户行为数据收集器主界面
- * 基于CATIA论文实现的上下文感知数据收集系统
- * 负责用户界面展示、权限管理和服务控制
+ * 数据收集调试/管理界面。
+ * 提供：启停服务、查看采集数据、查看收集器状态、切换自动分析。
  */
 public class AndroidDataCollector extends Activity {
-    
-    private static final String TAG = "AndroidDataCollector";
+
     private static final int PERMISSION_REQUEST_CODE = 1001;
-    
-    // UI组件
-    private Button startButton;
-    private Button stopButton;
-    private Button getDataButton;
-    private Button statusButton;  // 添加状态按钮引用
-    private Button geminiButton;  // 添加Gemini API按钮
-    private Button deepSeekButton;  // 添加DeepSeek API按钮
-    private Button aiAnalysisToggleButton;  // 添加AI分析开关按钮
-    private Button allAppsButton;  // 添加所有应用按钮
-    private TextView statusTextView;
-    private TextView dataDisplayTextView;
-    
-    // 数据收集服务
+
+    private Button startButton, stopButton, getDataButton, statusButton;
+    private Button aiAnalysisToggleButton;
+    private TextView statusTextView, dataDisplayTextView;
+
     private DataCollectionService dataCollectionService;
     private boolean isServiceBound = false;
-    
-    // Gemini API客户端
-    private GeminiApiClient geminiApiClient;
-    
-    // DeepSeek API客户端
-    private DeepSeekApiClient deepSeekApiClient;
-    
-    // 服务连接对象
-    private ServiceConnection serviceConnection = new ServiceConnection() {
+
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            DataCollectionService.DataCollectionBinder binder = 
-                (DataCollectionService.DataCollectionBinder) service;
+            DataCollectionService.DataCollectionBinder binder =
+                    (DataCollectionService.DataCollectionBinder) service;
             dataCollectionService = binder.getService();
             isServiceBound = true;
-            
-            // 启用按钮
-            stopButton.setEnabled(true);
-            getDataButton.setEnabled(true);
-            statusButton.setEnabled(true);
-            geminiButton.setEnabled(true);
-            deepSeekButton.setEnabled(true);
-            aiAnalysisToggleButton.setEnabled(true);
-            
-            updateStatus("数据收集服务已连接");
-            updateAiAnalysisButtonText();
+            setButtonsEnabled(true);
+            updateStatus("服务已连接");
+            updateAiToggleText();
         }
-        
+
         @Override
         public void onServiceDisconnected(ComponentName name) {
             dataCollectionService = null;
             isServiceBound = false;
-            
-            // 禁用按钮
-            stopButton.setEnabled(false);
-            getDataButton.setEnabled(false);
-            statusButton.setEnabled(false);
-            geminiButton.setEnabled(false);
-            deepSeekButton.setEnabled(false);
-            aiAnalysisToggleButton.setEnabled(false);
-            
-            updateStatus("数据收集服务已断开");
-            updateAiAnalysisButtonText();
+            setButtonsEnabled(false);
+            updateStatus("服务已断开");
         }
     };
-    
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        // 初始化Gemini API客户端
-        geminiApiClient = new GeminiApiClient(this);
-        
-        // 初始化DeepSeek API客户端
-        deepSeekApiClient = new DeepSeekApiClient(this);
-        
-        // 创建简单的UI布局
         createUI();
-        
-        // 请求权限
         requestPermissions();
     }
-    
-    /**
-     * 创建用户界面
-     */
+
     private void createUI() {
-        // 创建垂直线性布局
         android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
         layout.setOrientation(android.widget.LinearLayout.VERTICAL);
         layout.setPadding(50, 50, 50, 50);
-        
-        // 标题
-        TextView titleTextView = new TextView(this);
-        titleTextView.setText("Android数据收集器 (重构版)");
-        titleTextView.setTextSize(24);
-        titleTextView.setPadding(0, 0, 0, 30);
-        layout.addView(titleTextView);
-        
-        // 状态显示
+        layout.setBackgroundColor(0xFF1A1A2E);
+
+        TextView title = new TextView(this);
+        title.setText("数据收集管理");
+        title.setTextSize(22);
+        title.setTextColor(0xFFFFFFFF);
+        title.setPadding(0, 0, 0, 20);
+        layout.addView(title);
+
         statusTextView = new TextView(this);
-        statusTextView.setText("状态: 未启动");
-        statusTextView.setTextSize(16);
+        statusTextView.setText("状态: 未连接");
+        statusTextView.setTextSize(14);
+        statusTextView.setTextColor(0xFFB0B0B0);
         statusTextView.setPadding(0, 0, 0, 20);
         layout.addView(statusTextView);
-        
-        // 启动按钮
-        startButton = new Button(this);
-        startButton.setText("启动数据收集");
-        startButton.setOnClickListener(v -> startDataCollection());
-        layout.addView(startButton);
-        
-        // 停止按钮
-        stopButton = new Button(this);
-        stopButton.setText("停止数据收集");
-        stopButton.setOnClickListener(v -> stopDataCollection());
+
+        startButton = addButton(layout, "启动数据收集", v -> startDataCollection());
+        stopButton = addButton(layout, "停止数据收集", v -> stopDataCollection());
+        getDataButton = addButton(layout, "获取当前数据", v -> getCurrentData());
+        statusButton = addButton(layout, "查看收集器状态", v -> getCollectorStatus());
+        aiAnalysisToggleButton = addButton(layout, "AI自动分析: 检查中...", v -> toggleAiAnalysis());
+
         stopButton.setEnabled(false);
-        layout.addView(stopButton);
-        
-        // 获取数据按钮
-        getDataButton = new Button(this);
-        getDataButton.setText("获取当前数据");
-        getDataButton.setOnClickListener(v -> getCurrentData());
         getDataButton.setEnabled(false);
-        layout.addView(getDataButton);
-        
-        // 查看状态按钮
-        statusButton = new Button(this);
-        statusButton.setText("查看收集器状态");
-        statusButton.setOnClickListener(v -> getCollectorStatus());
         statusButton.setEnabled(false);
-        layout.addView(statusButton);
-        
-        // Gemini API按钮
-        geminiButton = new Button(this);
-        geminiButton.setText("调用Gemini AI分析");
-        geminiButton.setOnClickListener(v -> callGeminiApi());
-        geminiButton.setEnabled(false);
-        layout.addView(geminiButton);
-        
-        // DeepSeek API按钮
-        deepSeekButton = new Button(this);
-        deepSeekButton.setText("调用DeepSeek AI分析");
-        deepSeekButton.setOnClickListener(v -> callDeepSeekApi());
-        deepSeekButton.setEnabled(false);
-        layout.addView(deepSeekButton);
-        
-        // AI分析开关按钮
-        aiAnalysisToggleButton = new Button(this);
-        aiAnalysisToggleButton.setText("AI自动分析: 检查中...");
-        aiAnalysisToggleButton.setOnClickListener(v -> toggleAiAnalysis());
         aiAnalysisToggleButton.setEnabled(false);
-        layout.addView(aiAnalysisToggleButton);
-        
-        // 所有应用按钮
-        allAppsButton = new Button(this);
-        allAppsButton.setText("查看所有应用");
-        allAppsButton.setOnClickListener(v -> showAllApps());
-        layout.addView(allAppsButton);
-        
-        // 数据显示区域
+
         dataDisplayTextView = new TextView(this);
         dataDisplayTextView.setText("数据将在这里显示...");
-        dataDisplayTextView.setTextSize(12);
-        dataDisplayTextView.setPadding(16, 16, 16, 16); // 增加内边距
-        dataDisplayTextView.setMaxLines(Integer.MAX_VALUE); // 移除行数限制
-        dataDisplayTextView.setTextIsSelectable(true); // 允许选择文本
-        dataDisplayTextView.setBackgroundColor(0xFFF5F5F5); // 设置浅灰色背景
-        dataDisplayTextView.setTypeface(android.graphics.Typeface.MONOSPACE); // 使用等宽字体
-        
-        // 添加ScrollView包装数据显示区域
+        dataDisplayTextView.setTextSize(11);
+        dataDisplayTextView.setPadding(16, 16, 16, 16);
+        dataDisplayTextView.setMaxLines(Integer.MAX_VALUE);
+        dataDisplayTextView.setTextIsSelectable(true);
+        dataDisplayTextView.setTextColor(0xFFCCCCCC);
+        dataDisplayTextView.setBackgroundColor(0xFF222233);
+        dataDisplayTextView.setTypeface(android.graphics.Typeface.MONOSPACE);
+
         android.widget.ScrollView scrollView = new android.widget.ScrollView(this);
-        android.widget.LinearLayout.LayoutParams scrollParams = new android.widget.LinearLayout.LayoutParams(
-            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-            0,
-            1.0f  // 权重为1，占用剩余空间
-        );
-        scrollParams.topMargin = 20; // 添加上边距
+        android.widget.LinearLayout.LayoutParams scrollParams =
+                new android.widget.LinearLayout.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f);
+        scrollParams.topMargin = 20;
         scrollView.setLayoutParams(scrollParams);
         scrollView.addView(dataDisplayTextView);
         layout.addView(scrollView);
-        
+
         setContentView(layout);
     }
-    
-    /**
-     * 请求必要的权限
-     */
+
+    private Button addButton(android.widget.LinearLayout parent, String text,
+                             android.view.View.OnClickListener listener) {
+        Button btn = new Button(this);
+        btn.setText(text);
+        btn.setTextColor(0xFFFFFFFF);
+        btn.setOnClickListener(listener);
+        android.widget.LinearLayout.LayoutParams p =
+                new android.widget.LinearLayout.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+        p.bottomMargin = 8;
+        btn.setLayoutParams(p);
+        parent.addView(btn);
+        return btn;
+    }
+
+    private void setButtonsEnabled(boolean enabled) {
+        stopButton.setEnabled(enabled);
+        getDataButton.setEnabled(enabled);
+        statusButton.setEnabled(enabled);
+        aiAnalysisToggleButton.setEnabled(enabled);
+        startButton.setEnabled(!enabled);
+    }
+
     private void requestPermissions() {
         String[] permissions = {
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.READ_CALENDAR,
-            Manifest.permission.BLUETOOTH,
-            Manifest.permission.BLUETOOTH_ADMIN,
-            Manifest.permission.BLUETOOTH_CONNECT,
-            Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.ACCESS_WIFI_STATE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.ACTIVITY_RECOGNITION,
-            Manifest.permission.BODY_SENSORS
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.READ_CALENDAR,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.ACTIVITY_RECOGNITION,
+                Manifest.permission.BODY_SENSORS
         };
-        
-        // 检查哪些权限需要请求
-        java.util.List<String> permissionsToRequest = new java.util.ArrayList<>();
-        for (String permission : permissions) {
-            if (ContextCompat.checkSelfPermission(this, permission) 
-                != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(permission);
+
+        java.util.List<String> needed = new java.util.ArrayList<>();
+        for (String p : permissions) {
+            if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(p);
             }
         }
-        
-        if (!permissionsToRequest.isEmpty()) {
-            ActivityCompat.requestPermissions(this, 
-                permissionsToRequest.toArray(new String[0]), 
-                PERMISSION_REQUEST_CODE);
+
+        if (!needed.isEmpty()) {
+            ActivityCompat.requestPermissions(this,
+                    needed.toArray(new String[0]), PERMISSION_REQUEST_CODE);
         } else {
             updateStatus("所有权限已获取");
         }
     }
-    
-    /**
-     * 启动数据收集
-     */
+
     private void startDataCollection() {
-        if (!checkPermissions()) {
-            Toast.makeText(this, "请先授予必要权限", Toast.LENGTH_SHORT).show();
-            requestPermissions();
-            return;
-        }
-        
-        // 启动数据收集服务
-        Intent serviceIntent = new Intent(this, DataCollectionService.class);
-        startService(serviceIntent);
-        
-        // 绑定服务
-        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
-        
-        updateStatus("正在启动数据收集服务...");
+        Intent intent = new Intent(this, DataCollectionService.class);
+        startService(intent);
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        updateStatus("正在启动...");
     }
-    
-    /**
-     * 停止数据收集
-     */
+
     private void stopDataCollection() {
         if (isServiceBound) {
             unbindService(serviceConnection);
             isServiceBound = false;
         }
-        
-        // 停止服务
-        Intent serviceIntent = new Intent(this, DataCollectionService.class);
-        stopService(serviceIntent);
-        
-        updateStatus("数据收集已停止");
-        updateUI();
+        stopService(new Intent(this, DataCollectionService.class));
+        updateStatus("已停止");
+        setButtonsEnabled(false);
     }
-    
-    /**
-     * 获取当前数据
-     */
+
     private void getCurrentData() {
-        if (isServiceBound && dataCollectionService != null) {
-            new Thread(() -> {
-                try {
-                    JSONObject data = dataCollectionService.getCompleteContextData();
-                    runOnUiThread(() -> {
-                        if (data != null) {
-                            try {
-                                String displayText = data.toString(2); // 格式化显示
-                                dataDisplayTextView.setText(displayText);
-                                updateStatus("数据获取成功");
-                            } catch (Exception e) {
-                                dataDisplayTextView.setText("数据格式化错误: " + e.getMessage());
-                            }
-                        } else {
-                            dataDisplayTextView.setText("未获取到数据");
+        if (!isServiceBound || dataCollectionService == null) return;
+
+        new Thread(() -> {
+            try {
+                JSONObject data = dataCollectionService.getCompleteContextData();
+                runOnUiThread(() -> {
+                    if (data != null) {
+                        try {
+                            dataDisplayTextView.setText(data.toString(2));
+                            updateStatus("数据获取成功");
+                        } catch (Exception e) {
+                            dataDisplayTextView.setText("格式化错误: " + e.getMessage());
                         }
-                    });
-                } catch (Exception e) {
-                    runOnUiThread(() -> {
-                        dataDisplayTextView.setText("获取数据出错: " + e.getMessage());
-                        updateStatus("数据获取失败");
-                    });
-                }
-            }).start();
-        } else {
-            Toast.makeText(this, "服务未连接", Toast.LENGTH_SHORT).show();
-        }
+                    } else {
+                        dataDisplayTextView.setText("未获取到数据");
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> dataDisplayTextView.setText("错误: " + e.getMessage()));
+            }
+        }).start();
     }
-    
-    /**
-     * 获取收集器状态信息
-     */
+
     private void getCollectorStatus() {
-        if (isServiceBound && dataCollectionService != null) {
-            new Thread(() -> {
-                try {
-                    // 通过Service获取DataCollectorManager - 修复var兼容性问题
-                    DataCollectorManager collectorManager = dataCollectionService.getCollectorManager();
-                    if (collectorManager != null) {
-                        JSONObject status = collectorManager.getCollectorsStatus();
-                        runOnUiThread(() -> {
-                            if (status != null) {
-                                try {
-                                    String statusText = "收集器状态信息:\n" + status.toString(2);
-                                    dataDisplayTextView.setText(statusText);
-                                    updateStatus("状态获取成功");
-                                } catch (Exception e) {
-                                    dataDisplayTextView.setText("状态格式化错误: " + e.getMessage());
-                                }
-                            } else {
-                                dataDisplayTextView.setText("未获取到状态信息");
-                            }
-                        });
-                    }
-                } catch (Exception e) {
-                    runOnUiThread(() -> {
-                        dataDisplayTextView.setText("获取状态出错: " + e.getMessage());
-                        updateStatus("状态获取失败");
-                    });
-                }
-            }).start();
-        } else {
-            Toast.makeText(this, "服务未连接", Toast.LENGTH_SHORT).show();
-        }
-    }
-    
-    
-    /**
-     * 调用Gemini API进行数据分析
-     */
-    private void callGeminiApi() {
-        if (!isServiceBound || dataCollectionService == null) {
-            Toast.makeText(this, "数据收集服务未连接", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        
-        updateStatus("正在调用Gemini API分析...");
-        dataDisplayTextView.setText("正在分析数据，请稍候...");
-        
-        // 禁用按钮防止重复点击
-        geminiButton.setEnabled(false);
-        
-        geminiApiClient.callGeminiWithLatestData(new GeminiApiClient.GeminiApiCallback() {
-            @Override
-            public void onSuccess(String response) {
+        if (!isServiceBound || dataCollectionService == null) return;
+
+        new Thread(() -> {
+            try {
+                DataCollectorManager mgr = dataCollectionService.getCollectorManager();
+                if (mgr == null) return;
+                JSONObject status = mgr.getCollectorsStatus();
+                String stats = dataCollectionService.getCollectionStatsSummary();
+
                 runOnUiThread(() -> {
                     try {
-                        // 尝试格式化JSON响应
-                        JSONObject responseJson = new JSONObject(response);
-                        String formattedResponse = "Gemini AI分析结果:\n" + responseJson.toString(2);
-                        dataDisplayTextView.setText(formattedResponse);
-                        updateStatus("Gemini API调用成功");
+                        String text = "收集器状态:\n" + status.toString(2)
+                                + "\n\n统计:\n" + stats;
+                        dataDisplayTextView.setText(text);
+                        updateStatus("状态获取成功");
                     } catch (Exception e) {
-                        // 如果不是JSON格式，直接显示原始响应
-                        String displayText = "Gemini AI分析结果:\n" + response;
-                        dataDisplayTextView.setText(displayText);
-                        updateStatus("Gemini API调用成功");
+                        dataDisplayTextView.setText("错误: " + e.getMessage());
                     }
-                    geminiButton.setEnabled(true);
                 });
+            } catch (Exception e) {
+                runOnUiThread(() -> dataDisplayTextView.setText("错误: " + e.getMessage()));
             }
-            
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    dataDisplayTextView.setText("Gemini API调用失败:\n" + error);
-                    updateStatus("Gemini API调用失败");
-                    geminiButton.setEnabled(true);
-                });
-            }
-        });
+        }).start();
     }
-    
-    /**
-     * 调用DeepSeek API进行数据分析
-     */
-    private void callDeepSeekApi() {
-        if (!isServiceBound || dataCollectionService == null) {
-            Toast.makeText(this, "数据收集服务未连接", Toast.LENGTH_SHORT).show();
-            return;
-        }
 
-        updateStatus("正在调用DeepSeek API分析...");
-        dataDisplayTextView.setText("正在分析数据，请稍候...");
-
-        // 禁用按钮防止重复点击
-        deepSeekButton.setEnabled(false);
-
-        deepSeekApiClient.callDeepSeekWithLatestData(new DeepSeekApiClient.DeepSeekApiCallback() {
-            @Override
-            public void onSuccess(String response) {
-                runOnUiThread(() -> {
-                    try {
-                        // 尝试格式化JSON响应
-                        JSONObject responseJson = new JSONObject(response);
-                        String formattedResponse = "DeepSeek AI分析结果:\n" + responseJson.toString(2);
-                        dataDisplayTextView.setText(formattedResponse);
-                        updateStatus("DeepSeek API调用成功");
-                    } catch (Exception e) {
-                        // 如果不是JSON格式，直接显示原始响应
-                        String displayText = "DeepSeek AI分析结果:\n" + response;
-                        dataDisplayTextView.setText(displayText);
-                        updateStatus("DeepSeek API调用成功");
-                    }
-                    deepSeekButton.setEnabled(true);
-                });
-            }
-
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    dataDisplayTextView.setText("DeepSeek API调用失败:\n" + error);
-                    updateStatus("DeepSeek API调用失败");
-                    deepSeekButton.setEnabled(true);
-                });
-            }
-        });
-    }
-    
-    /**
-     * 切换AI自动分析开关
-     */
     private void toggleAiAnalysis() {
-        if (!isServiceBound || dataCollectionService == null) {
-            Toast.makeText(this, "数据收集服务未连接", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        
-        boolean currentState = dataCollectionService.isAutoAnalysisEnabled();
-        dataCollectionService.setAutoAnalysisEnabled(!currentState);
-        
-        updateAiAnalysisButtonText();
-        
-        String message = "AI自动分析已" + (!currentState ? "开启" : "关闭");
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-        updateStatus(message);
+        if (!isServiceBound || dataCollectionService == null) return;
+        boolean current = dataCollectionService.isAutoAnalysisEnabled();
+        dataCollectionService.setAutoAnalysisEnabled(!current);
+        updateAiToggleText();
+        Toast.makeText(this, "AI自动分析已" + (!current ? "开启" : "关闭"),
+                Toast.LENGTH_SHORT).show();
     }
-    
-    /**
-     * 显示所有应用
-     */
-    private void showAllApps() {
-        Intent intent = new Intent(this, AllAppsActivity.class);
-        startActivity(intent);
-    }
-    
-    /**
-     * 更新AI分析按钮文本
-     */
-    private void updateAiAnalysisButtonText() {
+
+    private void updateAiToggleText() {
         if (isServiceBound && dataCollectionService != null) {
-            boolean enabled = dataCollectionService.isAutoAnalysisEnabled();
-            aiAnalysisToggleButton.setText("AI自动分析: " + (enabled ? "开启" : "关闭"));
-        } else {
-            aiAnalysisToggleButton.setText("AI自动分析: 检查中...");
+            boolean on = dataCollectionService.isAutoAnalysisEnabled();
+            aiAnalysisToggleButton.setText("AI自动分析: " + (on ? "开启" : "关闭"));
         }
     }
-    
-    /**
-     * 检查权限是否已获取
-     */
-    private boolean checkPermissions() {
-        String[] criticalPermissions = {
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        };
-        
-        for (String permission : criticalPermissions) {
-            if (ContextCompat.checkSelfPermission(this, permission) 
-                != PackageManager.PERMISSION_GRANTED) {
-                return false;
-            }
-        }
-        return true;
-    }
-    
-    /**
-     * 更新UI状态
-     */
-    private void updateUI() {
-        runOnUiThread(() -> {
-            startButton.setEnabled(!isServiceBound);
-            stopButton.setEnabled(isServiceBound);
-            getDataButton.setEnabled(isServiceBound);
-            statusButton.setEnabled(isServiceBound);
-            geminiButton.setEnabled(isServiceBound);
-            deepSeekButton.setEnabled(isServiceBound);
-            aiAnalysisToggleButton.setEnabled(isServiceBound);
-            
-            if (isServiceBound) {
-                updateAiAnalysisButtonText();
-            } else {
-                aiAnalysisToggleButton.setText("AI自动分析: 检查中...");
-            }
-        });
-    }
-    
-    /**
-     * 更新状态显示
-     */
+
     private void updateStatus(String status) {
-        runOnUiThread(() -> {
-            statusTextView.setText("状态: " + status);
-        });
+        runOnUiThread(() -> statusTextView.setText("状态: " + status));
     }
-    
-    /**
-     * 权限请求回调
-     */
+
     @Override
-    public void onRequestPermissionsResult(int requestCode, 
-                                         String[] permissions, 
-                                         int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            int grantedCount = 0;
-            for (int result : grantResults) {
-                if (result == PackageManager.PERMISSION_GRANTED) {
-                    grantedCount++;
-                }
-            }
-            
-            if (grantedCount == grantResults.length) {
-                updateStatus("所有权限已获取");
-                Toast.makeText(this, "权限获取成功", Toast.LENGTH_SHORT).show();
-            } else {
-                updateStatus("权限获取不完整 (" + grantedCount + "/" + grantResults.length + ")");
-                Toast.makeText(this, "部分权限未获取，可能影响功能", Toast.LENGTH_LONG).show();
-            }
+    protected void onResume() {
+        super.onResume();
+        if (!isServiceBound) {
+            Intent intent = new Intent(this, DataCollectionService.class);
+            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
         }
     }
-    
-    /**
-     * 对外接口：获取完整上下文数据
-     * 保持向后兼容性
-     */
-    public JSONObject getCompleteContextData() {
-        if (isServiceBound && dataCollectionService != null) {
-            return dataCollectionService.getCompleteContextData();
-        }
-        return null;
-    }
-    
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        
-        // 清理服务连接
         if (isServiceBound) {
             unbindService(serviceConnection);
             isServiceBound = false;
         }
     }
-    
+
     @Override
-    protected void onResume() {
-        super.onResume();
-        
-        // 如果服务正在运行，尝试重新绑定
-        if (!isServiceBound) {
-            Intent serviceIntent = new Intent(this, DataCollectionService.class);
-            bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            int granted = 0;
+            for (int r : results) { if (r == PackageManager.PERMISSION_GRANTED) granted++; }
+            updateStatus(granted == results.length ? "所有权限已获取"
+                    : "权限: " + granted + "/" + results.length);
         }
     }
-    
-    @Override
-    protected void onPause() {
-        super.onPause();
-        // 注意：不在onPause中解绑服务，以保持数据收集的连续性
-    }
-} 
+}

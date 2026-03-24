@@ -8,63 +8,43 @@
         android:minSdkVersion="23"
         android:targetSdkVersion="33" />
 
-    <!-- 基本权限 -->
+    <!-- 网络 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- 存储 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
-    <!-- 前台服务权限 -->
+    <!-- 前台服务 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <!-- 位置权限 -->
+    <!-- 位置 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- 蓝牙权限 -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-
-    <!-- WiFi权限 -->
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-
-    <!-- 日历权限 -->
+    <!-- 日历 -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
 
-    <!-- 传感器和设备使用权限 -->
+    <!-- 传感器与活动识别 -->
     <uses-permission android:name="android.permission.BODY_SENSORS" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
-    <!-- 系统信息权限 -->
-    <uses-permission android:name="android.permission.GET_TASKS" />
+    <!-- 使用情况统计 -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
-    <!-- 无障碍服务权限 -->
-    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
-
-    <!-- 截图和媒体投影权限 -->
+    <!-- 悬浮窗 -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.CAPTURE_VIDEO_OUTPUT" />
-    <uses-permission android:name="android.permission.CAPTURE_SECURE_VIDEO_OUTPUT" />
 
-    <!-- 相机权限（可选，用于更高级的OCR功能） -->
-    <uses-permission android:name="android.permission.CAMERA" />
-
-    <!-- 读取手机状态权限（用于系统监控） -->
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-
-    <!-- 启动时运行权限 -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
-    <!-- 壁纸权限 -->
+    <!-- 壁纸 -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
+    <!-- 开机启动 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <permission
         android:name="com.datacollector.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
@@ -82,7 +62,7 @@
         android:testOnly="true"
         android:theme="@style/AppTheme" >
 
-        <!-- 主控制面板 - 唯一的启动入口 -->
+        <!-- 主控制面板 -->
         <activity
             android:name="com.datacollector.android.activities.MainActivity"
             android:exported="true"
@@ -101,36 +81,16 @@
             android:exported="false"
             android:label="数据收集管理" />
 
-        <!-- 服务健康监控界面 -->
-        <activity
-            android:name="com.datacollector.android.activities.ServiceHealthActivity"
-            android:exported="false"
-            android:label="服务健康监控" />
-
         <!-- 数据收集服务 -->
         <service
             android:name="com.datacollector.android.services.DataCollectionService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- 悬浮窗口服务 -->
+        <!-- 悬浮窗服务 -->
         <service
             android:name="com.datacollector.android.services.FloatingOverlayService"
             android:exported="false" />
-
-        <!-- 无障碍服务 -->
-        <service
-            android:name="com.datacollector.android.services.AccessibilityDataService"
-            android:exported="false"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
 
         <provider
             android:name="androidx.startup.InitializationProvider"
