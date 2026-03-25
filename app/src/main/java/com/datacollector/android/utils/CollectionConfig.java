@@ -56,11 +56,10 @@ public class CollectionConfig {
     public static final String KEY_WALLPAPER_SCHEDULE_SLOT_2 = "wallpaper_schedule_slot_2";
     public static final String KEY_WALLPAPER_SCHEDULE_SLOT_3 = "wallpaper_schedule_slot_3";
 
-    // ── 壁纸权重偏好（黑盒权重逻辑）──────────────────────────
-    public static final String KEY_WEIGHT_PRODUCTIVITY = "weight_productivity";
-    public static final String KEY_WEIGHT_ENTERTAINMENT = "weight_entertainment";
-    public static final String KEY_WEIGHT_HEALTH = "weight_health";
-    public static final String KEY_WEIGHT_SOCIAL = "weight_social";
+    // ── 个人设置 ──────────────────────────────────────────────
+    public static final String KEY_WALLPAPER_STYLE = "wallpaper_style";
+    public static final String KEY_SELECTED_ICON_INDEX = "selected_icon_index";
+    public static final String KEY_USER_PERSONAL_GOAL = "user_personal_goal";
 
     private final SharedPreferences prefs;
     private static CollectionConfig instance;
@@ -118,11 +117,10 @@ public class CollectionConfig {
         putIfAbsent(editor, KEY_WALLPAPER_SCHEDULE_SLOT_2, 12 * 60); // 12:00
         putIfAbsent(editor, KEY_WALLPAPER_SCHEDULE_SLOT_3, 20 * 60); // 20:00
 
-        // 壁纸权重偏好
-        putIfAbsent(editor, KEY_WEIGHT_PRODUCTIVITY, 0.4f);
-        putIfAbsent(editor, KEY_WEIGHT_ENTERTAINMENT, 0.2f);
-        putIfAbsent(editor, KEY_WEIGHT_HEALTH, 0.2f);
-        putIfAbsent(editor, KEY_WEIGHT_SOCIAL, 0.2f);
+        // 个人设置
+        putIfAbsent(editor, KEY_WALLPAPER_STYLE, "唯美艺术");
+        putIfAbsent(editor, KEY_SELECTED_ICON_INDEX, 0);
+        putIfAbsent(editor, KEY_USER_PERSONAL_GOAL, "");
 
         editor.apply();
     }
@@ -139,6 +137,9 @@ public class CollectionConfig {
     }
     private void putIfAbsent(SharedPreferences.Editor e, String k, int v) {
         if (!prefs.contains(k)) e.putInt(k, v);
+    }
+    private void putIfAbsent(SharedPreferences.Editor e, String k, String v) {
+        if (!prefs.contains(k)) e.putString(k, v);
     }
 
     // ── Getters ──
@@ -166,17 +167,40 @@ public class CollectionConfig {
         };
     }
 
+    private static final String[][] WALLPAPER_STYLE_MAP = {
+            {"唯美艺术", "风格唯美具有艺术感，色彩丰富细腻"},
+            {"水墨国风", "中国水墨画风格，黑白灰为主调，留白意境深远"},
+            {"印象派",   "印象派油画风格，笔触明显，光影交织变幻"},
+            {"极简主义", "极简主义风格，简洁线条，大面积纯色留白"},
+            {"自然风光", "写实自然风光摄影风格，高清细腻逼真"},
+            {"赛博朋克", "赛博朋克风格，霓虹灯光，暗色调未来感"}
+    };
+
+    public String getWallpaperStyleDescription() {
+        String styleName = getString(KEY_WALLPAPER_STYLE, "唯美艺术");
+        return getStyleDescriptionByName(styleName);
+    }
+
+    public static String getStyleDescriptionByName(String styleName) {
+        for (String[] pair : WALLPAPER_STYLE_MAP) {
+            if (pair[0].equals(styleName)) return pair[1];
+        }
+        return WALLPAPER_STYLE_MAP[0][1];
+    }
+
     /**
-     * 获取壁纸权重偏好的文本描述，用于 LLM System Prompt
+     * 获取用户个人偏好的完整描述，供 LLM Prompt 使用。
+     * 包含壁纸风格偏好和个人目标。
      */
-    public String getWeightDescription() {
-        float wp = getFloat(KEY_WEIGHT_PRODUCTIVITY, 0.4f);
-        float we = getFloat(KEY_WEIGHT_ENTERTAINMENT, 0.2f);
-        float wh = getFloat(KEY_WEIGHT_HEALTH, 0.2f);
-        float ws = getFloat(KEY_WEIGHT_SOCIAL, 0.2f);
-        return String.format(
-                "用户偏好权重：生产力=%.1f，娱乐=%.1f，健康=%.1f，社交=%.1f",
-                wp, we, wh, ws);
+    public String getUserPreferenceDescription() {
+        StringBuilder sb = new StringBuilder();
+        String style = getString(KEY_WALLPAPER_STYLE, "唯美艺术");
+        sb.append("壁纸风格偏好：").append(style);
+        String goal = getString(KEY_USER_PERSONAL_GOAL, "");
+        if (goal != null && !goal.trim().isEmpty()) {
+            sb.append("\n用户个人目标：").append(goal.trim());
+        }
+        return sb.toString();
     }
 
     public void applyRemoteConfig(JSONObject config) {

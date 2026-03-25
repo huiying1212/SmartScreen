@@ -120,7 +120,7 @@ public class WallpaperGenerationManager {
 
                 // Step 2: LLM 提取 3 个核心元素词
                 callback.onProgress("正在提取创意关键词...");
-                String weightDesc = config.getWeightDescription();
+                String weightDesc = config.getUserPreferenceDescription();
                 String keywords = deepSeekClient.extractKeywords(aggregatedData, weightDesc);
 
                 if (keywords == null || keywords.isEmpty()) {
@@ -179,18 +179,22 @@ public class WallpaperGenerationManager {
         }).start();
     }
 
-    /**
-     * 根据 3 个元素词和心情构建文生图 Prompt。
-     */
     private String buildImagePrompt(String keywords, MoodMapper.Mood mood, long screenTimeMs) {
         String moodHint = MoodMapper.toImagePromptFragment(mood, screenTimeMs);
+        String styleDesc = config.getWallpaperStyleDescription();
+        String userGoal = config.getString(CollectionConfig.KEY_USER_PERSONAL_GOAL, "");
 
-        return "请创作一幅适合手机竖屏壁纸的隐喻性艺术画面。\n"
-                + "核心元素词：" + keywords + "\n"
-                + "情绪背景：" + moodHint + "\n"
-                + "要求：画面中融入以上三个元素的隐喻表达，"
-                + "风格唯美具有艺术感，不包含文字和 UI 元素，"
-                + "适合作为手机壁纸的高质量竖屏构图。";
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("请创作一幅适合手机竖屏壁纸的隐喻性艺术画面。\n");
+        prompt.append("核心元素词：").append(keywords).append("\n");
+        prompt.append("情绪背景：").append(moodHint).append("\n");
+        prompt.append("风格要求：").append(styleDesc).append("\n");
+        if (userGoal != null && !userGoal.trim().isEmpty()) {
+            prompt.append("用户目标背景：").append(userGoal.trim()).append("\n");
+        }
+        prompt.append("要求：画面中融入以上元素的隐喻表达，");
+        prompt.append("不包含文字和 UI 元素，适合作为手机壁纸的高质量竖屏构图。");
+        return prompt.toString();
     }
 
     private String getFallbackKeywords(MoodMapper.Mood mood) {

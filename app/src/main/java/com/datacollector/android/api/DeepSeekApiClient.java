@@ -150,14 +150,22 @@ public class DeepSeekApiClient {
             return err;
         }
 
-        String systemPrompt = "You are a phone-use feedback assistant. "
-                + "Based on the user's current phone usage, generate a short reminder.\n\n"
-                + "Rules:\n"
-                + "1. No more than 15 Chinese characters\n"
-                + "2. Friendly but guiding tone\n"
-                + "3. Return ONLY the reminder text, no explanation\n"
-                + "4. Do NOT wrap in quotes\n"
-                + "5. Each response must be different";
+        CollectionConfig cfg = CollectionConfig.getInstance(context);
+        String userGoal = cfg.getString(CollectionConfig.KEY_USER_PERSONAL_GOAL, "");
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("You are a phone-use feedback assistant. ");
+        sb.append("Based on the user's current phone usage, generate a short reminder.\n\n");
+        sb.append("Rules:\n");
+        sb.append("1. No more than 15 Chinese characters\n");
+        sb.append("2. Friendly but guiding tone\n");
+        sb.append("3. Return ONLY the reminder text, no explanation\n");
+        sb.append("4. Do NOT wrap in quotes\n");
+        sb.append("5. Each response must be different");
+        if (userGoal != null && !userGoal.trim().isEmpty()) {
+            sb.append("\n\nUser's personal goals:\n").append(userGoal.trim());
+        }
+        String systemPrompt = sb.toString();
 
         StringBuilder userContent = new StringBuilder();
         userContent.append("User is on [").append(currentApp).append("], ");

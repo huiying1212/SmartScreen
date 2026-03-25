@@ -75,12 +75,6 @@
             </intent-filter>
         </activity>
 
-        <!-- 数据收集管理界面 -->
-        <activity
-            android:name="com.datacollector.android.activities.AndroidDataCollector"
-            android:exported="false"
-            android:label="数据收集管理" />
-
         <!-- 数据收集服务 -->
         <service
             android:name="com.datacollector.android.services.DataCollectionService"

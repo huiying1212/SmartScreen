@@ -224,42 +224,38 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
         long lastFgTime = -1;
         long oneHourAgo = endMs - 3600_000L;
 
+        // ACTIVITY_RESUMED (=1) works on Android 10+; MOVE_TO_FOREGROUND (=1)
+        // is the same constant but some OEMs stopped emitting it under the old
+        // name. We also check ACTIVITY_PAUSED (=2) / MOVE_TO_BACKGROUND (=2).
+        final int EVENT_FG = 1;  // MOVE_TO_FOREGROUND / ACTIVITY_RESUMED
+        final int EVENT_BG = 2;  // MOVE_TO_BACKGROUND / ACTIVITY_PAUSED
+
         UsageEvents.Event event = new UsageEvents.Event();
         while (events.hasNextEvent()) {
             events.getNextEvent(event);
             int type = event.getEventType();
             long ts = event.getTimeStamp();
 
-            switch (type) {
-                case UsageEvents.Event.SCREEN_INTERACTIVE:
-                    screenOnStart = ts;
-                    break;
-
-                case UsageEvents.Event.SCREEN_NON_INTERACTIVE:
-                    if (screenOnStart > 0) {
-                        result.todayScreenMs += ts - screenOnStart;
-                        screenOnStart = -1;
-                    }
-                    break;
-
-                case UsageEvents.Event.KEYGUARD_HIDDEN:
-                    lastUnlockTime = ts;
-                    if (ts >= oneHourAgo) {
-                        result.unlockCountLastHour++;
-                    }
-                    break;
-
-                case UsageEvents.Event.MOVE_TO_FOREGROUND:
-                    lastFgPkg = event.getPackageName();
-                    lastFgTime = ts;
-                    break;
-
-                case UsageEvents.Event.MOVE_TO_BACKGROUND:
-                    if (lastFgPkg != null && lastFgPkg.equals(event.getPackageName())) {
-                        lastFgPkg = null;
-                        lastFgTime = -1;
-                    }
-                    break;
+            if (type == UsageEvents.Event.SCREEN_INTERACTIVE) {
+                screenOnStart = ts;
+            } else if (type == UsageEvents.Event.SCREEN_NON_INTERACTIVE) {
+                if (screenOnStart > 0) {
+                    result.todayScreenMs += ts - screenOnStart;
+                    screenOnStart = -1;
+                }
+            } else if (type == UsageEvents.Event.KEYGUARD_HIDDEN) {
+                lastUnlockTime = ts;
+                if (ts >= oneHourAgo) {
+                    result.unlockCountLastHour++;
+                }
+            } else if (type == EVENT_FG) {
+                lastFgPkg = event.getPackageName();
+                lastFgTime = ts;
+            } else if (type == EVENT_BG) {
+                if (lastFgPkg != null && lastFgPkg.equals(event.getPackageName())) {
+                    lastFgPkg = null;
+                    lastFgTime = -1;
+                }
             }
         }
 
@@ -280,7 +276,55 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
             result.currentOpenMs = lastFgTime > 0 ? endMs - lastFgTime : 0;
         }
 
+        // Fallback: if event stream did not yield a foreground app (common on
+        // many OEM ROMs), infer it from UsageStats — the package with the most
+        // recent lastTimeUsed that isn't our own app is likely the current one.
+        if (result.foregroundPkg == null) {
+            result.foregroundPkg = inferForegroundFromStats(usm, startMs, endMs);
+            if (result.foregroundPkg != null) {
+                result.currentOpenSince = -1;
+                result.currentOpenMs = 0;
+            }
+        }
+
         return result;
+    }
+
+    /**
+     * Fallback: infer the current foreground app from UsageStats when the
+     * event stream doesn't contain MOVE_TO_FOREGROUND / ACTIVITY_RESUMED.
+     * Picks the non-system, non-self package with the most recent lastTimeUsed.
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP_MR1)
+    private String inferForegroundFromStats(UsageStatsManager usm, long startMs, long endMs) {
+        Map<String, UsageStats> statsMap = usm.queryAndAggregateUsageStats(startMs, endMs);
+        if (statsMap == null || statsMap.isEmpty()) return null;
+
+        String bestPkg = null;
+        long bestLastUsed = 0;
+        String myPkg = context.getPackageName();
+
+        for (UsageStats stats : statsMap.values()) {
+            String pkg = stats.getPackageName();
+            if (pkg.equals(myPkg)) continue;
+            if (isSystemPackage(pkg)) continue;
+            if (stats.getTotalTimeInForeground() <= 0) continue;
+
+            long lastUsed = stats.getLastTimeUsed();
+            if (lastUsed > bestLastUsed) {
+                bestLastUsed = lastUsed;
+                bestPkg = pkg;
+            }
+        }
+
+        // Only trust this if lastTimeUsed is very recent (within 2 minutes)
+        if (bestPkg != null && (endMs - bestLastUsed) < 2 * 60_000L) {
+            Log.d(TAG, "Inferred foreground from UsageStats: " + bestPkg
+                    + " (lastUsed " + (endMs - bestLastUsed) / 1000 + "s ago)");
+            return bestPkg;
+        }
+
+        return null;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP_MR1)

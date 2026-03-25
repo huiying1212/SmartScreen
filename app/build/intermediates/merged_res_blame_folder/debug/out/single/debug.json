@@ -12,12 +12,16 @@
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_tired.xml"
     },
     {
-        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-xxhdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-xxhdpi\\ic_launcher_round.webp"
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_mood_thinking.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_thinking.xml"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_mood_neutral.xml.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_neutral.xml"
+    },
+    {
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-xxhdpi_ic_launcher_round.webp.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-xxhdpi\\ic_launcher_round.webp"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-hdpi_ic_launcher.webp.flat",
@@ -28,12 +32,16 @@
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_concerned.xml"
     },
     {
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_launcher_exit_button_bg.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\launcher_exit_button_bg.xml"
+    },
+    {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-hdpi_ic_launcher_round.webp.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-hdpi\\ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_launcher_exit_button_bg.xml.flat",
-        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\launcher_exit_button_bg.xml"
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_icon_unselected_bg.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\icon_unselected_bg.xml"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_mood_exhausted.xml.flat",
@@ -72,6 +80,14 @@
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\launcher_button_bg.xml"
     },
     {
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_icon_selected_bg.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\icon_selected_bg.xml"
+    },
+    {
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_chip_unselected_bg.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\chip_unselected_bg.xml"
+    },
+    {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_mood_energetic.xml.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_energetic.xml"
     },
@@ -84,12 +100,16 @@
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\layout\\floating_overlay.xml"
     },
     {
-        "merged": "com.datacollector.android.app-merged_res-29:/drawable_bubble_background.xml.flat",
-        "source": "com.datacollector.android.app-main-31:/drawable/bubble_background.xml"
-    },
-    {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-xxhdpi_ic_launcher.webp.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-xxhdpi\\ic_launcher.webp"
+    },
+    {
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_chip_selected_bg.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\chip_selected_bg.xml"
+    },
+    {
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_mood_love.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_love.xml"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
@@ -100,12 +120,12 @@
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-xxxhdpi\\ic_launcher.webp"
     },
     {
-        "merged": "com.datacollector.android.app-merged_res-29:/layout_floating_overlay.xml.flat",
-        "source": "com.datacollector.android.app-main-31:/layout/floating_overlay.xml"
-    },
-    {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_launcher_small_exit_button_bg.xml.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\launcher_small_exit_button_bg.xml"
+    },
+    {
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_mood_surprised.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_surprised.xml"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\layout_app_item.xml.flat",
@@ -132,12 +152,20 @@
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\layout\\activity_main_setup.xml"
     },
     {
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_mood_sleeping.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\mood_sleeping.xml"
+    },
+    {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable-anydpi-v24_ic_launcher_foreground.xml.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-pngs-24:\\drawable-anydpi-v24\\ic_launcher_foreground.xml"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-xxxhdpi_ic_launcher_round.webp.flat",
         "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\mipmap-xxxhdpi\\ic_launcher_round.webp"
+    },
+    {
+        "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\drawable_bubble_background.xml.flat",
+        "source": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-main-31:\\drawable\\bubble_background.xml"
     },
     {
         "merged": "C:\\Users\\Kate\\.gradle\\daemon\\8.12\\com.datacollector.android.app-merged_res-29:\\mipmap-xhdpi_ic_launcher_round.webp.flat",

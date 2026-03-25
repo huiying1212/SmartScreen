@@ -218,26 +218,41 @@ public class FloatingOverlayService extends Service {
 
         new Thread(() -> {
             try {
-                String currentApp = uutTracker.getCurrentPackage();
-                if (currentApp == null) currentApp = "unknown";
-
-                int uutValue = uutTracker.getUUT();
-                Log.i(TAG, "onOverlayClicked: app=" + currentApp + " uut=" + uutValue);
-
+                // Collect fresh screen data first — this also serves as the
+                // authoritative source for both foreground app and usage time.
+                String currentApp = null;
                 int usageMins = 0;
                 try {
                     JSONObject screenData = screenUsageCollector.collectData();
                     if (screenData != null) {
+                        currentApp = screenData.optString(
+                                "foreground_app_package", null);
                         usageMins = (int) (screenData.optLong(
                                 "foreground_app_current_open_ms", 0) / 60_000L);
+                        // If per-app open time is 0, fall back to session time
+                        if (usageMins == 0) {
+                            usageMins = (int) (screenData.optLong(
+                                    "current_session_ms", 0) / 60_000L);
+                        }
                     }
                 } catch (Exception e) {
-                    Log.w(TAG, "Failed to get current app usage", e);
+                    Log.w(TAG, "Failed to get screen usage data", e);
                 }
+
+                // Fall back to UUT tracker's cached package if collector missed it
+                if (currentApp == null || currentApp.isEmpty()) {
+                    currentApp = uutTracker.getCurrentPackage();
+                }
+                if (currentApp == null || currentApp.isEmpty()) {
+                    currentApp = "unknown";
+                }
+
+                int uutValue = uutTracker.getUUT();
+                Log.i(TAG, "onOverlayClicked: app=" + currentApp
+                        + " mins=" + usageMins + " uut=" + uutValue);
 
                 String calendarInfo = getCalendarContext();
 
-                // 只走 LLM，generateBubbleText 永远返回非 null 字符串
                 final String text = deepSeekClient.generateBubbleText(
                         currentApp, usageMins, uutValue, calendarInfo);
 
@@ -271,11 +286,13 @@ public class FloatingOverlayService extends Service {
             if (events == null || events.length() == 0) return "空闲时间";
 
             long now = System.currentTimeMillis();
+
+            // CalendarDataCollector outputs "begin_timestamp" / "end_timestamp"
             for (int i = 0; i < events.length(); i++) {
                 JSONObject ev = events.optJSONObject(i);
                 if (ev == null) continue;
-                long start = ev.optLong("start_time", 0);
-                long end = ev.optLong("end_time", 0);
+                long start = ev.optLong("begin_timestamp", 0);
+                long end = ev.optLong("end_timestamp", 0);
                 if (now >= start && now <= end) {
                     return "计划: " + ev.optString("title", "日程中");
                 }
@@ -284,7 +301,7 @@ public class FloatingOverlayService extends Service {
             for (int i = 0; i < events.length(); i++) {
                 JSONObject ev = events.optJSONObject(i);
                 if (ev == null) continue;
-                long start = ev.optLong("start_time", 0);
+                long start = ev.optLong("begin_timestamp", 0);
                 if (start > now && start - now < 3600_000L) {
                     return "即将: " + ev.optString("title", "有安排");
                 }

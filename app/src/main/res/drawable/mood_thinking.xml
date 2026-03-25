@@ -1,0 +1,35 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M32,2A30,30,0,1,1,2,32A30,30,0,0,1,32,2Z" />
+    <!-- Left eye looking up-right -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M22,23m-3,0a3,3,0,1,1,6,0a3,3,0,1,1,-6,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M23,21m-1,0a1,1,0,1,1,2,0a1,1,0,1,1,-2,0" />
+    <!-- Right eye looking up-right -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M42,23m-3,0a3,3,0,1,1,6,0a3,3,0,1,1,-6,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,21m-1,0a1,1,0,1,1,2,0a1,1,0,1,1,-2,0" />
+    <!-- Raised right eyebrow -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#333333"
+        android:strokeWidth="2"
+        android:pathData="M36,14Q42,11,48,14" />
+    <!-- Small pursed mouth -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#333333"
+        android:strokeWidth="2.5"
+        android:pathData="M27,38Q32,41,37,38" />
+</vector>
