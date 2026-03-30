@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import java.util.LinkedList;
 
 /**
@@ -40,7 +42,11 @@ public class UnconsciousUsageTracker {
     private long lastAccumulationTime = -1;
     private long screenOffSince = -1;
     private long productiveAppStartTime = -1;
+    // currentPackage 作为本地副本保留，用于 UUT 的切换检测逻辑；
+    // 对外暴露时优先从 AppForegroundTracker 读（更可信）。
     private String currentPackage = null;
+
+    private final Context appContext;
 
     private final LinkedList<AppSwitchRecord> recentSwitches = new LinkedList<>();
     private final SharedPreferences prefs;
@@ -57,6 +63,7 @@ public class UnconsciousUsageTracker {
     }
 
     public UnconsciousUsageTracker(Context context) {
+        this.appContext = context.getApplicationContext();
         this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         this.classifier = new AppCategoryClassifier(context);
         restoreState();
@@ -249,8 +256,15 @@ public class UnconsciousUsageTracker {
         return classifier.classify(currentPackage);
     }
 
+    /**
+     * 返回当前前台 App 包名。
+     * 优先从 AppForegroundTracker 读取（最新鲜、最可信）；
+     * Tracker 过期时 fallback 到本地缓存副本。
+     */
+    @Nullable
     public String getCurrentPackage() {
-        return currentPackage;
+        String tracked = AppForegroundTracker.getInstance(appContext).getCurrentPackage();
+        return tracked != null ? tracked : currentPackage;
     }
 
     /**

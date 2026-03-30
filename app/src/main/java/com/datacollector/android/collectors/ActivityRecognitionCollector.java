@@ -7,6 +7,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 
 import com.datacollector.android.recognition.ActivityRecognizer;
+import com.datacollector.android.utils.CollectionConfig;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,6 +52,10 @@ public class ActivityRecognitionCollector extends BaseDataCollector<JSONObject> 
     @Override
     public boolean isAvailable() {
         if (!isEnabled()) {
+            return false;
+        }
+        if (!CollectionConfig.getInstance(context)
+                .getBoolean(CollectionConfig.KEY_ACTIVITY_ENABLED, true)) {
             return false;
         }
         if (sensorManager == null) {

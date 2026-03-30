@@ -59,11 +59,22 @@ public class MoodMapper {
     }
 
     /**
-     * UUT 值到 0.0-1.0 的连续插值，用于 UI 动画平滑过渡。
-     * 返回值可直接用于 alpha、scale 等视觉属性。
+     * UUT 值 (0–100) → 连续 stress 值 [0.0, 1.0]，直接驱动 MoodFaceView 绘制。
+     * 使用非线性映射使中段变化更敏感。
      */
     public static float uutToStress(int uut) {
-        return Math.max(0f, Math.min(1f, uut / 100f));
+        float t = Math.max(0f, Math.min(1f, uut / 100f));
+        // ease-in-out curve: gentle at extremes, responsive in the middle
+        return t * t * (3f - 2f * t);
+    }
+
+    /**
+     * 屏幕时长 → 连续 stress 值 [0.0, 1.0]，用于壁纸或其他需要连续值的场景。
+     */
+    public static float screenTimeToStress(long screenTimeMs) {
+        float minutes = screenTimeMs / 60_000f;
+        float t = Math.max(0f, Math.min(1f, minutes / 300f));
+        return t * t * (3f - 2f * t);
     }
 
     /**

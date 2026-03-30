@@ -6,12 +6,10 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.util.Log;
 
-import com.datacollector.android.api.ApiConfig;
 import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.api.QwenImageApiClient;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.DataAggregator;
-import com.datacollector.android.utils.MoodMapper;
 
 import org.json.JSONObject;
 
@@ -25,8 +23,8 @@ import java.util.Calendar;
  *
  * 工作流：
  * 1. 聚合过去一个时间段内的使用数据
- * 2. 将数据 + 用户偏好权重发送给 LLM，提取 3 个核心元素词
- * 3. 将 3 个元素词传入 Image Generation API 生成隐喻风格图片
+ * 2. 将数据 + 用户偏好权重发送给 LLM，提炼场景关键词（数量不固定）
+ * 3. 将关键词 + 风格传入 Image Generation API 生成壁纸
  * 4. 下载图像并设为桌面 + 锁屏壁纸
  *
  * 调度：默认 08:00, 12:00, 20:00，支持用户自定义。
@@ -39,6 +37,7 @@ public class WallpaperGenerationManager {
         void onSuccess(String message);
         void onError(String error);
         void onProgress(String status);
+        default void onDebugInfo(String debugText) {}
     }
 
     private final Context context;
@@ -111,27 +110,40 @@ public class WallpaperGenerationManager {
                 int windowHours = config.getInt(CollectionConfig.KEY_AGGREGATION_WINDOW_HOURS, 6);
                 JSONObject aggregatedData = aggregator.aggregateRecentData(windowHours);
 
-                long screenTimeMs = 0;
-                JSONObject screenUsage = aggregatedData.optJSONObject("screen_usage");
-                if (screenUsage != null) {
-                    screenTimeMs = screenUsage.optLong("today_screen_time_ms", 0);
-                }
-                MoodMapper.Mood mood = MoodMapper.fromScreenTime(screenTimeMs);
-
-                // Step 2: LLM 提取 3 个核心元素词
+                // Step 2: LLM 根据使用数据提炼场景关键词
                 callback.onProgress("正在提取创意关键词...");
+                String llmInputSummary = deepSeekClient.summarizeForKeywords(aggregatedData);
                 String weightDesc = config.getUserPreferenceDescription();
-                String keywords = deepSeekClient.extractKeywords(aggregatedData, weightDesc);
+                String llmKeywords = deepSeekClient.extractKeywords(aggregatedData, weightDesc);
 
-                if (keywords == null || keywords.isEmpty()) {
-                    keywords = getFallbackKeywords(mood);
+                String keywordsSource;
+                String keywords;
+                if (llmKeywords != null && !llmKeywords.isEmpty()) {
+                    keywords = llmKeywords;
+                    keywordsSource = "LLM 返回";
+                } else {
+                    keywords = getFallbackKeywords();
+                    keywordsSource = "LLM 调用失败，使用兜底关键词";
                 }
-                Log.i(TAG, "Keywords: " + keywords);
+                Log.i(TAG, "Keywords (" + keywordsSource + "): " + keywords);
 
-                // Step 3: 用元素词构造图像 Prompt，调用 Image API
+                // Step 3: 用关键词构造图像 Prompt，调用 Image API
                 callback.onProgress("正在生成壁纸图片...");
-                String imagePrompt = buildImagePrompt(keywords, mood, screenTimeMs);
+                String imagePrompt = buildImagePrompt(keywords);
                 Log.i(TAG, "Image prompt: " + imagePrompt);
+
+                StringBuilder debugInfo = new StringBuilder();
+                debugInfo.append("══ 发给 LLM 的数据摘要 ══\n");
+                debugInfo.append(llmInputSummary.isEmpty() ? "(空 — 没有聚合到任何数据)\n" : llmInputSummary);
+                debugInfo.append("\n══ 聚合状态 ══\n");
+                debugInfo.append("status: ").append(aggregatedData.optString("status", "unknown"));
+                debugInfo.append(", total_collections: ").append(aggregatedData.optInt("total_collections", 0));
+                debugInfo.append(", window_hours: ").append(aggregatedData.optInt("window_hours", 0));
+                debugInfo.append("\n\n══ 关键词（").append(keywordsSource).append("）══\n");
+                debugInfo.append(keywords);
+                debugInfo.append("\n\n══ 发给图片生成模型的 Prompt ══\n");
+                debugInfo.append(imagePrompt);
+                callback.onDebugInfo(debugInfo.toString());
 
                 final Bitmap[] resultBitmap = {null};
                 final String[] resultError = {null};
@@ -179,34 +191,28 @@ public class WallpaperGenerationManager {
         }).start();
     }
 
-    private String buildImagePrompt(String keywords, MoodMapper.Mood mood, long screenTimeMs) {
-        String moodHint = MoodMapper.toImagePromptFragment(mood, screenTimeMs);
+    private String buildImagePrompt(String keywords) {
         String styleDesc = config.getWallpaperStyleDescription();
-        String userGoal = config.getString(CollectionConfig.KEY_USER_PERSONAL_GOAL, "");
 
         StringBuilder prompt = new StringBuilder();
         prompt.append("请创作一幅适合手机竖屏壁纸的隐喻性艺术画面。\n");
-        prompt.append("核心元素词：").append(keywords).append("\n");
-        prompt.append("情绪背景：").append(moodHint).append("\n");
+        prompt.append("场景关键词：").append(keywords).append("\n");
         prompt.append("风格要求：").append(styleDesc).append("\n");
-        if (userGoal != null && !userGoal.trim().isEmpty()) {
-            prompt.append("用户目标背景：").append(userGoal.trim()).append("\n");
-        }
-        prompt.append("要求：画面中融入以上元素的隐喻表达，");
+        prompt.append("要求：画面中自然融入以上关键词所描绘的场景氛围，");
         prompt.append("不包含文字和 UI 元素，适合作为手机壁纸的高质量竖屏构图。");
         return prompt.toString();
     }
 
-    private String getFallbackKeywords(MoodMapper.Mood mood) {
-        switch (mood) {
-            case HAPPY:   return "阳光、花朵、微风";
-            case CALM:    return "清晨、露珠、鸟鸣";
-            case NEUTRAL: return "湖面、倒影、薄雾";
-            case DULL:    return "夕阳、归途、灯塔";
-            case TIRED:   return "星空、萤火、小路";
-            case PAINFUL:
-            default:      return "深夜、月光、安眠";
-        }
+    private String getFallbackKeywords() {
+        String[] fallbacks = {
+                "窗边、阳光、咖啡杯",
+                "书桌、台灯、绿植",
+                "清晨、露珠、小路",
+                "沙发、暖光、猫",
+                "湖面、倒影、薄雾",
+        };
+        int index = (int) (System.currentTimeMillis() % fallbacks.length);
+        return fallbacks[index];
     }
 
     private void setWallpaper(Bitmap bitmap) throws IOException {

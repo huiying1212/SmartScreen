@@ -21,15 +21,13 @@
         android:elevation="10dp"
         android:layout_gravity="center_horizontal|top" />
 
-    <!-- 拟人表情图标 -->
-    <ImageView
-        android:id="@+id/overlay_mood_icon"
+    <!-- 拟人表情 (连续绘制，不再是静态图片) -->
+    <com.datacollector.android.views.MoodFaceView
+        android:id="@+id/overlay_mood_face"
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:layout_gravity="center_horizontal|bottom"
         android:layout_marginTop="40dp"
-        android:src="@drawable/mood_happy"
-        android:contentDescription="心情图标"
         android:elevation="8dp" />
 
 </FrameLayout>

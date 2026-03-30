@@ -18,8 +18,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -59,32 +57,34 @@ public class DeepSeekApiClient {
                 .build();
     }
 
-    // ── 壁纸引擎：提取 3 个核心元素词 ────────────────────────────
+    // ── 壁纸引擎：提取场景关键词 ────────────────────────────
 
     /**
-     * 根据聚合数据和用户权重，让 LLM 提取 3 个核心元素词（同步调用，需在后台线程执行）。
+     * 根据聚合数据，让 LLM 提炼出能代表用户这段时间使用场景的关键词（同步调用，需在后台线程执行）。
      *
-     * @return 3 个元素词组成的字符串（如 "专注、疲惫、代码"），失败返回 null
+     * @return 场景关键词字符串（如 "工作电脑、咖啡、闹钟"），失败返回 null
      */
     public String extractKeywords(JSONObject aggregatedData, String weightDescription) {
         if (!ApiConfig.isDeepSeekApiKeyConfigured()) return null;
 
         try {
-            String systemPrompt = "你是一位抽象艺术概念提炼师。根据用户的手机使用数据和偏好权重，"
-                    + "总结出最能代表用户当前状态的 3 个核心元素词。\n\n"
+            String systemPrompt = "你是一位擅长场景化表达的创意概念提炼师。"
+                    + "根据用户近几小时的手机使用数据，提炼出最能描绘用户这段时间生活场景的关键词。\n\n"
                     + "规则：\n"
-                    + "1. 严格返回且只返回 3 个中文词，用中文顿号分隔\n"
-                    + "2. 词语应具有隐喻性和画面感，适合作为文生图的关键词\n"
-                    + "3. 结合数据事实和用户偏好权重来确定词语\n"
-                    + "4. 不要输出任何解释，只输出 3 个词\n\n"
+                    + "1. 关键词数量不限，通常 3-6 个，视数据丰富程度而定\n"
+                    + "2. 关键词应该是具体的、有画面感的事物或场景元素，适合用于文生图\n"
+                    + "3. 例如：如果用户主要在处理工作，关键词可以是「电脑、咖啡、台灯」；"
+                    + "如果用户以娱乐为主，可以是「沙发、零食、暖光」；"
+                    + "如果用户在运动，可以是「奔跑的人、阳光、运动鞋」\n"
+                    + "4. 用中文顿号分隔，不要输出任何解释，只输出关键词\n\n"
                     + "偏好权重说明：\n" + weightDescription;
 
             String userContent = "用户手机使用数据摘要：\n" + summarizeForKeywords(aggregatedData);
 
-            String response = callChatSync(systemPrompt, userContent, 64, 0.8f);
+            String response = callChatSync(systemPrompt, userContent, 100, 0.8f);
             if (response != null) {
                 response = response.trim().replaceAll("[\"'\\s]+$", "").replaceAll("^[\"'\\s]+", "");
-                if (response.length() > 50) response = response.substring(0, 50);
+                if (response.length() > 100) response = response.substring(0, 100);
             }
             return response;
 
@@ -94,32 +94,128 @@ public class DeepSeekApiClient {
         }
     }
 
-    private String summarizeForKeywords(JSONObject data) {
+    public String summarizeForKeywords(JSONObject data) {
         StringBuilder sb = new StringBuilder();
         try {
+            // 1. 各分类 App 使用时长（最能反映用户在做什么）
+            JSONObject catUsage = data.optJSONObject("category_usage_minutes");
+            if (catUsage != null && catUsage.length() > 0) {
+                sb.append("【各类App使用时长】\n");
+                java.util.Iterator<String> keys = catUsage.keys();
+                while (keys.hasNext()) {
+                    String cat = keys.next();
+                    long mins = catUsage.optLong(cat, 0);
+                    if (mins > 0) sb.append("  ").append(cat).append(": ").append(mins).append("分钟\n");
+                }
+            }
+
+            // 2. Top Apps 明细（具体在用什么 App）
             JSONObject su = data.optJSONObject("screen_usage");
             if (su != null) {
-                sb.append("屏幕使用：").append(su.optString("today_screen_time_readable", "未知"));
-                String fgPkg = su.optString("foreground_app_package", "");
-                String fgCat = su.optString("foreground_app_category", "");
-                if (!fgPkg.isEmpty()) sb.append("，当前: ").append(fgPkg);
-                if (!fgCat.isEmpty()) sb.append("(").append(fgCat).append(")");
-                sb.append("\n");
+                sb.append("【屏幕总时长】").append(su.optString("today_screen_time_readable", "未知")).append("\n");
+                JSONArray topApps = su.optJSONArray("top_apps_today");
+                if (topApps != null && topApps.length() > 0) {
+                    sb.append("【今日使用最多的App】\n");
+                    for (int i = 0; i < Math.min(topApps.length(), 8); i++) {
+                        JSONObject app = topApps.optJSONObject(i);
+                        if (app != null) {
+                            sb.append("  ").append(app.optString("package_name", ""))
+                              .append("(").append(app.optString("category", "")).append(")")
+                              .append(" ").append(app.optString("usage_readable", "")).append("\n");
+                        }
+                    }
+                }
             }
 
+            // 3. 前台App变化轨迹（反映用户这段时间在不同 App 间切换的过程）
+            JSONArray timeline = data.optJSONArray("foreground_app_timeline");
+            if (timeline != null && timeline.length() > 0) {
+                sb.append("【前台App变化轨迹】\n");
+                String prevCat = "";
+                for (int i = 0; i < timeline.length(); i++) {
+                    JSONObject entry = timeline.optJSONObject(i);
+                    if (entry == null) continue;
+                    String cat = entry.optString("cat", "");
+                    if (!cat.equals(prevCat)) {
+                        sb.append("  → ").append(cat);
+                        String pkg = entry.optString("pkg", "");
+                        if (!pkg.isEmpty()) sb.append("(").append(pkg).append(")");
+                        sb.append("\n");
+                        prevCat = cat;
+                    }
+                }
+            }
+
+            // 4. 身体活动（运动/静止/步行/骑行等）
             JSONObject act = data.optJSONObject("activity_summary");
             if (act != null && act.length() > 0) {
-                sb.append("活动: ").append(act.toString()).append("\n");
+                sb.append("【身体活动检测】\n");
+                java.util.Iterator<String> actKeys = act.keys();
+                while (actKeys.hasNext()) {
+                    String type = actKeys.next();
+                    int count = act.optInt(type, 0);
+                    sb.append("  ").append(type).append(": 检测到").append(count).append("次\n");
+                }
             }
 
+            // 5. Wi-Fi 环境（判断用户在家/办公室/外出）
+            JSONObject wifiSummary = data.optJSONObject("wifi_ssid_summary");
+            if (wifiSummary != null && wifiSummary.length() > 0) {
+                sb.append("【Wi-Fi环境】\n");
+                java.util.Iterator<String> wifiKeys = wifiSummary.keys();
+                while (wifiKeys.hasNext()) {
+                    String ssid = wifiKeys.next();
+                    sb.append("  ").append(ssid).append("\n");
+                }
+            }
+
+            // 6. 位置信息（去过什么地方）
             JSONObject loc = data.optJSONObject("location_summary");
             if (loc != null) {
-                sb.append("位置点数: ").append(loc.optInt("unique_points", 0)).append("\n");
+                JSONArray places = loc.optJSONArray("visited_places");
+                JSONObject ctxSum = loc.optJSONObject("context_summary");
+                int pts = loc.optInt("unique_points", 0);
+
+                if (places != null && places.length() > 0) {
+                    sb.append("【到过的地方】\n");
+                    for (int i = 0; i < Math.min(places.length(), 6); i++) {
+                        sb.append("  ").append(places.optString(i)).append("\n");
+                    }
+                } else if (pts > 0) {
+                    sb.append("【位置变化】");
+                    if (pts == 1) {
+                        sb.append("一直在同一个地方，没有移动");
+                    } else {
+                        sb.append("去过").append(pts).append("个不同的地方");
+                    }
+                    sb.append("\n");
+                }
+
+                if (ctxSum != null && ctxSum.length() > 0) {
+                    sb.append("【所处环境】");
+                    java.util.Iterator<String> ctxKeys = ctxSum.keys();
+                    while (ctxKeys.hasNext()) {
+                        String ctx = ctxKeys.next();
+                        sb.append(ctx);
+                        if (ctxKeys.hasNext()) sb.append("、");
+                    }
+                    sb.append("\n");
+                }
             }
 
+            // 7. 日历事件（用户可能在忙什么）
             JSONArray cal = data.optJSONArray("calendar_events");
             if (cal != null && cal.length() > 0) {
-                sb.append("日历事件数: ").append(cal.length()).append("\n");
+                sb.append("【日历事件】\n");
+                for (int i = 0; i < Math.min(cal.length(), 5); i++) {
+                    JSONObject ev = cal.optJSONObject(i);
+                    if (ev != null) {
+                        sb.append("  ").append(ev.optString("title", "无标题"));
+                        String loc2 = ev.optString("location", "");
+                        if (!loc2.isEmpty()) sb.append("@").append(loc2);
+                        sb.append("\n");
+                    }
+                }
             }
         } catch (Exception e) {
             sb.append("(数据解析异常)");
@@ -291,57 +387,6 @@ public class DeepSeekApiClient {
                 callback.onError("API 调用失败");
             }
         }).start();
-    }
-
-    /**
-     * 分析上下文数据并保存结果（用于定期自动分析）。
-     */
-    public void analyzeContextData(JSONObject contextData) {
-        new Thread(() -> {
-            try {
-                if (!ApiConfig.isDeepSeekApiKeyConfigured()) return;
-
-                CollectionConfig config = CollectionConfig.getInstance(context);
-                int windowHours = config.getInt(CollectionConfig.KEY_AGGREGATION_WINDOW_HOURS, 6);
-                JSONObject aggregatedData = aggregator.aggregateRecentData(windowHours);
-
-                String systemPrompt = "你是一个数字健康分析师。分析用户的手机使用数据，"
-                        + "给出一个简短的健康状态总结和建议。返回 JSON 格式：\n"
-                        + "{\"summary\": \"...\", \"suggestion\": \"...\"}";
-
-                String userContent = "用户数据:\n" + contextData.toString(2)
-                        + "\n\n历史摘要:\n" + aggregatedData.toString(2);
-
-                String response = callChatSync(systemPrompt, userContent, 512, 0.7f);
-                if (response != null) {
-                    saveAnalysisResult(response, contextData);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "analyzeContextData error", e);
-            }
-        }).start();
-    }
-
-    private void saveAnalysisResult(String analysisResult, JSONObject originalData) {
-        try {
-            JSONObject resultData = new JSONObject();
-            resultData.put("analysis_result", analysisResult);
-            resultData.put("analysis_time", System.currentTimeMillis());
-            resultData.put("original_data_timestamp", originalData.optLong("collection_time"));
-
-            File analysisDir = new File(context.getExternalFilesDir(null), "analysis");
-            if (!analysisDir.exists()) analysisDir.mkdirs();
-
-            String fileName = "analysis_result_" + System.currentTimeMillis() + ".json";
-            File analysisFile = new File(analysisDir, fileName);
-            try (FileWriter fw = new FileWriter(analysisFile)) {
-                fw.write(resultData.toString(4));
-            }
-
-            stats.recordFileSaved(analysisFile.length());
-        } catch (Exception e) {
-            Log.e(TAG, "保存分析结果时出错", e);
-        }
     }
 
     public void shutdown() {

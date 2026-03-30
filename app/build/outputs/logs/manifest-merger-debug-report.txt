@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-74:12
-INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-74:12
-INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-74:12
-INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-74:12
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-108:12
+INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-108:12
+INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-108:12
+INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-108:12
 MERGED from [com.google.android.material:material:1.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\23842c59899d74c6854e6a450173091d\transformed\material-1.8.0\AndroidManifest.xml:17:1-26:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Kate\.gradle\caches\8.12\transforms\6c5a5464dae6ff966e209b72b829ed87\transformed\constraintlayout-2.1.4\AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\Kate\.gradle\caches\8.12\transforms\ba8c5b266f4926bd7be74d4a458a8f50\transformed\jetified-appcompat-resources-1.6.1\AndroidManifest.xml:17:1-22:12
@@ -23,126 +23,168 @@ MERGED from [androidx.legacy:legacy-support-core-utils:1.0.0] C:\Users\Kate\.gra
 MERGED from [androidx.loader:loader:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\ca2abd75990edade11b54c307d1ea5cb\transformed\loader-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.5.1] C:\Users\Kate\.gradle\caches\8.12\transforms\1fcb48c4a354b6cc85a2caa088183005\transformed\lifecycle-viewmodel-2.5.1\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.5.1] C:\Users\Kate\.gradle\caches\8.12\transforms\fbd7856d811a88c80c29b7b327386cf9\transformed\jetified-lifecycle-viewmodel-savedstate-2.5.1\AndroidManifest.xml:17:1-24:12
-MERGED from [androidx.core:core-ktx:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\097983fea546a1f4694d42d2f211e93b\transformed\jetified-core-ktx-1.9.0\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.core:core-ktx:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\6d7e00eeda085fc4f72d19bad9add37e\transformed\jetified-core-ktx-1.12.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\a399870b04c2e4363c8185bb1fb2ffaa\transformed\viewpager-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.recyclerview:recyclerview:1.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d62305d54526d29103fad5a63c72a88b\transformed\recyclerview-1.1.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.customview:customview:1.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\4502c485246127a01e126847158d03d8\transformed\customview-1.1.0\AndroidManifest.xml:17:1-24:12
-MERGED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:17:1-30:12
+MERGED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:17:1-30:12
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\baa8b3c36322af4d4ce16c43f17e1ed4\transformed\cursoradapter-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:17:1-37:12
 MERGED from [androidx.lifecycle:lifecycle-runtime:2.5.1] C:\Users\Kate\.gradle\caches\8.12\transforms\5c3959d2079d075604e6f1c7a64f4a8e\transformed\lifecycle-runtime-2.5.1\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.savedstate:savedstate:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\6c403342aad28bc3402c1a957f8273fa\transformed\jetified-savedstate-1.2.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.cardview:cardview:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\a8c9f8fa17c63c0242a80e7c035a133e\transformed\cardview-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d650a50a617ada87a854c2c87b8bcc3b\transformed\interpolator-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Kate\.gradle\caches\8.12\transforms\18e11dc07a1493eb08d115250aa95da3\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:17:1-27:12
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Kate\.gradle\caches\8.12\transforms\fa9524368fae61a1a1d0f0f05e18aa31\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:17:1-33:12
 MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\90f4887027fb003f391efa038d24d80b\transformed\jetified-tracing-1.0.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.lifecycle:lifecycle-livedata:2.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\3731ffddcbd4c3211ac39aeb1df04f2a\transformed\lifecycle-livedata-2.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.5.1] C:\Users\Kate\.gradle\caches\8.12\transforms\f58f7ad78c3f9a79caa34c7bc8b2783f\transformed\lifecycle-livedata-core-2.5.1\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.arch.core:core-runtime:2.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\41a91cd6961aea8138797855073e6599\transformed\core-runtime-2.1.0\AndroidManifest.xml:17:1-24:12
-MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d650a50a617ada87a854c2c87b8bcc3b\transformed\interpolator-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.documentfile:documentfile:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d313965fb34515014156f35d7f2a6d7d\transformed\documentfile-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d81135d488a22121c3227c3763c7ae14\transformed\localbroadcastmanager-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.print:print:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\c8d231aa81cec8e173346982dba8fb90\transformed\print-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.annotation:annotation-experimental:1.3.0] C:\Users\Kate\.gradle\caches\8.12\transforms\c3d082ad5f2b23ce0d9064ef3461758b\transformed\jetified-annotation-experimental-1.3.0\AndroidManifest.xml:17:1-22:12
-INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-74:12
-INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-74:12
-INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-74:12
+INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-108:12
+INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-108:12
+INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-108:12
 	package
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:3:5-40
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:4:5-40
 		INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml
 		INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml
 	android:versionName
 		INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-74:12
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-108:12
 		INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml
+	xmlns:tools
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:3:5-51
 	android:versionCode
 		INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-74:12
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:1-108:12
 		INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml
 	xmlns:android
 		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:2:11-69
 uses-permission#android.permission.INTERNET
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:6:5-67
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:7:5-67
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:6:22-64
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:7:22-64
 uses-permission#android.permission.ACCESS_NETWORK_STATE
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:7:5-79
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:8:5-79
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:7:22-76
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:8:22-76
 uses-permission#android.permission.WRITE_EXTERNAL_STORAGE
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:10:5-81
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:11:5-81
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:10:22-78
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:11:22-78
 uses-permission#android.permission.READ_EXTERNAL_STORAGE
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:11:5-80
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:12:5-80
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:11:22-77
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:12:22-77
 uses-permission#android.permission.FOREGROUND_SERVICE
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:14:5-77
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:15:5-77
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:14:22-74
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:15:22-74
 uses-permission#android.permission.FOREGROUND_SERVICE_DATA_SYNC
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:15:5-87
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:16:5-87
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:15:22-84
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:16:22-84
+uses-permission#android.permission.FOREGROUND_SERVICE_SPECIAL_USE
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:17:5-89
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:17:22-86
 uses-permission#android.permission.WAKE_LOCK
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:16:5-68
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:18:5-68
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:16:22-65
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:18:22-65
 uses-permission#android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:17:5-95
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:19:5-95
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:17:22-92
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:19:22-92
+uses-permission#android.permission.POST_NOTIFICATIONS
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:22:5-77
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:22:22-74
 uses-permission#android.permission.ACCESS_FINE_LOCATION
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:20:5-79
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:25:5-79
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:20:22-76
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:25:22-76
 uses-permission#android.permission.ACCESS_COARSE_LOCATION
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:21:5-81
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:26:5-81
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:21:22-78
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:26:22-78
+uses-permission#android.permission.ACCESS_WIFI_STATE
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:29:5-76
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:29:22-73
+uses-permission#android.permission.CHANGE_WIFI_STATE
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:30:5-76
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:30:22-73
+uses-permission#android.permission.BLUETOOTH
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:33:5-95
+	android:maxSdkVersion
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:33:66-92
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:33:22-65
+uses-permission#android.permission.BLUETOOTH_ADMIN
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:34:5-101
+	android:maxSdkVersion
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:34:72-98
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:34:22-71
+uses-permission#android.permission.BLUETOOTH_SCAN
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:35:5-37:31
+	android:usesPermissionFlags
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:36:9-55
+	tools:targetApi
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:37:9-28
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:35:22-70
+uses-permission#android.permission.BLUETOOTH_CONNECT
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:38:5-76
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:38:22-73
 uses-permission#android.permission.READ_CALENDAR
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:24:5-72
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:41:5-72
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:24:22-69
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:41:22-69
 uses-permission#android.permission.BODY_SENSORS
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:27:5-71
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:44:5-71
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:27:22-68
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:44:22-68
 uses-permission#android.permission.ACTIVITY_RECOGNITION
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:28:5-79
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:45:5-79
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:28:22-76
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:45:22-76
 uses-permission#android.permission.PACKAGE_USAGE_STATS
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:31:5-78
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:48:5-78
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:31:22-75
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:48:22-75
 uses-permission#android.permission.QUERY_ALL_PACKAGES
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:32:5-77
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:49:5-77
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:32:22-74
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:49:22-74
 uses-permission#android.permission.SYSTEM_ALERT_WINDOW
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:35:5-78
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:52:5-78
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:35:22-75
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:52:22-75
 uses-permission#android.permission.SET_WALLPAPER
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:38:5-72
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:55:5-72
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:38:22-69
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:55:22-69
 uses-permission#android.permission.RECEIVE_BOOT_COMPLETED
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:41:5-81
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:58:5-81
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:41:22-78
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:58:22-78
 application
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:43:5-72:19
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:60:5-106:19
 MERGED from [com.google.android.material:material:1.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\23842c59899d74c6854e6a450173091d\transformed\material-1.8.0\AndroidManifest.xml:24:5-20
 MERGED from [com.google.android.material:material:1.8.0] C:\Users\Kate\.gradle\caches\8.12\transforms\23842c59899d74c6854e6a450173091d\transformed\material-1.8.0\AndroidManifest.xml:24:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Kate\.gradle\caches\8.12\transforms\6c5a5464dae6ff966e209b72b829ed87\transformed\constraintlayout-2.1.4\AndroidManifest.xml:9:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Kate\.gradle\caches\8.12\transforms\6c5a5464dae6ff966e209b72b829ed87\transformed\constraintlayout-2.1.4\AndroidManifest.xml:9:5-20
 MERGED from [androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:23:5-33:19
-MERGED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:28:5-89
-MERGED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:28:5-89
+MERGED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:28:5-89
+MERGED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:28:5-89
 MERGED from [androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:25:5-35:19
 MERGED from [androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:25:5-35:19
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Kate\.gradle\caches\8.12\transforms\18e11dc07a1493eb08d115250aa95da3\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
@@ -150,49 +192,73 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Ka
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Kate\.gradle\caches\8.12\transforms\fa9524368fae61a1a1d0f0f05e18aa31\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Kate\.gradle\caches\8.12\transforms\fa9524368fae61a1a1d0f0f05e18aa31\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
 	android:appComponentFactory
-		ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:28:18-86
+		ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
 	android:label
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:46:9-41
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:63:9-41
 	android:icon
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:45:9-43
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:62:9-43
 	android:allowBackup
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:44:9-35
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:61:9-35
 	android:theme
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:47:9-40
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:64:9-40
 activity#com.datacollector.android.activities.MainActivity
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:50:9-59:20
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:67:9-76:20
 	android:label
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:53:13-35
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:70:13-35
 	android:launchMode
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:54:13-44
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:71:13-44
 	android:exported
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:52:13-36
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:69:13-36
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:51:13-52
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:68:13-52
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:55:13-58:29
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:72:13-75:29
 action#android.intent.action.MAIN
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:56:17-69
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:73:17-69
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:56:25-66
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:73:25-66
 category#android.intent.category.LAUNCHER
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:57:17-77
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:74:17-77
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:57:27-74
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:74:27-74
+activity#com.datacollector.android.activities.PersonalSettingsActivity
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:79:9-82:36
+	android:label
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:82:13-33
+	android:exported
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:81:13-37
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:80:13-64
+activity#com.datacollector.android.activities.SystemSettingsActivity
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:85:9-88:36
+	android:label
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:88:13-33
+	android:exported
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:87:13-37
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:86:13-62
 service#com.datacollector.android.services.DataCollectionService
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:62:9-65:56
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:91:9-94:56
 	android:exported
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:64:13-37
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:93:13-37
 	android:foregroundServiceType
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:65:13-53
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:94:13-53
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:63:13-59
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:92:13-59
 service#com.datacollector.android.services.FloatingOverlayService
-ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:68:9-70:40
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:97:9-104:19
 	android:exported
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:70:13-37
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:99:13-37
+	android:foregroundServiceType
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:100:13-55
 	android:name
-		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:69:13-60
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:98:13-60
+property
+ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:101:13-103:51
+	android:value
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:103:17-48
+	android:name
+		ADDED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml:102:17-76
 uses-sdk
 INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from C:\Users\Kate\src\CATIA3\app\src\main\AndroidManifest.xml
@@ -235,16 +301,16 @@ MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.5.1] C:\Users\Kate\.gradle
 MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.5.1] C:\Users\Kate\.gradle\caches\8.12\transforms\1fcb48c4a354b6cc85a2caa088183005\transformed\lifecycle-viewmodel-2.5.1\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.5.1] C:\Users\Kate\.gradle\caches\8.12\transforms\fbd7856d811a88c80c29b7b327386cf9\transformed\jetified-lifecycle-viewmodel-savedstate-2.5.1\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.5.1] C:\Users\Kate\.gradle\caches\8.12\transforms\fbd7856d811a88c80c29b7b327386cf9\transformed\jetified-lifecycle-viewmodel-savedstate-2.5.1\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.core:core-ktx:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\097983fea546a1f4694d42d2f211e93b\transformed\jetified-core-ktx-1.9.0\AndroidManifest.xml:5:5-44
-MERGED from [androidx.core:core-ktx:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\097983fea546a1f4694d42d2f211e93b\transformed\jetified-core-ktx-1.9.0\AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core-ktx:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\6d7e00eeda085fc4f72d19bad9add37e\transformed\jetified-core-ktx-1.12.0\AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core-ktx:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\6d7e00eeda085fc4f72d19bad9add37e\transformed\jetified-core-ktx-1.12.0\AndroidManifest.xml:5:5-44
 MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\a399870b04c2e4363c8185bb1fb2ffaa\transformed\viewpager-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\a399870b04c2e4363c8185bb1fb2ffaa\transformed\viewpager-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.recyclerview:recyclerview:1.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d62305d54526d29103fad5a63c72a88b\transformed\recyclerview-1.1.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.recyclerview:recyclerview:1.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d62305d54526d29103fad5a63c72a88b\transformed\recyclerview-1.1.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.customview:customview:1.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\4502c485246127a01e126847158d03d8\transformed\customview-1.1.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.customview:customview:1.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\4502c485246127a01e126847158d03d8\transformed\customview-1.1.0\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:20:5-44
-MERGED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\baa8b3c36322af4d4ce16c43f17e1ed4\transformed\cursoradapter-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\baa8b3c36322af4d4ce16c43f17e1ed4\transformed\cursoradapter-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:21:5-23:41
@@ -255,6 +321,8 @@ MERGED from [androidx.savedstate:savedstate:1.2.0] C:\Users\Kate\.gradle\caches\
 MERGED from [androidx.savedstate:savedstate:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\6c403342aad28bc3402c1a957f8273fa\transformed\jetified-savedstate-1.2.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.cardview:cardview:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\a8c9f8fa17c63c0242a80e7c035a133e\transformed\cardview-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.cardview:cardview:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\a8c9f8fa17c63c0242a80e7c035a133e\transformed\cardview-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d650a50a617ada87a854c2c87b8bcc3b\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d650a50a617ada87a854c2c87b8bcc3b\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Kate\.gradle\caches\8.12\transforms\18e11dc07a1493eb08d115250aa95da3\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Kate\.gradle\caches\8.12\transforms\18e11dc07a1493eb08d115250aa95da3\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Kate\.gradle\caches\8.12\transforms\fa9524368fae61a1a1d0f0f05e18aa31\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:21:5-23:41
@@ -267,8 +335,6 @@ MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.5.1] C:\Users\Kate\.gr
 MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.5.1] C:\Users\Kate\.gradle\caches\8.12\transforms\f58f7ad78c3f9a79caa34c7bc8b2783f\transformed\lifecycle-livedata-core-2.5.1\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.arch.core:core-runtime:2.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\41a91cd6961aea8138797855073e6599\transformed\core-runtime-2.1.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.arch.core:core-runtime:2.1.0] C:\Users\Kate\.gradle\caches\8.12\transforms\41a91cd6961aea8138797855073e6599\transformed\core-runtime-2.1.0\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d650a50a617ada87a854c2c87b8bcc3b\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
-MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d650a50a617ada87a854c2c87b8bcc3b\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.documentfile:documentfile:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d313965fb34515014156f35d7f2a6d7d\transformed\documentfile-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.documentfile:documentfile:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d313965fb34515014156f35d7f2a6d7d\transformed\documentfile-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] C:\Users\Kate\.gradle\caches\8.12\transforms\d81135d488a22121c3227c3763c7ae14\transformed\localbroadcastmanager-1.0.0\AndroidManifest.xml:20:5-44
@@ -308,25 +374,25 @@ ADDED from [androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\tran
 	android:name
 		ADDED from [androidx.emoji2:emoji2:1.2.0] C:\Users\Kate\.gradle\caches\8.12\transforms\eae2308cc30532fc3480dd892068243b\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:30:17-75
 permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
-ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:22:5-24:47
+ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
 	android:protectionLevel
-		ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:24:9-44
+		ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
 	android:name
-		ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:23:9-81
+		ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
 permission#com.datacollector.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
-ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:22:5-24:47
+ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
 	android:protectionLevel
-		ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:24:9-44
+		ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
 	android:name
-		ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:23:9-81
+		ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
 uses-permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
-ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:26:5-97
+ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
 	android:name
-		ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:26:22-94
+		ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
 uses-permission#com.datacollector.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
-ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:26:5-97
+ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
 	android:name
-		ADDED from [androidx.core:core:1.9.0] C:\Users\Kate\.gradle\caches\8.12\transforms\7da3e27adb8c02368eb46247c342376b\transformed\core-1.9.0\AndroidManifest.xml:26:22-94
+		ADDED from [androidx.core:core:1.12.0] C:\Users\Kate\.gradle\caches\8.12\transforms\b8c724981c2973848df98a792fd29b68\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
 meta-data#androidx.lifecycle.ProcessLifecycleInitializer
 ADDED from [androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\Kate\.gradle\caches\8.12\transforms\7e1771c521a17bca8ec996acad578e4d\transformed\jetified-lifecycle-process-2.4.1\AndroidManifest.xml:31:13-33:52
 	android:value

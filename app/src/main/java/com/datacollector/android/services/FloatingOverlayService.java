@@ -24,7 +24,6 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.core.app.NotificationCompat;
@@ -33,9 +32,11 @@ import com.datacollector.android.R;
 import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.collectors.CalendarDataCollector;
 import com.datacollector.android.collectors.ScreenUsageCollector;
+import com.datacollector.android.utils.AppForegroundTracker;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.MoodMapper;
 import com.datacollector.android.utils.UnconsciousUsageTracker;
+import com.datacollector.android.views.MoodFaceView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -57,7 +58,7 @@ public class FloatingOverlayService extends Service {
 
     private WindowManager windowManager;
     private View overlayView;
-    private ImageView moodIcon;
+    private MoodFaceView moodFace;
     private TextView bubbleText;
     private WindowManager.LayoutParams layoutParams;
 
@@ -83,9 +84,23 @@ public class FloatingOverlayService extends Service {
         }
     };
 
+    public static final String ACTION_UPDATE_FACE_STYLE = "com.datacollector.ACTION_UPDATE_FACE_STYLE";
+    public static final String EXTRA_FACE_STYLE = "face_style";
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && ACTION_UPDATE_FACE_STYLE.equals(intent.getAction())) {
+            String styleName = intent.getStringExtra(EXTRA_FACE_STYLE);
+            if (styleName != null && moodFace != null) {
+                moodFace.setFaceStyle(MoodFaceView.FaceStyle.fromName(styleName));
+            }
+        }
+        return START_STICKY;
     }
 
     @Override
@@ -145,9 +160,12 @@ public class FloatingOverlayService extends Service {
 
     private void createOverlay() {
         overlayView = LayoutInflater.from(this).inflate(R.layout.floating_overlay, null);
-        moodIcon = overlayView.findViewById(R.id.overlay_mood_icon);
+        moodFace = overlayView.findViewById(R.id.overlay_mood_face);
         bubbleText = overlayView.findViewById(R.id.overlay_bubble_text);
-        moodIcon.setImageResource(currentMood.drawableRes);
+
+        String styleName = config.getString(CollectionConfig.KEY_FACE_STYLE, "CLASSIC");
+        moodFace.setFaceStyle(MoodFaceView.FaceStyle.fromName(styleName));
+        moodFace.setStressImmediate(0f);
 
         int overlayType = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -379,12 +397,28 @@ public class FloatingOverlayService extends Service {
         new Thread(() -> {
             try {
                 boolean screenOn = isScreenOn();
+                AppForegroundTracker fgTracker = AppForegroundTracker.getInstance(
+                        FloatingOverlayService.this);
 
                 String foregroundPkg = null;
                 if (screenOn && screenUsageCollector.isAvailable()) {
                     JSONObject data = screenUsageCollector.collectData();
                     if (data != null) {
+                        // ScreenUsageCollector 内部已优先读 Tracker 缓存；
+                        // 这里拿到的 foreground_app_package 是最终可信值，
+                        // 再写回 Tracker 以刷新 lastUpdateTime、更新切换时间。
                         foregroundPkg = data.optString("foreground_app_package", null);
+                    }
+                }
+
+                // 将最新前台 App 写入全局 Tracker（null 时也刷新 lastUpdateTime）
+                fgTracker.update(foregroundPkg);
+
+                // 屏幕关闭超过阈值时重置 Tracker，避免缓存污染下次采集
+                if (!screenOn) {
+                    // 具体衰减逻辑已在 UUT 内处理，这里仅在 Tracker 过期后 reset
+                    if (fgTracker.isStale()) {
+                        fgTracker.reset();
                     }
                 }
 
@@ -406,21 +440,14 @@ public class FloatingOverlayService extends Service {
     }
 
     private void updateMoodFromUUT(int uut) {
-        MoodMapper.Mood newMood = MoodMapper.fromUUT(uut);
-        if (newMood != currentMood) {
-            currentMood = newMood;
-            if (moodIcon != null) {
-                moodIcon.setImageResource(currentMood.drawableRes);
-            }
-            Log.d(TAG, "Mood updated: " + currentMood.name() + " (UUT=" + uut + ")");
-        }
+        currentMood = MoodMapper.fromUUT(uut);
 
-        // 细粒度视觉反馈：根据 UUT 值微调 alpha
-        if (moodIcon != null) {
-            float stress = MoodMapper.uutToStress(uut);
-            float alpha = 1.0f - stress * 0.3f; // 高 UUT 时图标略变暗
-            moodIcon.setAlpha(alpha);
+        float stress = MoodMapper.uutToStress(uut);
+        if (moodFace != null) {
+            moodFace.setStress(stress);
         }
+        Log.d(TAG, "Mood updated: stress=" + String.format("%.3f", stress)
+                + " (" + currentMood.name() + ", UUT=" + uut + ")");
     }
 
     // ── 静态辅助方法（供 DataCollectionService 调用）──────────

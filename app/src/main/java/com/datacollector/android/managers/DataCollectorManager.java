@@ -13,8 +13,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 数据收集器管理器
@@ -159,15 +161,16 @@ public class DataCollectorManager {
     }
     
     /**
-     * 从所有可用的收集器收集数据
+     * 从所有可用的收集器并发收集数据，阻塞直到全部完成或超时（30 秒）。
      */
     public JSONObject collectAllData() {
         JSONObject allData = new JSONObject();
-        
+        CountDownLatch latch = new CountDownLatch(collectors.size());
+
         for (Map.Entry<String, DataCollector<?>> entry : collectors.entrySet()) {
             String collectorId = entry.getKey();
             DataCollector<?> collector = entry.getValue();
-            
+
             executorService.submit(() -> {
                 try {
                     Object data = collector.collectData();
@@ -175,7 +178,6 @@ public class DataCollectorManager {
                         synchronized (allData) {
                             allData.put(collectorId, data);
                         }
-                        
                         if (callback != null) {
                             callback.onDataCollected(collectorId, data);
                         }
@@ -185,10 +187,19 @@ public class DataCollectorManager {
                     if (callback != null) {
                         callback.onCollectionError(collectorId, e);
                     }
+                } finally {
+                    latch.countDown();
                 }
             });
         }
-        
+
+        try {
+            latch.await(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Log.w(TAG, "collectAllData interrupted before all collectors finished");
+            Thread.currentThread().interrupt();
+        }
+
         return allData;
     }
     

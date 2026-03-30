@@ -11,6 +11,7 @@ import android.util.Log;
 import androidx.annotation.RequiresApi;
 
 import com.datacollector.android.utils.AppCategoryClassifier;
+import com.datacollector.android.utils.AppForegroundTracker;
 import com.datacollector.android.utils.CollectionConfig;
 
 import org.json.JSONArray;
@@ -105,6 +106,23 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
             JSONArray topApps = collectTopApps(usm, todayStartMs, now);
             EventScanResult scan = scanEvents(usm, todayStartMs, now);
 
+            // ── 优先使用 AppForegroundTracker 缓存（30s 精度，OEM 兼容）────
+            AppForegroundTracker tracker = AppForegroundTracker.getInstance(context);
+            String trackerPkg = tracker.getCurrentPackage();
+            if (trackerPkg != null && !trackerPkg.isEmpty()) {
+                // Tracker 有新鲜缓存，直接覆盖 UsageEvents 的扫描结果
+                scan.foregroundPkg = trackerPkg;
+                long trackerSwitchTime = tracker.getSwitchTime();
+                if (trackerSwitchTime > 0) {
+                    scan.currentOpenSince = trackerSwitchTime;
+                    scan.currentOpenMs = now - trackerSwitchTime;
+                }
+                Log.d(TAG, "Foreground from Tracker: " + trackerPkg
+                        + " (open " + scan.currentOpenMs / 1000 + "s)");
+            } else {
+                Log.d(TAG, "Tracker stale/empty, using UsageEvents result: " + scan.foregroundPkg);
+            }
+
             long foregroundAppTodayMs = 0;
             if (scan.foregroundPkg != null) {
                 foregroundAppTodayMs = getAppUsageToday(usm, scan.foregroundPkg, todayStartMs, now);
@@ -143,7 +161,7 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
             result.put("foreground_app_today_ms", foregroundAppTodayMs);
             result.put("foreground_app_today_readable", formatDuration(foregroundAppTodayMs));
 
-            // 当前这次打开的持续时长
+            // 当前这次打开的持续时长（Tracker 提供时精度 ~30s；fallback 时来自 UsageEvents）
             result.put("foreground_app_current_open_ms", scan.currentOpenMs);
             result.put("foreground_app_current_open_minutes", scan.currentOpenMs / 60000);
             result.put("foreground_app_current_open_readable", formatDuration(scan.currentOpenMs));
@@ -151,6 +169,7 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
                     scan.currentOpenSince > 0
                             ? dateFormat.format(new Date(scan.currentOpenSince))
                             : null);
+            result.put("foreground_source", trackerPkg != null ? "tracker" : "usage_events");
 
             result.put("top_apps_today", topApps);
 

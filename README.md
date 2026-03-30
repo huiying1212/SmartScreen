@@ -1,310 +1,476 @@
-# Android用户行为数据收集器
+# CATIA3 — Android 用户行为数据收集系统
 
-基于CATIA论文实现的安卓用户行为数据收集系统，能够收集用户使用手机过程中的各种上下文信息并输出JSON格式的数据。
+Android 用户行为数据收集系统。以前台 Service 为核心，每 10 分钟自动采集一次结构化上下文数据，并输出 JSON 文件；可选地通过 DeepSeek API 进行 LLM 健康分析，通过通义千问图像 API 生成隐喻壁纸。
 
-## 功能特性
+---
 
-### 数据收集类别
+## 数据收集类别
 
-根据CATIA论文的设计，本程序收集以下类别的数据：
+### 1. 时间信息（Service 直接写入）
 
-#### 1. 时间信息
-- 当前日期时间 (`date_time`)
-- 星期几 (`day_of_week`)
-- 时间戳 (`timestamp`)
+| 字段 | 说明 |
+|---|---|
+| `timestamp` | Unix 毫秒时间戳 |
+| `date_time` | 可读日期时间，格式 `yyyy-MM-dd HH:mm:ss` |
+| `day_of_week` | 星期几（本地语言） |
+| `trigger_reason` | 触发原因：`periodic`（定时）/ `manual`（手动触发） |
 
-#### 2. 位置信息 (`location`)
-- GPS坐标（纬度、经度）
-- 位置精度
-- 海拔高度
-- 可读地址（地理编码）
+---
 
-#### 3. 活动识别 (`activity`)
-- 静止 (still)
-- 走路 (walking) 
-- 跑步 (running)
-- 骑车 (cycling)
-- 其他活动 (others)
-- 识别置信度
+### 2. 位置信息 — `location`
 
-#### 4. 连接设备信息
-- **蓝牙设备** (`bluetooth_devices`)
-  - 设备名称
-  - MAC地址
-  - 设备类型
-  - 连接状态
-- **WiFi信息** (`wifi_info`)
-  - SSID网络名称
-  - BSSID
-  - 信号强度(RSSI)
-  - 连接速度
-  - 频率
+**Collector**：`LocationDataCollector`
 
-#### 5. 日历事件 (`calendar_events`)
-- 过去3天和未来3天的事件
-- 事件标题
-- 开始/结束时间
-- 描述
-- 位置
+| 字段 | 说明 |
+|---|---|
+| `latitude` / `longitude` | GPS 坐标 |
+| `accuracy` | 定位精度（米） |
+| `altitude` | 海拔高度（米） |
+| `speed` | 速度（m/s） |
+| `bearing` | 方位角（度） |
+| `timestamp` | 定位时间戳 |
+| `provider` | 定位提供者（`gps` 等） |
+| `readable_address` | 坐标的可读字符串（`lat, lng` 格式） |
 
-#### 6. 屏幕内容 (`screen_content`)
-- 屏幕文本内容
-- 屏幕类型（聊天/普通屏幕）
-- 应用包名
-- 时间戳
-- 内容稳定性检测
+此外，Service 根据活动类型 + 定位精度 + 时段推断 `location_context`（`通勤中` / `户外` / `室内` / `家` / `公司/学校` / `未知`）。
 
-#### 7. 当前应用信息 (`current_app`)
-- 应用包名
-- 应用重要性等级
+---
 
-## 技术实现
+### 3. 活动识别 — `user_activity`
 
-### 核心组件
+**Collector**：`ActivityRecognitionCollector` + `ActivityRecognizer`
 
-1. **AndroidDataCollector.java** - 主数据收集器
-   - 协调各种数据源
-   - 定时收集上下文数据
-   - 权限管理
+基于 Wang et al., *StudentLife*, UbiComp 2014 描述的 Jigsaw 决策树分类器，仅使用加速度计数据，采样率 20 Hz，分类窗口约 2 秒。
 
-2. **ActivityRecognizer.java** - 活动识别器
-   - 基于加速度计和陀螺仪数据
-   - 机器学习特征提取
-   - 实时活动分类
+#### 可识别活动类型
 
-3. **ScreenContentCollector.java** - 屏幕内容收集器
-   - 基于Accessibility Service
-   - 屏幕稳定性检测
-   - 内容去重算法
+| 活动 | 说明 |
+|---|---|
+| `stationary` | 静止 |
+| `walking` | 步行 |
+| `running` | 跑步 |
+| `driving` | 驾车 |
+| `cycling` | 骑车 |
 
-### 权限要求
+#### 输出字段
 
-程序需要以下Android权限：
+| 字段 | 说明 |
+|---|---|
+| `activity` | 当前活动类型（见上表） |
+| `confidence` | 分类置信度（0~1） |
+| `timestamp` | 最近一次分类时间戳 |
+| `classifier` | 固定值 `decision_tree` |
+| `sensor_status.accelerometer_available` | 加速度计是否可用 |
 
-```xml
-<!-- 基本权限 -->
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+#### 决策树结构
 
-<!-- 位置权限 -->
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
-<!-- 蓝牙权限 -->
-<uses-permission android:name="android.permission.BLUETOOTH" />
-<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-
-<!-- WiFi权限 -->
-<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-
-<!-- 日历权限 -->
-<uses-permission android:name="android.permission.READ_CALENDAR" />
-
-<!-- 活动识别权限 -->
-<uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
-
-<!-- 无障碍服务权限 -->
-<uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
+```
+              [variance < 0.3]
+              /               \
+        stationary      [peakFreq < 0.8]
+                        /              \
+             [variance < 2.5]    [variance < 8.0]
+             /            \       /            \
+          driving       cycling  walking      running
 ```
 
-## 使用方法
+使用特征：均值、方差、能量、过零率、峰值频率（峰值计数法估算）、轴间 Pearson 相关系数。
 
-### 1. 初始化数据收集器
+---
 
-```java
-AndroidDataCollector collector = new AndroidDataCollector();
-```
+### 4. Wi-Fi 信息 — `wifi_info`
 
-### 2. 获取完整上下文数据
+**Collector**：`WifiDataCollector`
 
-```java
-JSONObject contextData = collector.getCompleteContextData();
-```
+#### `connected_ap`（当前连接的 AP）
 
-### 3. 数据输出格式
+| 字段 | 说明 |
+|---|---|
+| `ssid` | 网络名称 |
+| `bssid` | AP 的 MAC 地址 |
+| `rssi` | 信号强度（dBm） |
+| `link_speed_mbps` | 连接速率（Mbps） |
+| `frequency_mhz` | 频率（MHz，2.4G ≈ 2437，5G ≈ 5180） |
+| `ip_address` | 设备 IP 地址 |
+| `wifi_standard` | Wi-Fi 标准（Android 10+ 可用，如 `Wi-Fi 5 (802.11ac)`） |
 
-程序输出的JSON数据格式如下：
+采集策略：通过 `WifiManager.getConnectionInfo()` 读取当前连接的 AP 信息。
+
+---
+
+### 5. 蓝牙设备 — `bluetooth_devices`
+
+**Collector**：`BluetoothDataCollector`
+
+#### `paired_devices`（已配对设备）
+
+| 字段 | 说明 |
+|---|---|
+| `name` | 设备名称 |
+| `mac_address` | MAC 地址 |
+| `device_class` | 设备大类（见下表） |
+| `bond_state` | 配对状态：`bonded` / `bonding` / `none` |
+
+#### `nearby_devices`（周边发现设备，最多 20 条，去重）
+
+在已配对设备字段基础上额外包含：
+
+| 字段 | 说明 |
+|---|---|
+| `rssi` | 信号强度（dBm） |
+
+#### 设备大类（`device_class`）
+
+`audio_video` / `computer` / `phone` / `health` / `wearable` / `peripheral` / `imaging` / `networking` / `other`
+
+采集策略：注册 `ACTION_FOUND` 广播被动接收发现事件，`doStartCollection` 时触发一次扫描。适配 Android 12+（`BLUETOOTH_SCAN` / `BLUETOOTH_CONNECT` 权限分离）。
+
+---
+
+### 6. 日历事件 — `calendar`
+
+**Collector**：`CalendarDataCollector`
+
+默认查询范围：过去 7 天 + 未来 30 天，最多 50 条事件（均可通过 `CollectionConfig` 调整）。
+
+#### `calendars`（日历账户列表）
+
+| 字段 | 说明 |
+|---|---|
+| `id` | 日历 ID |
+| `display_name` | 显示名称 |
+| `account_name` | 账户名 |
+| `account_type` | 账户类型 |
+| `visible` | 是否可见 |
+| `is_primary` | 是否为主日历 |
+
+#### `events`（事件列表，按开始时间升序）
+
+| 字段 | 说明 |
+|---|---|
+| `event_id` | 事件 ID |
+| `title` | 标题 |
+| `description` | 描述（最多 500 字符） |
+| `location` | 地点 |
+| `begin_datetime` / `end_datetime` | 可读时间 |
+| `begin_timestamp` / `end_timestamp` | Unix 毫秒时间戳 |
+| `duration_minutes` | 时长（分钟） |
+| `is_past` | 是否已过去 |
+| `minutes_until` | 距开始还有多少分钟（负值=已过去） |
+| `all_day` | 是否全天事件 |
+| `calendar_name` | 所属日历名称 |
+| `organizer` | 组织者 |
+| `status` | `confirmed` / `tentative` / `canceled` |
+| `availability` | `busy` / `free` / `tentative` |
+| `is_recurring` | 是否为循环事件 |
+
+---
+
+### 7. 屏幕使用统计 — `screen_usage`
+
+**Collector**：`ScreenUsageCollector`（基于 `UsageStatsManager`，需授权"使用情况统计"）
+
+| 字段 | 说明 |
+|---|---|
+| `today_screen_time_ms` / `_minutes` / `_readable` | 今日累计屏幕使用时长 |
+| `unlock_count_last_hour` | 过去一小时解锁次数 |
+| `current_session_ms` / `_minutes` / `_readable` | 本次解锁后的持续使用时长 |
+| `foreground_app_package` | 当前前台 App 包名 |
+| `foreground_app_category` / `_en` | 当前 App 分类（中英文） |
+| `foreground_app_today_ms` / `_readable` | 当前 App 今日总使用时长 |
+| `foreground_app_current_open_ms` / `_readable` | 当前 App 本次打开持续时长 |
+| `foreground_app_open_since` | 当前 App 本次打开时间 |
+| `top_apps_today` | 今日使用时长 Top N 应用（含包名、分类、时长） |
+
+App 分类由 `AppCategoryClassifier` 完成，基于包名规则映射到：社交、娱乐、生产力、工具、教育、健康、购物、财务等类别。
+
+---
+
+## 已规划但尚未实现的数据类别
+
+| 类别 | JSON 字段 | 说明 |
+|---|---|---|
+| 屏幕文本内容 | `screen_content` | 需实现 `AccessibilityService`，采集屏幕可见文字、应用包名、聊天识别等 |
+| 当前应用独立字段 | `current_app` | `foreground_app_package` 目前存于 `screen_usage` 内部，尚未单独输出为顶层字段 |
+
+---
+
+## 输出 JSON 格式示例
 
 ```json
 {
   "context_data": {
     "timestamp": 1703123456789,
     "date_time": "2024-12-21 14:30:45",
-    "day_of_week": "星期四",
+    "day_of_week": "Friday",
+    "trigger_reason": "periodic",
+    "location_context": "公司/学校",
     "location": {
       "latitude": 39.9042,
       "longitude": 116.4074,
       "accuracy": 10.0,
       "altitude": 45.2,
-      "readable_address": "北京市朝阳区"
+      "speed": 0.0,
+      "bearing": 0.0,
+      "provider": "gps",
+      "readable_address": "39.904200, 116.407400"
     },
-    "activity": {
-      "activity": "walking",
-      "confidence": 0.85,
-      "timestamp": 1703123456789
+    "user_activity": {
+      "activity": "stationary",
+      "confidence": 0.95,
+      "timestamp": 1703123456789,
+      "classifier": "decision_tree",
+      "sensor_status": { "accelerometer_available": true }
     },
-    "bluetooth_devices": [
-      {
-        "name": "AirPods Pro",
-        "address": "AA:BB:CC:DD:EE:FF",
-        "type": 1,
-        "bond_state": 12
-      }
-    ],
     "wifi_info": {
-      "ssid": "\"MyWiFi\"",
-      "bssid": "00:11:22:33:44:55",
-      "rssi": -45,
-      "link_speed": 150,
-      "frequency": 5180
+      "connected_ap": {
+        "ssid": "OfficeWiFi",
+        "bssid": "00:11:22:33:44:55",
+        "rssi": -52,
+        "link_speed_mbps": 300,
+        "frequency_mhz": 5180,
+        "ip_address": "192.168.1.42",
+        "wifi_standard": "Wi-Fi 5 (802.11ac)"
+      }
     },
-    "calendar_events": [
-      {
-        "title": "团队会议",
-        "start_time": 1703140800000,
-        "end_time": 1703144400000,
-        "description": "讨论项目进展",
-        "location": "会议室A"
-      }
-    ],
-    "screen_content": [
-      {
-        "timestamp": 1703123456789,
-        "type": "chat",
-        "content": "你好，今天的会议取消了吗？",
-        "app_package": "com.tencent.mm"
-      }
-    ],
-    "current_app": {
-      "package_name": "com.tencent.mm",
-      "importance": 100
+    "bluetooth_devices": {
+      "paired_devices": [
+        { "name": "AirPods Pro", "mac_address": "AA:BB:CC:DD:EE:FF",
+          "device_class": "audio_video", "bond_state": "bonded" }
+      ],
+      "paired_device_count": 1,
+      "nearby_devices": [],
+      "nearby_device_count": 0,
+      "is_discovering": false
+    },
+    "calendar": {
+      "calendar_count": 2,
+      "event_count": 3,
+      "past_days": 7,
+      "future_days": 30,
+      "events": [
+        {
+          "event_id": 12345,
+          "title": "团队会议",
+          "begin_datetime": "2024-12-21 15:00:00",
+          "end_datetime": "2024-12-21 16:00:00",
+          "duration_minutes": 60,
+          "is_past": false,
+          "minutes_until": 30,
+          "location": "会议室A",
+          "status": "confirmed",
+          "is_recurring": false
+        }
+      ]
+    },
+    "screen_usage": {
+      "today_screen_time_ms": 7200000,
+      "today_screen_time_minutes": 120,
+      "today_screen_time_readable": "2h 0m",
+      "unlock_count_last_hour": 5,
+      "current_session_ms": 900000,
+      "current_session_readable": "15m",
+      "foreground_app_package": "com.tencent.mm",
+      "foreground_app_category": "社交",
+      "foreground_app_category_en": "social",
+      "foreground_app_today_ms": 1800000,
+      "foreground_app_today_readable": "30m",
+      "top_apps_today": [
+        { "package_name": "com.tencent.mm", "category": "社交",
+          "usage_ms": 1800000, "usage_readable": "30m" }
+      ]
+    },
+    "collectors_status": {
+      "location": "available",
+      "activity_recognition": "available",
+      "screen_usage": "available",
+      "calendar": "available",
+      "wifi_info": "available",
+      "bluetooth_devices": "available"
     }
   },
   "collection_time": 1703123456789
 }
 ```
 
-## 数据收集策略
+---
 
-### 收集频率
-- **传感器数据**: 20Hz采样率
-- **位置数据**: 每分钟或移动10米时更新
-- **屏幕内容**: 每200ms检测变化，稳定400ms后记录
-- **完整上下文**: 每30秒收集一次
+## 技术架构
 
-### 数据存储
-- JSON文件保存到外部存储
-- 文件名格式: `context_data_[timestamp].json`
-- 内存中维护实时数据结构
+### 核心组件
 
-### 隐私保护
-- 本地数据处理，不上传到云端
-- 用户可随时停止数据收集
-- 敏感数据脱敏处理
+| 类 | 职责 |
+|---|---|
+| `DataCollectionService` | 前台 Service，每 10 分钟调度一次采集，协调所有 Collector |
+| `DataCollectorManager` | Collector 注册、生命周期管理（启动/停止/数据获取） |
+| `LocationDataCollector` | GPS 位置采集 |
+| `ActivityRecognitionCollector` | 传感器监听，调用 `ActivityRecognizer` 分类 |
+| `ActivityRecognizer` | 基于决策树的活动识别（StudentLife/Jigsaw 算法） |
+| `WifiDataCollector` | Wi-Fi 连接信息与周边 AP 扫描 |
+| `BluetoothDataCollector` | 已配对设备与周边发现设备 |
+| `CalendarDataCollector` | 系统日历事件读取 |
+| `ScreenUsageCollector` | 屏幕时长、解锁次数、前台 App（UsageStatsManager） |
+| `DataAggregator` | 将多次采集文件聚合为时间窗口摘要，供 LLM 分析使用 |
+| `DeepSeekApiClient` | 调用 DeepSeek 聊天接口进行健康分析 |
+| `WallpaperGenerationManager` | 聚合数据 → LLM 提取关键词 → 通义千问生成壁纸 |
+| `DataCleanupManager` | 定期清理过期数据文件（默认保留 7 天） |
+| `DataEncryptor` | AES 加密存储 |
+| `CollectionConfig` | 所有运行时参数的 SharedPreferences 统一管理 |
 
-## 活动识别算法
+### 数据流
 
-基于传感器数据的活动识别：
+```
+传感器 / 系统 API
+       ↓
+各 DataCollector（Location / Activity / WiFi / Bluetooth / Calendar / ScreenUsage）
+       ↓
+DataCollectionService.collectCurrentContextData()
+  ├─ mergeCollectorData()        — 字段映射 + 位置上下文推断
+  ├─ saveContextData()           — 写入加密/压缩/明文 JSON 文件
+  │     └─ 明文副本 context_data_<ts>.json
+  │
+  └─ [可选] WallpaperGenerationManager.generateAndSetWallpaper()
+        ├─ DataAggregator 聚合 + DeepSeek 提取关键词
+        └─ QwenImageApiClient 生成并设置壁纸
+```
 
-### 特征提取
-- 加速度均值、标准差、最大值、最小值
-- 陀螺仪数据统计特征
-- 总加速度变化
-- 步频检测
-- 方向变化检测
+---
 
-### 分类规则
-- **静止**: 加速度标准差 < 0.5 且总变化 < 2.0
-- **走路**: 中等加速度变化(1.0-4.0) 且步频0.5-2.5 Hz
-- **跑步**: 高加速度变化(>3.0) 且步频>2.0 Hz  
-- **骑车**: 中等加速度变化且低方向变化
-- **其他**: 不符合以上模式的活动
+## 数据存储
 
-## 屏幕内容处理
+- **目录**：应用外部私有目录（`getExternalFilesDir(null)`）下的 `data/` 子目录
+- **采集文件**：`context_data_<timestamp>.json`（始终保存一份明文副本，主文件可加密/压缩）
+- **分析结果**：`analysis/analysis_result_<timestamp>.json`
+- **壁纸缓存**：`wallpapers/`
 
-### 稳定性检测
-- 每200ms截图检测变化
-- 内容稳定400ms后记录
-- 相似度阈值0.8去重
+### 存储格式选项（`CollectionConfig`）
 
-### 聊天识别
-- 检测关键词：发送、聊天、消息、回复
-- 特殊处理聊天界面布局
-- 提取发送者和消息内容
+| 配置 Key | 默认值 | 说明 |
+|---|---|---|
+| `data_encryption_enabled` | `true` | AES 加密，保存为 `.enc` |
+| `data_compression_enabled` | `true` | GZIP 压缩，保存为 `.json.gz` |
+| `data_retention_days` | `7` | 采集文件保留天数 |
+| `analysis_retention_days` | `3` | 分析结果保留天数 |
+| `max_storage_mb` | `200` | 最大占用存储空间 |
 
-### 队列管理
-- 维护最近20个屏幕内容
-- 按时间顺序排列
-- 支持时间范围查询
+---
 
-## 部署要求
+## 采集配置参数
 
-### 系统要求
-- Android 6.0 (API 23) 及以上
-- 支持蓝牙4.0+
-- GPS/网络定位
-- 加速度计和陀螺仪传感器
+所有参数通过 `CollectionConfig`（SharedPreferences）管理，支持运行时修改。
 
-### 开发环境
-- Android Studio 4.0+
-- Gradle 6.0+
-- Target SDK: 33
-- Min SDK: 23
+| 配置 Key | 默认值 | 说明 |
+|---|---|---|
+| `collection_interval_ms` | 600000（10 分钟）| 周期采集间隔 |
+| `location_enabled` | `true` | 位置采集开关 |
+| `location_update_interval_ms` | 60000 | 位置更新间隔 |
+| `location_min_distance_m` | 10 | 位置更新最小距离（米） |
+| `activity_recognition_enabled` | `true` | 活动识别开关 |
+| `screen_usage_enabled` | `true` | 屏幕使用统计开关 |
+| `screen_usage_top_apps_count` | 10 | Top N 应用数量 |
+| `calendar_enabled` | `true` | 日历采集开关 |
+| `calendar_past_days` | 7 | 日历查询过去天数 |
+| `calendar_future_days` | 30 | 日历查询未来天数 |
+| `calendar_max_events` | 50 | 最多返回事件数 |
+| `wifi_enabled` | `true` | Wi-Fi 采集开关 |
+| `bluetooth_enabled` | `true` | 蓝牙采集开关 |
+| `aggregation_window_hours` | 6 | LLM 数据聚合时间窗口 |
+
+---
+
+## 权限要求
+
+```xml
+<!-- 网络 -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+<!-- 存储 -->
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+<!-- 前台服务 -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+<!-- 位置（Wi-Fi 扫描也需要） -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+<!-- Wi-Fi -->
+<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+<uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+
+<!-- 蓝牙 -->
+<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />    <!-- Android 12+ -->
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" /> <!-- Android 12+ -->
+
+<!-- 日历 -->
+<uses-permission android:name="android.permission.READ_CALENDAR" />
+
+<!-- 传感器与活动识别 -->
+<uses-permission android:name="android.permission.BODY_SENSORS" />
+<uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
+<!-- 屏幕使用统计（需用户在设置中手动授权） -->
+<uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
+<!-- 悬浮窗与壁纸 -->
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+<uses-permission android:name="android.permission.SET_WALLPAPER" />
+```
+
+> **注意**：`PACKAGE_USAGE_STATS` 为特殊权限，需用户在「设置 → 应用 → 特殊应用访问权限 → 使用情况访问权限」中手动开启。
+
+---
+
+## API 配置
+
+API 密钥通过 `local.properties` 注入 BuildConfig，不硬编码在源码中。
+
+在项目根目录的 `local.properties` 中添加：
+
+```properties
+DEEPSEEK_API_KEY=your_deepseek_key_here
+QWEN_IMAGE_API_KEY=your_qwen_key_here
+```
+
+| API | 用途 | 配置类 |
+|---|---|---|
+| DeepSeek Chat | 图标提醒文案生成、壁纸关键词提取 | `ApiConfig.DEEPSEEK_API_URL` |
+| 通义千问图像生成 | 壁纸生成（`wallpaper_generation_enabled=true` 时定时调用） | `ApiConfig.QWEN_IMAGE_API_URL` |
+
+---
+
+## 系统要求
+
+- Android 6.0（API 23）及以上
+- 支持 GPS 定位
+- 加速度计传感器（活动识别必需）
+- 蓝牙 4.0+（蓝牙采集可选）
+- Target SDK：34，Min SDK：23
+
+---
 
 ## 注意事项
 
-1. **权限申请**: 首次运行需要用户授权各种权限
-2. **无障碍服务**: 需要用户手动启用屏幕内容收集功能
-3. **电池优化**: 长期运行可能影响电池续航
-4. **存储空间**: 大量数据需要足够的存储空间
-5. **隐私合规**: 使用前需要获得用户明确同意
+1. **权限申请**：首次运行需用户逐项授权，`PACKAGE_USAGE_STATS` 需手动在系统设置中开启
+2. **屏幕内容采集**：`screen_content` 字段（无障碍服务）尚未实现，需用户手动启用 AccessibilityService
+3. **蓝牙扫描功耗**：主动扫描耗电较高，已改为被动监听策略
+4. **Wi-Fi 扫描限速**：Android 10+ 系统对主动扫描频率有限制，实际扫描结果依赖系统调度
+5. **电池优化**：长期后台运行建议将应用加入电池优化白名单（`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`）
+6. **隐私合规**：所有数据本地存储，LLM 分析需联网，使用前需获得用户明确同意
 
-## 扩展功能
-### 研究应用
-- 人机交互研究
-- 移动设备使用模式分析
-- 上下文感知计算
-- 智能文本输入系统
-- 移动用户行为建模
-
-## 许可证
-
-本项目基于Apache 2.0许可证开源，详见LICENSE文件。
+---
 
 ## 参考文献
 
-基于论文《Investigating Context-Aware Collaborative Text Entry on Smartphones using Large Language Models》的设计理念和技术方案。 
-
-# 配置Gemini API
-
-## 获取API密钥
-
-1. 访问 [Google AI Studio](https://aistudio.google.com/)
-2. 创建或登录您的Google账户
-3. 获取Gemini API密钥
-
-## 配置API密钥
-
-在 `app/src/main/java/com/datacollector/android/GeminiApiClient.java` 文件中：
-
-```java
-private static final String API_KEY = "YOUR_API_KEY_HERE"; // 请替换为您的Gemini API密钥
-```
-
-将 `YOUR_API_KEY_HERE` 替换为您从Google AI Studio获取的实际API密钥。
-
-## 使用方法
-
-1. 启动应用
-2. 点击"启动数据收集"开始收集用户行为数据
-3. 等待数据收集一段时间
-4. 点击"调用Gemini AI分析"按钮
-5. 系统将自动使用最新收集的数据文件和prompt.txt进行AI分析
-6. 分析结果将显示在屏幕上
-
-## 注意事项
-
-- 确保设备有网络连接
-- API调用可能需要几秒钟时间
-- 确保您的API密钥有足够的配额
-- prompt.txt文件已包含在应用的assets目录中 
+- Wang et al., *StudentLife: Assessing Mental Health, Academic Performance and Behavioral Trends of College Students using Smartphones*, UbiComp 2014
+- Lu et al., *SoundSense: Scalable Sound Sensing for People-Centric Applications on Mobile Phones*, MobiSys 2009
+- Huckins et al., Beiwe Research Platform, *JMIR mHealth* 2020
+- 论文《Investigating Context-Aware Collaborative Text Entry on Smartphones using Large Language Models》（CATIA）

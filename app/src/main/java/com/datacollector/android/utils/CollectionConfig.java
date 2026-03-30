@@ -30,9 +30,10 @@ public class CollectionConfig {
     public static final String KEY_CALENDAR_PAST_DAYS = "calendar_past_days";
     public static final String KEY_CALENDAR_FUTURE_DAYS = "calendar_future_days";
     public static final String KEY_CALENDAR_MAX_EVENTS = "calendar_max_events";
+    public static final String KEY_WIFI_ENABLED = "wifi_enabled";
+    public static final String KEY_BLUETOOTH_ENABLED = "bluetooth_enabled";
 
     // ── 数据管理 ──────────────────────────────────────────────
-    public static final String KEY_AUTO_ANALYSIS = "auto_analysis_enabled";
     public static final String KEY_DATA_ENCRYPTION = "data_encryption_enabled";
     public static final String KEY_DATA_COMPRESSION = "data_compression_enabled";
     public static final String KEY_DATA_RETENTION_DAYS = "data_retention_days";
@@ -58,7 +59,8 @@ public class CollectionConfig {
 
     // ── 个人设置 ──────────────────────────────────────────────
     public static final String KEY_WALLPAPER_STYLE = "wallpaper_style";
-    public static final String KEY_SELECTED_ICON_INDEX = "selected_icon_index";
+    public static final String KEY_SELECTED_ICON_INDEX = "selected_icon_index"; // deprecated
+    public static final String KEY_FACE_STYLE = "face_style";
     public static final String KEY_USER_PERSONAL_GOAL = "user_personal_goal";
 
     private final SharedPreferences prefs;
@@ -91,9 +93,10 @@ public class CollectionConfig {
         putIfAbsent(editor, KEY_CALENDAR_PAST_DAYS, 1);
         putIfAbsent(editor, KEY_CALENDAR_FUTURE_DAYS, 1);
         putIfAbsent(editor, KEY_CALENDAR_MAX_EVENTS, 20);
+        putIfAbsent(editor, KEY_WIFI_ENABLED, true);
+        putIfAbsent(editor, KEY_BLUETOOTH_ENABLED, true);
 
         // 数据管理
-        putIfAbsent(editor, KEY_AUTO_ANALYSIS, false);
         putIfAbsent(editor, KEY_DATA_ENCRYPTION, true);
         putIfAbsent(editor, KEY_DATA_COMPRESSION, true);
         putIfAbsent(editor, KEY_DATA_RETENTION_DAYS, 7);
@@ -119,7 +122,7 @@ public class CollectionConfig {
 
         // 个人设置
         putIfAbsent(editor, KEY_WALLPAPER_STYLE, "唯美艺术");
-        putIfAbsent(editor, KEY_SELECTED_ICON_INDEX, 0);
+        putIfAbsent(editor, KEY_FACE_STYLE, "CLASSIC");
         putIfAbsent(editor, KEY_USER_PERSONAL_GOAL, "");
 
         editor.apply();

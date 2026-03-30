@@ -277,7 +277,6 @@ public class ActivityRecognizer {
             info.put("confidence", confidence);
             info.put("timestamp", System.currentTimeMillis());
             info.put("classifier", "decision_tree");
-            info.put("reference", "StudentLife/Jigsaw (Wang et al. 2014, Lu et al. 2010)");
             return info;
         } catch (JSONException e) {
             Log.e(TAG, "Failed to build activity info JSON", e);

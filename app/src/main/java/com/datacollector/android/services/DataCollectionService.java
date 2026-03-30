@@ -20,9 +20,11 @@ import com.datacollector.android.R;
 import com.datacollector.android.activities.MainActivity;
 import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.collectors.ActivityRecognitionCollector;
+import com.datacollector.android.collectors.BluetoothDataCollector;
 import com.datacollector.android.collectors.CalendarDataCollector;
 import com.datacollector.android.collectors.LocationDataCollector;
 import com.datacollector.android.collectors.ScreenUsageCollector;
+import com.datacollector.android.collectors.WifiDataCollector;
 import com.datacollector.android.managers.DataCollectorManager;
 import com.datacollector.android.managers.WallpaperGenerationManager;
 import com.datacollector.android.utils.AppCategoryClassifier;
@@ -50,7 +52,7 @@ import java.util.zip.GZIPOutputStream;
  *   screenTime, unlockCount, currentApp, appCategory,
  *   userActivity, locationContext, calendar
  *
- * 采集完成后触发壁纸引擎检查和可选的 LLM 分析。
+ * 采集完成后触发壁纸引擎检查。
  */
 public class DataCollectionService extends Service implements DataCollectorManager.DataCollectionCallback {
 
@@ -69,7 +71,6 @@ public class DataCollectionService extends Service implements DataCollectorManag
     private JSONObject currentContextData;
     private Handler collectionHandler;
     private Runnable periodicCollectionRunnable;
-    private boolean autoAnalysisEnabled = false;
     private PowerManager.WakeLock wakeLock;
 
     public class DataCollectionBinder extends Binder {
@@ -139,6 +140,10 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 collectorManager.registerCollector(new ScreenUsageCollector(this)));
         initErrors.runSafely("calendar", () ->
                 collectorManager.registerCollector(new CalendarDataCollector(this)));
+        initErrors.runSafely("wifi", () ->
+                collectorManager.registerCollector(new WifiDataCollector(this)));
+        initErrors.runSafely("bluetooth", () ->
+                collectorManager.registerCollector(new BluetoothDataCollector(this)));
 
         if (initErrors.hasErrors()) {
             Log.w(TAG, initErrors.getSummary());
@@ -156,20 +161,20 @@ public class DataCollectionService extends Service implements DataCollectorManag
     // ── 定期采集（每 10 分钟）──────────────────────────────
 
     private void startPeriodicCollection() {
-        long interval = collectionConfig.getLong(
-                CollectionConfig.KEY_COLLECTION_INTERVAL_MS, 10 * 60_000L);
-
         periodicCollectionRunnable = new Runnable() {
             @Override
             public void run() {
                 collectCurrentContextData("periodic");
+                long interval = collectionConfig.getLong(
+                        CollectionConfig.KEY_COLLECTION_INTERVAL_MS, 10 * 60_000L);
                 collectionHandler.postDelayed(this, interval);
             }
         };
 
-        // 首次延迟 30 秒让 collectors 初始化完成
         collectionHandler.postDelayed(periodicCollectionRunnable, 30_000L);
-        Log.i(TAG, "Periodic collection started (interval=" + interval / 60000 + "min)");
+        long initial = collectionConfig.getLong(
+                CollectionConfig.KEY_COLLECTION_INTERVAL_MS, 10 * 60_000L);
+        Log.i(TAG, "Periodic collection started (interval=" + initial / 60000 + "min)");
     }
 
     // ── 数据采集 ─────────────────────────────────────────────
@@ -230,6 +235,10 @@ public class DataCollectionService extends Service implements DataCollectorManag
             ctx.put("screen_usage", raw.get("screen_usage"));
         if (raw.has("calendar"))
             ctx.put("calendar", raw.get("calendar"));
+        if (raw.has("wifi_info"))
+            ctx.put("wifi_info", raw.get("wifi_info"));
+        if (raw.has("bluetooth_devices"))
+            ctx.put("bluetooth_devices", raw.get("bluetooth_devices"));
         ctx.put("collectors_status", collectorManager.getCollectorsStatus());
     }
 
@@ -312,14 +321,10 @@ public class DataCollectionService extends Service implements DataCollectorManag
             collectionStats.recordFileSaved(dataFile.length());
             Log.d(TAG, "Saved: " + dataFile.getName());
 
-            // 明文副本（LLM 分析 + DataAggregator 使用）
-            File plainFile = new File(dataDir, "context_data_" + System.currentTimeMillis() + ".json");
-            try (FileWriter fw = new FileWriter(plainFile)) { fw.write(jsonString); }
-
-            // 可选 LLM 分析
-            if (autoAnalysisEnabled && deepSeekApiClient != null) {
-                try { deepSeekApiClient.analyzeContextData(outputData); }
-                catch (Exception e) { Log.e(TAG, "LLM analysis error", e); }
+            // 仅在未加密时才写明文副本（加密模式下不再泄漏明文）
+            if (!encryptionEnabled) {
+                File plainFile = new File(dataDir, "context_data_latest.json");
+                try (FileWriter fw = new FileWriter(plainFile)) { fw.write(jsonString); }
             }
 
             // 壁纸引擎检查
@@ -411,13 +416,6 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
     public DataCollectorManager getCollectorManager() { return collectorManager; }
 
-    public void setAutoAnalysisEnabled(boolean enabled) {
-        this.autoAnalysisEnabled = enabled;
-        collectionConfig.setBoolean(CollectionConfig.KEY_AUTO_ANALYSIS, enabled);
-    }
-
-    public boolean isAutoAnalysisEnabled() { return autoAnalysisEnabled; }
-
     public String getDataCleanupStats() {
         return dataCleanupManager != null ? dataCleanupManager.getCleanupStats() : "未初始化";
     }
@@ -447,7 +445,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
     public void onDestroy() {
         super.onDestroy();
         if (collectionHandler != null) collectionHandler.removeCallbacksAndMessages(null);
-        if (collectorManager != null) collectorManager.stopAllCollectors();
+        if (collectorManager != null) collectorManager.shutdown();
         if (deepSeekApiClient != null) deepSeekApiClient.shutdown();
         if (wallpaperGenerationManager != null) wallpaperGenerationManager.shutdown();
         if (dataCleanupManager != null) dataCleanupManager.stopCleanup();
