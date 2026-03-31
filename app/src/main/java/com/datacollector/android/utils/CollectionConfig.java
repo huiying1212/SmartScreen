@@ -32,6 +32,8 @@ public class CollectionConfig {
     public static final String KEY_CALENDAR_MAX_EVENTS = "calendar_max_events";
     public static final String KEY_WIFI_ENABLED = "wifi_enabled";
     public static final String KEY_BLUETOOTH_ENABLED = "bluetooth_enabled";
+    public static final String KEY_WEATHER_ENABLED = "weather_enabled";
+    public static final String KEY_WEATHER_CACHE_DURATION_MS = "weather_cache_duration_ms";
 
     // ── 数据管理 ──────────────────────────────────────────────
     public static final String KEY_DATA_ENCRYPTION = "data_encryption_enabled";
@@ -95,6 +97,8 @@ public class CollectionConfig {
         putIfAbsent(editor, KEY_CALENDAR_MAX_EVENTS, 20);
         putIfAbsent(editor, KEY_WIFI_ENABLED, true);
         putIfAbsent(editor, KEY_BLUETOOTH_ENABLED, true);
+        putIfAbsent(editor, KEY_WEATHER_ENABLED, true);
+        putIfAbsent(editor, KEY_WEATHER_CACHE_DURATION_MS, 30 * 60_000L); // 30 min cache
 
         // 数据管理
         putIfAbsent(editor, KEY_DATA_ENCRYPTION, true);

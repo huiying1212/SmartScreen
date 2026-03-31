@@ -24,6 +24,7 @@ import com.datacollector.android.collectors.BluetoothDataCollector;
 import com.datacollector.android.collectors.CalendarDataCollector;
 import com.datacollector.android.collectors.LocationDataCollector;
 import com.datacollector.android.collectors.ScreenUsageCollector;
+import com.datacollector.android.collectors.WeatherDataCollector;
 import com.datacollector.android.collectors.WifiDataCollector;
 import com.datacollector.android.managers.DataCollectorManager;
 import com.datacollector.android.managers.WallpaperGenerationManager;
@@ -144,6 +145,8 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 collectorManager.registerCollector(new WifiDataCollector(this)));
         initErrors.runSafely("bluetooth", () ->
                 collectorManager.registerCollector(new BluetoothDataCollector(this)));
+        initErrors.runSafely("weather", () ->
+                collectorManager.registerCollector(new WeatherDataCollector(this)));
 
         if (initErrors.hasErrors()) {
             Log.w(TAG, initErrors.getSummary());
@@ -239,6 +242,8 @@ public class DataCollectionService extends Service implements DataCollectorManag
             ctx.put("wifi_info", raw.get("wifi_info"));
         if (raw.has("bluetooth_devices"))
             ctx.put("bluetooth_devices", raw.get("bluetooth_devices"));
+        if (raw.has("weather"))
+            ctx.put("weather", raw.get("weather"));
         ctx.put("collectors_status", collectorManager.getCollectorsStatus());
     }
 

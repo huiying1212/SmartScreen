@@ -32,9 +32,9 @@ import com.datacollector.android.R;
 import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.collectors.CalendarDataCollector;
 import com.datacollector.android.collectors.ScreenUsageCollector;
+import com.datacollector.android.collectors.WeatherDataCollector;
 import com.datacollector.android.utils.AppForegroundTracker;
 import com.datacollector.android.utils.CollectionConfig;
-import com.datacollector.android.utils.MoodMapper;
 import com.datacollector.android.utils.UnconsciousUsageTracker;
 import com.datacollector.android.views.MoodFaceView;
 
@@ -67,9 +67,9 @@ public class FloatingOverlayService extends Service {
     private ScreenUsageCollector screenUsageCollector;
     private DeepSeekApiClient deepSeekClient;
     private CalendarDataCollector calendarCollector;
+    private WeatherDataCollector weatherCollector;
     private CollectionConfig config;
 
-    private MoodMapper.Mood currentMood = MoodMapper.Mood.HAPPY;
     private boolean isBubbleShowing = false;
     private boolean isGeneratingBubble = false;
 
@@ -117,6 +117,7 @@ public class FloatingOverlayService extends Service {
         screenUsageCollector = new ScreenUsageCollector(this);
         deepSeekClient = new DeepSeekApiClient(this);
         calendarCollector = new CalendarDataCollector(this);
+        weatherCollector = new WeatherDataCollector(this);
 
         if (Settings.canDrawOverlays(this)) {
             createOverlay();
@@ -271,8 +272,21 @@ public class FloatingOverlayService extends Service {
 
                 String calendarInfo = getCalendarContext();
 
+                // Collect weather info
+                String weatherInfo = null;
+                try {
+                    if (weatherCollector != null && weatherCollector.isAvailable()) {
+                        JSONObject weatherData = weatherCollector.collectData();
+                        if (weatherData != null) {
+                            weatherInfo = weatherData.optString("readable_summary", null);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to get weather data", e);
+                }
+
                 final String text = deepSeekClient.generateBubbleText(
-                        currentApp, usageMins, uutValue, calendarInfo);
+                        currentApp, usageMins, uutValue, calendarInfo, weatherInfo);
 
                 Log.i(TAG, "Bubble text result: " + text);
 
@@ -440,14 +454,14 @@ public class FloatingOverlayService extends Service {
     }
 
     private void updateMoodFromUUT(int uut) {
-        currentMood = MoodMapper.fromUUT(uut);
-
-        float stress = MoodMapper.uutToStress(uut);
+        // 将 UUT (0-100) 映射为 stress [0.0, 1.0]，ease-in-out 曲线
+        float t = Math.max(0f, Math.min(1f, uut / 100f));
+        float stress = t * t * (3f - 2f * t);
         if (moodFace != null) {
             moodFace.setStress(stress);
         }
         Log.d(TAG, "Mood updated: stress=" + String.format("%.3f", stress)
-                + " (" + currentMood.name() + ", UUT=" + uut + ")");
+                + " (UUT=" + uut + ")");
     }
 
     // ── 静态辅助方法（供 DataCollectionService 调用）──────────

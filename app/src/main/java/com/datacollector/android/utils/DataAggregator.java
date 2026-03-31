@@ -77,9 +77,9 @@ public class DataAggregator {
             // Calendar / reminder accumulators (deduplicated by event_id)
             Map<Long, JSONObject> calendarEventMap = new HashMap<>();
             Map<Long, JSONObject> reminderEventMap = new HashMap<>();
-            // Screen usage: keep the latest snapshot (highest today_screen_time_ms wins)
+            // Screen usage: keep the chronologically newest snapshot
             JSONObject latestScreenUsage = null;
-            long latestScreenUsageMs = -1;
+            long latestScreenUsageTimestamp = -1;
             long earliestTimestamp = Long.MAX_VALUE;
             long latestTimestamp = 0;
             // Foreground app timeline: ordered list of (timestamp, package, category)
@@ -90,6 +90,9 @@ public class DataAggregator {
             // Location addresses and contexts (deduplicated)
             List<String> locationAddresses = new ArrayList<>();
             Map<String, Integer> locationContextCounts = new LinkedHashMap<>();
+            // Weather: keep the latest snapshot
+            JSONObject latestWeather = null;
+            long latestWeatherTimestamp = 0;
 
             for (File file : files) {
                 long fileTimestamp = extractTimestamp(file.getName());
@@ -161,12 +164,11 @@ public class DataAggregator {
                     appUsageCounts.merge(trigger, 1, Integer::sum);
                 }
 
-                // Aggregate screen usage: keep the snapshot with the largest today_screen_time_ms
+                // Aggregate screen usage: keep the chronologically newest snapshot
                 JSONObject screenUsage = contextData.optJSONObject("screen_usage");
                 if (screenUsage != null) {
-                    long screenMs = screenUsage.optLong("today_screen_time_ms", 0);
-                    if (screenMs > latestScreenUsageMs) {
-                        latestScreenUsageMs = screenMs;
+                    if (fileTimestamp > latestScreenUsageTimestamp) {
+                        latestScreenUsageTimestamp = fileTimestamp;
                         latestScreenUsage = screenUsage;
                     }
 
@@ -206,6 +208,16 @@ public class DataAggregator {
                                 if (evId >= 0) reminderEventMap.put(evId, rem);
                             }
                         }
+                    }
+                }
+
+                // Aggregate weather: keep the most recent snapshot
+                JSONObject weather = contextData.optJSONObject("weather");
+                if (weather != null) {
+                    long wTs = weather.optLong("timestamp", fileTimestamp);
+                    if (wTs > latestWeatherTimestamp) {
+                        latestWeatherTimestamp = wTs;
+                        latestWeather = weather;
                     }
                 }
             }
@@ -327,6 +339,11 @@ public class DataAggregator {
             }
             summary.put("reminder_events", reminderSummary);
             summary.put("reminder_event_count", reminderSummary.length());
+
+            // Weather summary (latest snapshot)
+            if (latestWeather != null) {
+                summary.put("latest_weather", latestWeather);
+            }
 
             summary.put("status", "aggregated");
 

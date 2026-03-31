@@ -69,14 +69,15 @@ public class DeepSeekApiClient {
 
         try {
             String systemPrompt = "你是一位擅长场景化表达的创意概念提炼师。"
-                    + "根据用户近几小时的手机使用数据，提炼出最能描绘用户这段时间生活场景的关键词。\n\n"
+                    + "根据用户近几小时的手机使用数据，提炼出最能描绘用户这段时间生活场景的纯景物关键词。\n\n"
                     + "规则：\n"
                     + "1. 关键词数量不限，通常 3-6 个，视数据丰富程度而定\n"
-                    + "2. 关键词应该是具体的、有画面感的事物或场景元素，适合用于文生图\n"
-                    + "3. 例如：如果用户主要在处理工作，关键词可以是「电脑、咖啡、台灯」；"
-                    + "如果用户以娱乐为主，可以是「沙发、零食、暖光」；"
-                    + "如果用户在运动，可以是「奔跑的人、阳光、运动鞋」\n"
-                    + "4. 用中文顿号分隔，不要输出任何解释，只输出关键词\n\n"
+                    + "2. 关键词必须是具体的、有画面感的事物或静物场景元素，且【绝对不能包含人物、人群或任何生物】\n"
+                    + "3. 场景需注重“写实感”和“环境氛围”，避免任何魔幻、超现实或抽象元素\n"
+                    + "4. 例如：如果用户在工作，可以是「办公桌、键盘、半杯咖啡、百叶窗透过的光」；"
+                    + "如果以娱乐为主，可以是「舒适的沙发、亮着的屏幕、零食、室内暖光」；"
+                    + "如果在运动，可以是「空旷的跑道、阳光、树影、运动水壶」\n"
+                    + "5. 用中文顿号分隔，不要输出任何解释，只输出关键词\n\n"
                     + "偏好权重说明：\n" + weightDescription;
 
             String userContent = "用户手机使用数据摘要：\n" + summarizeForKeywords(aggregatedData);
@@ -97,6 +98,17 @@ public class DeepSeekApiClient {
     public String summarizeForKeywords(JSONObject data) {
         StringBuilder sb = new StringBuilder();
         try {
+            // 0. 数据时间范围
+            long rangeStart = data.optLong("time_range_start", 0);
+            long rangeEnd = data.optLong("time_range_end", 0);
+            if (rangeStart > 0 && rangeEnd > 0) {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat(
+                        "yyyy-MM-dd HH:mm", java.util.Locale.getDefault());
+                sb.append("【数据时间范围】\n");
+                sb.append("  从 ").append(sdf.format(new java.util.Date(rangeStart)));
+                sb.append(" 到 ").append(sdf.format(new java.util.Date(rangeEnd))).append("\n");
+            }
+
             // 1. 各分类 App 使用时长（最能反映用户在做什么）
             JSONObject catUsage = data.optJSONObject("category_usage_minutes");
             if (catUsage != null && catUsage.length() > 0) {
@@ -217,6 +229,22 @@ public class DeepSeekApiClient {
                     }
                 }
             }
+
+            // 8. 天气状况
+            JSONObject weather = data.optJSONObject("latest_weather");
+            if (weather != null) {
+                sb.append("【天气状况】\n");
+                sb.append("  ").append(weather.optString("readable_summary", "未知")).append("\n");
+                int windSpeed = weather.optInt("wind_speed_kmph", 0);
+                if (windSpeed > 0) {
+                    sb.append("  风速: ").append(windSpeed).append("km/h")
+                      .append(" 方向: ").append(weather.optString("wind_dir", "")).append("\n");
+                }
+                int uvIndex = weather.optInt("uv_index", 0);
+                if (uvIndex > 0) {
+                    sb.append("  紫外线指数: ").append(uvIndex).append("\n");
+                }
+            }
         } catch (Exception e) {
             sb.append("(数据解析异常)");
         }
@@ -239,7 +267,8 @@ public class DeepSeekApiClient {
      * 只走 LLM 路径，失败时返回错误原因字符串（不会返回 null）。
      */
     public String generateBubbleText(String currentApp, int usageMins,
-                                     int uutValue, String calendarInfo) {
+                                     int uutValue, String calendarInfo,
+                                     String weatherInfo) {
         if (!ApiConfig.isDeepSeekApiKeyConfigured()) {
             String err = "[API Key not set] check local.properties";
             Log.e(TAG, "generateBubbleText: " + err);
@@ -269,6 +298,9 @@ public class DeepSeekApiClient {
         userContent.append("unconscious-usage-index: ").append(uutValue).append("/100");
         if (calendarInfo != null && !calendarInfo.isEmpty()) {
             userContent.append(", calendar: [").append(calendarInfo).append("]");
+        }
+        if (weatherInfo != null && !weatherInfo.isEmpty()) {
+            userContent.append(", weather: [").append(weatherInfo).append("]");
         }
         userContent.append(". Generate a short Chinese reminder. (t=")
                 .append(System.currentTimeMillis()).append(")");

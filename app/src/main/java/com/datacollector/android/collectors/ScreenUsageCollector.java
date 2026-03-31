@@ -346,6 +346,15 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
         return null;
     }
 
+    /**
+     * Fallback: sum all non-system apps' foreground time as an approximation
+     * of total screen-on time. This is used when SCREEN_INTERACTIVE /
+     * SCREEN_NON_INTERACTIVE events are not available (common on many OEM ROMs).
+     *
+     * Note: UsageStats.getTotalTimeInForeground() may overlap between apps
+     * (e.g. split-screen), but small overlaps are acceptable compared to the
+     * previous bug of only taking the max single-app time.
+     */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP_MR1)
     private long calcScreenTimeFromForeground(UsageStatsManager usm, long startMs, long endMs) {
         Map<String, UsageStats> statsMap = usm.queryAndAggregateUsageStats(startMs, endMs);
@@ -353,7 +362,7 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
         long total = 0;
         for (UsageStats s : statsMap.values()) {
             if (!isSystemPackage(s.getPackageName())) {
-                total = Math.max(total, s.getTotalTimeInForeground());
+                total += s.getTotalTimeInForeground();
             }
         }
         return total;

@@ -243,7 +243,7 @@ public class SystemSettingsActivity extends Activity {
                 final int mins = usageMins;
                 final int uutVal = uut;
 
-                String result = deepSeekClient.generateBubbleText(app, mins, uutVal, null);
+                String result = deepSeekClient.generateBubbleText(app, mins, uutVal, null, null);
 
                 StringBuilder sb = new StringBuilder();
                 sb.append("── AI 提醒测试结果 ──\n");
