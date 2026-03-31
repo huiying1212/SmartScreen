@@ -10,6 +10,11 @@
 local.properties
 app/build/
 
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
 # Ignore dataset files
 app/test_data/wisdm-dataset/
 figures/
