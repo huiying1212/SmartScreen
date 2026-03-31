@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python scripts/tuning.py)",
+      "Bash(python scripts/run_ablation.py)",
+      "Bash(python -c \"import matplotlib; import numpy; print\\(''matplotlib:'', matplotlib.__version__, ''numpy:'', numpy.__version__\\)\")"
+    ]
+  }
+}

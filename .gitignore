@@ -9,3 +9,7 @@
 .cxx
 local.properties
 app/build/
+
+# Ignore dataset files
+app/test_data/wisdm-dataset/
+figures/

@@ -4,10 +4,13 @@ import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.util.Log;
-import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONObject;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Activity recognizer based on the decision tree classifier described in:
@@ -43,8 +46,19 @@ public class ActivityRecognizer {
     private final List<Float> accY = new ArrayList<>();
     private final List<Float> accZ = new ArrayList<>();
 
-    private String currentActivity = ACTIVITY_STATIONARY;
-    private float confidence = 0.0f;
+    private volatile String currentActivity = ACTIVITY_STATIONARY;
+    private volatile float confidence = 0.0f;
+
+    private static final int HISTORY_SIZE = 5;
+    private static class ActivityPrediction {
+        String activity;
+        float confidence;
+        ActivityPrediction(String a, float c) {
+            this.activity = a;
+            this.confidence = c;
+        }
+    }
+    private final LinkedList<ActivityPrediction> activityHistory = new LinkedList<>();
 
     private final DecisionTreeNode decisionTree;
     private final Context context;
@@ -54,7 +68,7 @@ public class ActivityRecognizer {
         this.decisionTree = buildDecisionTree();
     }
 
-    public void processSensorData(SensorEvent event) {
+    public synchronized void processSensorData(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             accX.add(event.values[0]);
             accY.add(event.values[1]);
@@ -103,6 +117,7 @@ public class ActivityRecognizer {
     }
 
     private static float mean(float[] v) {
+        if (v.length == 0) return 0f;
         float s = 0;
         for (float x : v) s += x;
         return s / v.length;
@@ -126,6 +141,7 @@ public class ActivityRecognizer {
      * the dominant frequency that the Jigsaw engine uses for step detection.
      */
     private static float zeroCrossingRate(float[] v, float mean) {
+        if (v.length <= 1) return 0f;
         int crossings = 0;
         for (int i = 1; i < v.length; i++) {
             if ((v[i - 1] - mean) * (v[i] - mean) < 0) crossings++;
@@ -134,6 +150,7 @@ public class ActivityRecognizer {
     }
 
     private static float range(float[] v) {
+        if (v.length == 0) return 0f;
         float min = Float.MAX_VALUE, max = -Float.MAX_VALUE;
         for (float x : v) {
             if (x < min) min = x;
@@ -155,7 +172,7 @@ public class ActivityRecognizer {
             if (v > threshold && !above) {
                 peaks++;
                 above = true;
-            } else if (v < threshold) {
+            } else if (v <= threshold) {
                 above = false;
             }
         }
@@ -225,7 +242,7 @@ public class ActivityRecognizer {
 
         // Level 3 — walking vs running (high peak-frequency branch)
         DecisionTreeNode walkOrRun = DecisionTreeNode.branch(
-                Feature.VARIANCE, 8.0f, walking, running);
+                Feature.VARIANCE, 12.0f, walking, running);
 
         // Level 2 — locomotion vs vehicle
         DecisionTreeNode moving = DecisionTreeNode.branch(
@@ -238,25 +255,73 @@ public class ActivityRecognizer {
 
     private void recognizeActivity() {
         AccelFeatures features = extractFeatures();
-        String[] result = decisionTree.classify(features);
+        String[] result = decisionTree.classify(features, 1.0f);
 
         String activity = result[0];
         float conf = Float.parseFloat(result[1]);
 
-        if (!activity.equals(currentActivity)) {
-            Log.d(TAG, "Activity changed: " + currentActivity + " -> " + activity
-                    + " (conf=" + conf + ")");
-            currentActivity = activity;
+        // Add to history for smoothing
+        activityHistory.addLast(new ActivityPrediction(activity, conf));
+        if (activityHistory.size() > HISTORY_SIZE) {
+            activityHistory.removeFirst();
         }
-        confidence = conf;
+
+        // Confidence-Weighted Smoothing
+        String smoothedActivity = getConfidenceWeightedActivity();
+
+        if (!smoothedActivity.equals(currentActivity)) {
+            Log.d(TAG, "Activity changed: " + currentActivity + " -> " + smoothedActivity
+                    + " (raw=" + activity + ", conf=" + conf + ")");
+            currentActivity = smoothedActivity;
+        }
+        // Use the smoothed confidence (best score) instead of raw single-window conf
+        confidence = getSmoothedConfidence(smoothedActivity);
+    }
+
+    private String getConfidenceWeightedActivity() {
+        Map<String, Float> scores = new HashMap<>();
+        float weight = 1.0f;
+        // Iterate newest-first with exponential decay so recent predictions dominate
+        for (int i = activityHistory.size() - 1; i >= 0; i--) {
+            ActivityPrediction pred = activityHistory.get(i);
+            float score = pred.confidence * weight;
+            scores.put(pred.activity, scores.getOrDefault(pred.activity, 0f) + score);
+            weight *= 0.8f;
+        }
+        String bestAct = currentActivity;
+        float maxScore = -1f;
+        for (Map.Entry<String, Float> entry : scores.entrySet()) {
+            if (entry.getValue() > maxScore) {
+                maxScore = entry.getValue();
+                bestAct = entry.getKey();
+            }
+        }
+        return bestAct;
+    }
+
+    /** Weighted average confidence for the given activity across history. */
+    private float getSmoothedConfidence(String activity) {
+        float totalConf = 0f;
+        float totalWeight = 0f;
+        float weight = 1.0f;
+        for (int i = activityHistory.size() - 1; i >= 0; i--) {
+            ActivityPrediction pred = activityHistory.get(i);
+            if (pred.activity.equals(activity)) {
+                totalConf += pred.confidence * weight;
+                totalWeight += weight;
+            }
+            weight *= 0.8f;
+        }
+        return totalWeight > 0 ? totalConf / totalWeight : 0f;
     }
 
     private void trimBuffer() {
         int keep = WINDOW_SIZE / 2;
-        while (accX.size() > keep) {
-            accX.remove(0);
-            accY.remove(0);
-            accZ.remove(0);
+        int excess = accX.size() - keep;
+        if (excess > 0) {
+            accX.subList(0, excess).clear();
+            accY.subList(0, excess).clear();
+            accZ.subList(0, excess).clear();
         }
     }
 
@@ -273,7 +338,7 @@ public class ActivityRecognizer {
     public JSONObject getActivityInfo() {
         try {
             JSONObject info = new JSONObject();
-            info.put("activity", currentActivity);
+            info.put("activity_type", currentActivity);
             info.put("confidence", confidence);
             info.put("timestamp", System.currentTimeMillis());
             info.put("classifier", "decision_tree");
@@ -358,13 +423,23 @@ public class ActivityRecognizer {
 
         /**
          * Traverse the tree and return [activity, confidence].
+         * Confidence is dynamically penalized if the feature is close to the threshold.
          */
-        String[] classify(AccelFeatures features) {
+        String[] classify(AccelFeatures features, float currentConfidence) {
             if (isLeaf) {
-                return new String[]{activityLabel, String.valueOf(leafConfidence)};
+                return new String[]{activityLabel, String.valueOf(currentConfidence * leafConfidence)};
             }
             float value = features.get(splitFeature);
-            return (value < threshold ? left : right).classify(features);
+
+            // Normalize distance relative to the threshold (30% relative margin)
+            float relDist = Math.abs(value - threshold) / (threshold == 0 ? 1.0f : threshold);
+            float distanceRatio = Math.min(relDist / 0.30f, 1.0f);
+
+            // If value is very close to threshold (distanceRatio ~ 0), penalize confidence (down to * 0.5)
+            // If it's far (distanceRatio -> 1), no penalty (multiply by 1.0)
+            float penalty = 0.5f + (0.5f * distanceRatio);
+
+            return (value < threshold ? left : right).classify(features, currentConfidence * penalty);
         }
     }
 }
