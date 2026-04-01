@@ -36,6 +36,7 @@ public class QwenImageApiClient {
 
     private final Context context;
     private final OkHttpClient httpClient;
+    private final OkHttpClient downloadClient;
 
     public interface ImageGenerationCallback {
         void onSuccess(String imageUrl, Bitmap bitmap);
@@ -52,6 +53,14 @@ public class QwenImageApiClient {
                 .connectTimeout(connectTimeout, TimeUnit.SECONDS)
                 .readTimeout(readTimeout, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .build();
+
+        // Separate client for downloading pre-signed OSS URLs (no Authorization header)
+        this.downloadClient = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(120, TimeUnit.SECONDS)
                 .followRedirects(true)
                 .followSslRedirects(true)
                 .build();
@@ -195,15 +204,8 @@ public class QwenImageApiClient {
         File tempFile = new File(context.getCacheDir(),
                 "qwen_temp_" + System.currentTimeMillis() + ".png");
         try {
-            // Use a plain client with no Authorization header — OSS pre-signed URLs
+            // Use downloadClient (no Authorization header) — OSS pre-signed URLs
             // embed auth in query params and reject extra Authorization headers.
-            OkHttpClient downloadClient = new OkHttpClient.Builder()
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(120, TimeUnit.SECONDS)
-                    .followRedirects(true)
-                    .followSslRedirects(true)
-                    .build();
-
             Request request = new Request.Builder()
                     .url(url)
                     .get()
@@ -216,22 +218,23 @@ public class QwenImageApiClient {
                 int code = response.code();
                 Log.d(TAG, "Download response code: " + code);
 
+                okhttp3.ResponseBody responseBody = response.body();
                 if (!response.isSuccessful()) {
-                    String errBody = response.body() != null ? response.body().string() : "(empty)";
+                    String errBody = responseBody != null ? responseBody.string() : "(empty)";
                     Log.e(TAG, "Image download failed " + code + ": " + errBody);
                     return null;
                 }
-                if (response.body() == null) {
+                if (responseBody == null) {
                     Log.e(TAG, "Image download: response body is null");
                     return null;
                 }
 
-                String contentType = response.body().contentType() != null
-                        ? response.body().contentType().toString() : "unknown";
-                long contentLength = response.body().contentLength();
+                String contentType = responseBody.contentType() != null
+                        ? responseBody.contentType().toString() : "unknown";
+                long contentLength = responseBody.contentLength();
                 Log.d(TAG, "Content-Type: " + contentType + ", Content-Length: " + contentLength);
 
-                try (InputStream is = response.body().byteStream();
+                try (InputStream is = responseBody.byteStream();
                      FileOutputStream fos = new FileOutputStream(tempFile)) {
                     byte[] buffer = new byte[16384];
                     int bytesRead;
@@ -292,5 +295,6 @@ public class QwenImageApiClient {
 
     public void shutdown() {
         httpClient.dispatcher().executorService().shutdown();
+        downloadClient.dispatcher().executorService().shutdown();
     }
 }

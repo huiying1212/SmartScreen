@@ -120,7 +120,7 @@ public class MainActivity extends Activity {
 
                 uiHandler.post(() -> {
                     tvReminderStatus.setVisibility(android.view.View.GONE);
-                    tvReminderResult.setText(text);
+                    tvReminderResult.setText(text != null ? text : "");
                 });
             } catch (Exception e) {
                 uiHandler.post(() -> {

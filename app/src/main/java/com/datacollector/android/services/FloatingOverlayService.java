@@ -72,6 +72,7 @@ public class FloatingOverlayService extends Service {
 
     private boolean isBubbleShowing = false;
     private boolean isGeneratingBubble = false;
+    private Runnable periodicUpdateRunnable = null;
 
     private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
         @Override
@@ -290,9 +291,10 @@ public class FloatingOverlayService extends Service {
 
                 Log.i(TAG, "Bubble text result: " + text);
 
+                final String displayText = (text != null && !text.isEmpty()) ? text : "注意休息一下吧";
                 mainHandler.post(() -> {
                     dismissBubbleImmediately();
-                    showBubble(text);
+                    showBubble(displayText);
                 });
 
             } catch (Exception e) {
@@ -351,6 +353,10 @@ public class FloatingOverlayService extends Service {
             bubbleText.setVisibility(View.GONE);
         }
         isBubbleShowing = false;
+        // Only remove the bubble dismiss callback, not the periodic update runnable
+        if (periodicUpdateRunnable != null) {
+            mainHandler.removeCallbacks(periodicUpdateRunnable);
+        }
         mainHandler.removeCallbacksAndMessages(null);
         // 恢复定期更新（removeCallbacksAndMessages 会移除所有回调）
         startPeriodicUpdates();
@@ -394,17 +400,22 @@ public class FloatingOverlayService extends Service {
     // ── 定期 UUT 更新 ────────────────────────────────────────
 
     private void startPeriodicUpdates() {
+        // Cancel any existing periodic update to avoid duplicate chains
+        if (periodicUpdateRunnable != null) {
+            mainHandler.removeCallbacks(periodicUpdateRunnable);
+        }
+
         long interval = config.getLong(
                 CollectionConfig.KEY_OVERLAY_UPDATE_INTERVAL_MS, 30_000L);
 
-        Runnable updateRunnable = new Runnable() {
+        periodicUpdateRunnable = new Runnable() {
             @Override
             public void run() {
                 refreshUUT();
                 mainHandler.postDelayed(this, interval);
             }
         };
-        mainHandler.post(updateRunnable);
+        mainHandler.post(periodicUpdateRunnable);
     }
 
     private void refreshUUT() {

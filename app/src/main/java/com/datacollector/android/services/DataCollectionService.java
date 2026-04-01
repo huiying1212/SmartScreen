@@ -107,9 +107,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
     public int onStartCommand(Intent intent, int flags, int startId) {
         startForegroundService();
 
-        if (wakeLock != null && wakeLock.isHeld()) {
-            wakeLock.acquire(10 * 60 * 1000L);
-        } else {
+        if (wakeLock == null || !wakeLock.isHeld()) {
             acquireWakeLock();
         }
 

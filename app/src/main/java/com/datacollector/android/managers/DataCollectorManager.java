@@ -274,6 +274,14 @@ public class DataCollectorManager {
         collectors.clear();
         
         executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
         Log.i(TAG, "DataCollectorManager shutdown");
     }
 } 
