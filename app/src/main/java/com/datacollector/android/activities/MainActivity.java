@@ -116,7 +116,7 @@ public class MainActivity extends Activity {
                     }
                 } catch (Exception ignored) {}
 
-                final String text = deepSeekClient.generateBubbleText(currentApp, usageMins, uut, null, null, null, null);
+                final String text = deepSeekClient.generateBubbleText(currentApp, usageMins, uut, null, null);
 
                 uiHandler.post(() -> {
                     tvReminderStatus.setVisibility(android.view.View.GONE);

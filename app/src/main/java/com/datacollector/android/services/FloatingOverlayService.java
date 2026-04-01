@@ -28,10 +28,6 @@ import android.widget.TextView;
 
 import androidx.core.app.NotificationCompat;
 
-import android.bluetooth.BluetoothClass;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothManager;
-
 import com.datacollector.android.R;
 import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.collectors.CalendarDataCollector;
@@ -73,7 +69,6 @@ public class FloatingOverlayService extends Service {
     private CalendarDataCollector calendarCollector;
     private WeatherDataCollector weatherCollector;
     private CollectionConfig config;
-    private BluetoothManager bluetoothManager;
 
     private boolean isBubbleShowing = false;
     private boolean isGeneratingBubble = false;
@@ -124,7 +119,6 @@ public class FloatingOverlayService extends Service {
         deepSeekClient = new DeepSeekApiClient(this);
         calendarCollector = new CalendarDataCollector(this);
         weatherCollector = new WeatherDataCollector(this);
-        bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
 
         if (Settings.canDrawOverlays(this)) {
             createOverlay();
@@ -292,23 +286,8 @@ public class FloatingOverlayService extends Service {
                     Log.w(TAG, "Failed to get weather data", e);
                 }
 
-                // 收集蓝牙设备情境
-                String bluetoothInfo = null;
-                try {
-                    bluetoothInfo = getBluetoothContext();
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to get bluetooth context", e);
-                }
-
-                // 收集会话行为模式
-                String sessionPattern = uutTracker.getSessionBehaviorPattern();
-                if (sessionPattern != null) {
-                    Log.i(TAG, "Session pattern: " + sessionPattern);
-                }
-
                 final String text = deepSeekClient.generateBubbleText(
-                        currentApp, usageMins, uutValue, calendarInfo, weatherInfo,
-                        bluetoothInfo, sessionPattern);
+                        currentApp, usageMins, uutValue, calendarInfo, weatherInfo);
 
                 Log.i(TAG, "Bubble text result: " + text);
 
@@ -366,42 +345,6 @@ public class FloatingOverlayService extends Service {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    /**
-     * 识别当前已配对蓝牙设备类型，返回情境描述字符串。
-     * 优先级：音频设备（耳机/音箱）> 可穿戴（手表）> 车载蓝牙
-     * 无蓝牙权限或无已配对设备时返回 null。
-     */
-    @androidx.annotation.Nullable
-    private String getBluetoothContext() {
-        try {
-            if (bluetoothManager == null) return null;
-            android.bluetooth.BluetoothAdapter adapter = bluetoothManager.getAdapter();
-            if (adapter == null || !adapter.isEnabled()) return null;
-
-            java.util.Set<BluetoothDevice> paired = adapter.getBondedDevices();
-            if (paired == null || paired.isEmpty()) return null;
-
-            boolean hasAudio = false, hasWearable = false, hasCar = false;
-            for (BluetoothDevice device : paired) {
-                BluetoothClass btClass = device.getBluetoothClass();
-                if (btClass == null) continue;
-                int major = btClass.getMajorDeviceClass();
-                if (major == BluetoothClass.Device.Major.AUDIO_VIDEO) hasAudio = true;
-                else if (major == BluetoothClass.Device.Major.WEARABLE) hasWearable = true;
-                else if (major == BluetoothClass.Device.Major.CAR) hasCar = true;
-            }
-
-            if (hasAudio) return "已配对音频设备(耳机/音箱)";
-            if (hasWearable) return "已配对智能手表";
-            if (hasCar) return "已配对车载蓝牙";
-        } catch (SecurityException e) {
-            Log.w(TAG, "Bluetooth permission denied", e);
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to get bluetooth context", e);
-        }
-        return null;
     }
 
     private void dismissBubbleImmediately() {

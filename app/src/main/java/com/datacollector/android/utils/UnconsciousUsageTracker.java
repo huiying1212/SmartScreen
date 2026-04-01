@@ -6,7 +6,6 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
-import java.util.HashSet;
 import java.util.LinkedList;
 
 /**
@@ -46,11 +45,6 @@ public class UnconsciousUsageTracker {
     // currentPackage 作为本地副本保留，用于 UUT 的切换检测逻辑；
     // 对外暴露时优先从 AppForegroundTracker 读（更可信）。
     private String currentPackage = null;
-
-    // ── 会话追踪字段 ──────────────────────────────────────────
-    private long sessionStartTime = -1;           // 本次解锁会话开始时间
-    private int sessionAppSwitchCount = 0;        // 本次会话 App 切换次数
-    private final HashSet<String> sessionUniqueApps = new HashSet<>();
 
     private final Context appContext;
 
@@ -131,11 +125,6 @@ public class UnconsciousUsageTracker {
             checkAppSwitchPenalty(now);
 
             currentPackage = foregroundPackage;
-            // 会话内切换计数与唯一 App 追踪
-            if (sessionStartTime >= 0) {
-                sessionAppSwitchCount++;
-                sessionUniqueApps.add(foregroundPackage);
-            }
             unconsciousAppStartTime = -1;
             lastAccumulationTime = -1;
             productiveAppStartTime = -1;
@@ -241,61 +230,10 @@ public class UnconsciousUsageTracker {
             }
         }
         screenOffSince = -1;
-
-        // 每次解锁开启新会话
-        sessionStartTime = now;
-        sessionAppSwitchCount = 0;
-        sessionUniqueApps.clear();
-        if (currentPackage != null) sessionUniqueApps.add(currentPackage);
     }
 
     public synchronized int getUUT() {
         return uutValue;
-    }
-
-    /**
-     * 分析本次解锁会话的行为模式，返回供 LLM 使用的中文描述。
-     *
-     * - 碎片化：平均每个 App 停留不足 1 分钟（切换次数 > 会话分钟数）
-     * - 长期沉浸：持续使用 >= 30 分钟
-     * - 其他：返回 null，不追加额外信息
-     */
-    @Nullable
-    public synchronized String getSessionBehaviorPattern() {
-        if (sessionStartTime < 0) return null;
-
-        long sessionDurationMs = System.currentTimeMillis() - sessionStartTime;
-        long sessionDurationMin = sessionDurationMs / 60_000L;
-
-        // 数据不足：会话不足 1 分钟且无切换
-        if (sessionDurationMin < 1 && sessionAppSwitchCount == 0) return null;
-
-        // 碎片化：切换次数 > 会话分钟数（平均每 App 停留 < 1 分钟）
-        boolean isFragmented = sessionDurationMin > 0
-                && sessionAppSwitchCount > sessionDurationMin;
-        // 兜底：10 分钟内超过 5 次切换也算碎片化
-        if (!isFragmented && sessionDurationMs <= 10 * 60_000L && sessionAppSwitchCount > 5) {
-            isFragmented = true;
-        }
-
-        if (isFragmented) {
-            return "碎片化浏览(" + sessionAppSwitchCount + "次切换,"
-                    + sessionUniqueApps.size() + "个App,"
-                    + sessionDurationMin + "分钟)";
-        }
-
-        // 长期沉浸：持续使用 >= 30 分钟
-        if (sessionDurationMin >= 30) {
-            if (sessionUniqueApps.size() <= 2) {
-                return "深度沉浸(" + sessionDurationMin + "分钟,专注"
-                        + sessionUniqueApps.size() + "个App)";
-            } else {
-                return "长时使用(" + sessionDurationMin + "分钟,"
-                        + sessionUniqueApps.size() + "个App)";
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -326,9 +264,6 @@ public class UnconsciousUsageTracker {
         screenOffSince = -1;
         productiveAppStartTime = -1;
         recentSwitches.clear();
-        sessionStartTime = -1;
-        sessionAppSwitchCount = 0;
-        sessionUniqueApps.clear();
         saveState();
     }
 }

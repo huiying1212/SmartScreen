@@ -256,8 +256,7 @@ public class DeepSeekApiClient {
      */
     public String generateBubbleText(String currentApp, int usageMins,
                                      int uutValue, String calendarInfo,
-                                     String weatherInfo, String bluetoothInfo,
-                                     String sessionPattern) {
+                                     String weatherInfo) {
         if (!ApiConfig.isDeepSeekApiKeyConfigured()) {
             String err = "[API Key not set] check local.properties";
             Log.e(TAG, "generateBubbleText: " + err);
@@ -290,12 +289,6 @@ public class DeepSeekApiClient {
         }
         if (weatherInfo != null && !weatherInfo.isEmpty()) {
             userContent.append(", weather: [").append(weatherInfo).append("]");
-        }
-        if (bluetoothInfo != null && !bluetoothInfo.isEmpty()) {
-            userContent.append(", device: [").append(bluetoothInfo).append("]");
-        }
-        if (sessionPattern != null && !sessionPattern.isEmpty()) {
-            userContent.append(", behavior: [").append(sessionPattern).append("]");
         }
         userContent.append(". Generate a short Chinese reminder. (t=")
                 .append(System.currentTimeMillis()).append(")");
