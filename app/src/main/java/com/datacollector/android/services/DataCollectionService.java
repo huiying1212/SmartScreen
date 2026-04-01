@@ -173,9 +173,8 @@ public class DataCollectionService extends Service implements DataCollectorManag
         };
 
         collectionHandler.postDelayed(periodicCollectionRunnable, 30_000L);
-        long initial = collectionConfig.getLong(
-                CollectionConfig.KEY_COLLECTION_INTERVAL_MS, 10 * 60_000L);
-        Log.i(TAG, "Periodic collection started (interval=" + initial / 60000 + "min)");
+        Log.i(TAG, "Periodic collection started (interval=" + collectionConfig.getLong(
+                CollectionConfig.KEY_COLLECTION_INTERVAL_MS, 10 * 60_000L) / 60000 + "min)");
     }
 
     // ── 数据采集 ─────────────────────────────────────────────

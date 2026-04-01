@@ -2,11 +2,9 @@ package com.datacollector.android.collectors;
 
 import android.Manifest;
 import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.net.Uri;
 import android.provider.CalendarContract;
 import android.util.Log;
 
@@ -246,25 +244,6 @@ public class CalendarDataCollector extends BaseDataCollector<JSONObject> {
         } catch (SecurityException e) {
             Log.e(TAG, "collectEvents: SecurityException", e);
         }
-    }
-
-    /**
-     * 查询 Events 表确认该事件是否为循环事件（RRULE 或 RDATE 非空）
-     */
-    private boolean isRecurringEvent(ContentResolver cr, long eventId) {
-        String[] proj = {CalendarContract.Events.RRULE, CalendarContract.Events.RDATE};
-        Uri eventUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId);
-        try (Cursor c = cr.query(eventUri, proj, null, null, null)) {
-            if (c != null && c.moveToFirst()) {
-                String rrule = c.getString(0);
-                String rdate = c.getString(1);
-                return (rrule != null && !rrule.isEmpty())
-                        || (rdate != null && !rdate.isEmpty());
-            }
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        }
-        return false;
     }
 
     private JSONArray collectEventAttendees(ContentResolver cr, long eventId) {

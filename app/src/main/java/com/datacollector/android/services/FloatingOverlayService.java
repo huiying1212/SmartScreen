@@ -353,10 +353,6 @@ public class FloatingOverlayService extends Service {
             bubbleText.setVisibility(View.GONE);
         }
         isBubbleShowing = false;
-        // Only remove the bubble dismiss callback, not the periodic update runnable
-        if (periodicUpdateRunnable != null) {
-            mainHandler.removeCallbacks(periodicUpdateRunnable);
-        }
         mainHandler.removeCallbacksAndMessages(null);
         // 恢复定期更新（removeCallbacksAndMessages 会移除所有回调）
         startPeriodicUpdates();
@@ -473,12 +469,6 @@ public class FloatingOverlayService extends Service {
         }
         Log.d(TAG, "Mood updated: stress=" + String.format("%.3f", stress)
                 + " (UUT=" + uut + ")");
-    }
-
-    // ── 静态辅助方法（供 DataCollectionService 调用）──────────
-
-    public static void sendMoodUpdate(Context context, long screenTimeMs) {
-        // 保留接口兼容，UUT 模式下由 FloatingOverlayService 自驱动
     }
 
     @Override

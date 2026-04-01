@@ -5,7 +5,6 @@ import android.util.Log;
 
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.CollectionStats;
-import com.datacollector.android.utils.DataAggregator;
 import com.datacollector.android.utils.RetryHelper;
 
 import okhttp3.MediaType;
@@ -34,7 +33,6 @@ public class DeepSeekApiClient {
     private final OkHttpClient httpClient;
     private final Context context;
     private final CollectionStats stats;
-    private final DataAggregator aggregator;
 
     public interface SimpleCallback {
         void onSuccess(String response);
@@ -44,7 +42,6 @@ public class DeepSeekApiClient {
     public DeepSeekApiClient(Context context) {
         this.context = context;
         this.stats = CollectionStats.getInstance(context);
-        this.aggregator = new DataAggregator(context);
 
         CollectionConfig config = CollectionConfig.getInstance(context);
         int connectTimeout = config.getInt(CollectionConfig.KEY_API_CONNECT_TIMEOUT, 30);
@@ -255,15 +252,6 @@ public class DeepSeekApiClient {
 
     /**
      * 生成悬浮窗气泡提醒文本（同步调用，需在后台线程执行）。
-     *
-     * @param currentApp   当前 App 包名
-     * @param usageMins    当次使用时长（分钟）
-     * @param uutValue     当前 UUT 值
-     * @param calendarInfo 用户日程简述（可为 null）
-     * @return ≤15 字的短提醒文本，失败返回 null
-     */
-    /**
-     * 生成悬浮窗气泡提醒文本（同步调用，需在后台线程执行）。
      * 只走 LLM 路径，失败时返回错误原因字符串（不会返回 null）。
      */
     public String generateBubbleText(String currentApp, int usageMins,
@@ -405,20 +393,6 @@ public class DeepSeekApiClient {
             stats.recordApiCall(false);
         }
         return null;
-    }
-
-    // ── 异步通用接口 ─────────────────────────────────────────
-
-    public void callChatAsync(String systemPrompt, String userContent,
-                              int maxTokens, float temperature, SimpleCallback callback) {
-        new Thread(() -> {
-            String result = callChatSync(systemPrompt, userContent, maxTokens, temperature);
-            if (result != null) {
-                callback.onSuccess(result);
-            } else {
-                callback.onError("API 调用失败");
-            }
-        }).start();
     }
 
     public void shutdown() {

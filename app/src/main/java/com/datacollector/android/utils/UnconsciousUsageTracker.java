@@ -244,19 +244,6 @@ public class UnconsciousUsageTracker {
     }
 
     /**
-     * 获取当前 App 类别文本，用于 LLM Prompt
-     */
-    public String getCurrentAppCategoryLabel() {
-        if (currentPackage == null) return "未知";
-        return classifier.classify(currentPackage).labelCn;
-    }
-
-    public AppCategoryClassifier.AppCategory getCurrentAppCategory() {
-        if (currentPackage == null) return AppCategoryClassifier.AppCategory.OTHER;
-        return classifier.classify(currentPackage);
-    }
-
-    /**
      * 返回当前前台 App 包名。
      * 优先从 AppForegroundTracker 读取（最新鲜、最可信）；
      * Tracker 过期时 fallback 到本地缓存副本。
