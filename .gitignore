@@ -1,20 +1,27 @@
 *.iml
-.gradle
+.gradle/
 /local.properties
-/.idea
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
 local.properties
+/.idea/
+.DS_Store
+
+# Build outputs
+/build/
 app/build/
+/captures/
+
+# Native build
+.externalNativeBuild/
+.cxx/
 
 # Python cache
 __pycache__/
 *.pyc
 *.pyo
 
-# Ignore dataset files
+# Dataset files
 app/test_data/wisdm-dataset/
 figures/
+
+# Claude Code
+.claude/worktrees/
