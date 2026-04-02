@@ -65,6 +65,7 @@ public class SystemSettingsActivity extends Activity {
 
     private DataCollectionService dataCollectionService;
     private boolean serviceBound = false;
+    private boolean serviceRunning = false;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -73,12 +74,16 @@ public class SystemSettingsActivity extends Activity {
                     (DataCollectionService.DataCollectionBinder) service;
             dataCollectionService = binder.getService();
             serviceBound = true;
+            serviceRunning = true;
+            updateServiceButton();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             serviceBound = false;
             dataCollectionService = null;
+            serviceRunning = false;
+            updateServiceButton();
         }
     };
 
@@ -140,9 +145,20 @@ public class SystemSettingsActivity extends Activity {
         btnPermOverlay.setOnClickListener(v -> requestOverlayPermission());
         btnPermUsage.setOnClickListener(v -> requestUsageStatsPermission());
         btnStartCollection.setOnClickListener(v -> {
-            startDataCollectionService();
-            Toast.makeText(this, "数据收集服务已启动", Toast.LENGTH_SHORT).show();
+            if (serviceRunning) {
+                stopDataCollectionService();
+                Toast.makeText(this, "数据收集服务已关闭", Toast.LENGTH_SHORT).show();
+            } else {
+                if (!Settings.canDrawOverlays(this) || !hasUsageStatsPermission()) {
+                    Toast.makeText(this, "请先授权所有必要权限", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                startDataCollectionService();
+                bindDataCollectionService();
+                Toast.makeText(this, "数据收集服务已启动", Toast.LENGTH_SHORT).show();
+            }
         });
+        updateServiceButton();
     }
 
     private void setupTestButtons() {
@@ -167,7 +183,7 @@ public class SystemSettingsActivity extends Activity {
         btnTestWallpaper.setEnabled(false);
         btnTestWallpaper.setText("生成中...");
         tvGenerationStatus.setText("");
-        tvGenerationStatus.setTextColor(0xFFB0B0B0);
+        tvGenerationStatus.setTextColor(0xFFB0B0C0);
 
         wallpaperManager.generateAndSetWallpaper(
                 new WallpaperGenerationManager.WallpaperGenerationCallback() {
@@ -175,7 +191,7 @@ public class SystemSettingsActivity extends Activity {
                     public void onSuccess(String msg) {
                         uiHandler.post(() -> {
                             tvGenerationStatus.setText(msg);
-                            tvGenerationStatus.setTextColor(0xFF03DAC5);
+                            tvGenerationStatus.setTextColor(0xFFC3C2F2);
                             btnTestWallpaper.setEnabled(true);
                             btnTestWallpaper.setText("测试壁纸生成功能");
                             loadUsageHistory();
@@ -196,7 +212,7 @@ public class SystemSettingsActivity extends Activity {
                     public void onProgress(String s) {
                         uiHandler.post(() -> {
                             tvGenerationStatus.setText(s);
-                            tvGenerationStatus.setTextColor(0xFFB0B0B0);
+                            tvGenerationStatus.setTextColor(0xFFB0B0C0);
                         });
                     }
 
@@ -362,7 +378,7 @@ public class SystemSettingsActivity extends Activity {
     private void addHistoryPlaceholder(String text) {
         TextView tv = new TextView(this);
         tv.setText(text);
-        tv.setTextColor(0xFF888888);
+        tv.setTextColor(0xFF9090A0);
         tv.setTextSize(13);
         tv.setPadding(0, dp(8), 0, dp(8));
         historyContainer.addView(tv);
@@ -429,6 +445,24 @@ public class SystemSettingsActivity extends Activity {
         } else {
             startService(intent);
         }
+        serviceRunning = true;
+        updateServiceButton();
+    }
+
+    private void stopDataCollectionService() {
+        if (serviceBound) {
+            unbindService(serviceConnection);
+            serviceBound = false;
+            dataCollectionService = null;
+        }
+        stopService(new Intent(this, DataCollectionService.class));
+        serviceRunning = false;
+        updateServiceButton();
+    }
+
+    private void updateServiceButton() {
+        if (btnStartCollection == null) return;
+        btnStartCollection.setText(serviceRunning ? "关闭数据收集服务" : "启动数据收集服务");
     }
 
     private void bindDataCollectionService() {

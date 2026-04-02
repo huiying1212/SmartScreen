@@ -89,10 +89,10 @@ public class PersonalSettingsActivity extends Activity {
             if (WALLPAPER_STYLES[i][0].equals(currentStyle)) {
                 selectedStyleIndex = i;
                 chip.setBackgroundResource(R.drawable.chip_selected_bg);
-                chip.setTextColor(0xFF000000);
+                chip.setTextColor(0xFF1A1A2E);
             } else {
                 chip.setBackgroundResource(R.drawable.chip_unselected_bg);
-                chip.setTextColor(0xFFB0B0B0);
+                chip.setTextColor(0xFFB0B0C0);
             }
 
             chip.setOnClickListener(v -> selectStyle(idx));
@@ -109,10 +109,10 @@ public class PersonalSettingsActivity extends Activity {
             TextView chip = styleChipViews.get(i);
             if (i == index) {
                 chip.setBackgroundResource(R.drawable.chip_selected_bg);
-                chip.setTextColor(0xFF000000);
+                chip.setTextColor(0xFF1A1A2E);
             } else {
                 chip.setBackgroundResource(R.drawable.chip_unselected_bg);
-                chip.setTextColor(0xFFB0B0B0);
+                chip.setTextColor(0xFFB0B0C0);
             }
         }
     }
@@ -179,7 +179,7 @@ public class PersonalSettingsActivity extends Activity {
             TextView label = new TextView(this);
             label.setText(fs.labelCn);
             label.setTextSize(11);
-            label.setTextColor(0xFFB0B0B0);
+            label.setTextColor(0xFFB0B0C0);
             label.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
