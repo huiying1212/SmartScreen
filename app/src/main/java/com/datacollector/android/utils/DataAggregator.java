@@ -134,8 +134,14 @@ public class DataAggregator {
                     }
                 }
 
-                // Aggregate location context labels
-                String locCtx = contextData.optString("location_context", "");
+                // Aggregate location context labels (new: inside location; fallback: top-level)
+                String locCtx = "";
+                if (location != null) {
+                    locCtx = location.optString("location_context", "");
+                }
+                if (locCtx.isEmpty()) {
+                    locCtx = contextData.optString("location_context", "");
+                }
                 if (!locCtx.isEmpty() && !"未知".equals(locCtx)) {
                     locationContextCounts.merge(locCtx, 1, Integer::sum);
                 }
