@@ -111,12 +111,20 @@ public class DataAggregator {
                 // Aggregate locations into a trail + collect readable addresses
                 JSONObject location = contextData.optJSONObject("location");
                 if (location != null && location.has("latitude")) {
-                    JSONObject point = new JSONObject();
-                    point.put("lat", location.optDouble("latitude"));
-                    point.put("lng", location.optDouble("longitude"));
-                    point.put("t", fileTimestamp);
-                    if (locationTrail.length() < 50) {
-                        locationTrail.put(point);
+                    double lat = location.optDouble("latitude", 0);
+                    double lng = location.optDouble("longitude", 0);
+                    // 过滤无效坐标 (0,0) 和标记为过期的位置
+                    if (lat != 0.0 || lng != 0.0) {
+                        boolean stale = location.optBoolean("is_stale", false);
+                        JSONObject point = new JSONObject();
+                        point.put("lat", lat);
+                        point.put("lng", lng);
+                        point.put("acc", location.optDouble("accuracy", -1));
+                        point.put("t", fileTimestamp);
+                        if (stale) point.put("stale", true);
+                        if (locationTrail.length() < 50) {
+                            locationTrail.put(point);
+                        }
                     }
 
                     String addr = location.optString("readable_address", "");
@@ -230,10 +238,42 @@ public class DataAggregator {
 
             // Location summary (cluster nearby points within ~100m as same location)
             JSONObject locationSummary = new JSONObject();
-            int uniqueLocations = countUniqueLocations(locationTrail, 100.0);
+            JSONArray clusters = clusterLocations(locationTrail, 100.0);
+            int uniqueLocations = clusters.length();
             locationSummary.put("total_samples", locationTrail.length());
             locationSummary.put("unique_points", uniqueLocations);
             locationSummary.put("trail", locationTrail);
+            locationSummary.put("location_clusters", clusters);
+
+            // 主要停留地：停留时间最长的簇
+            if (clusters.length() > 0) {
+                long maxStay = -1;
+                JSONObject primaryCluster = null;
+                for (int i = 0; i < clusters.length(); i++) {
+                    JSONObject cl = clusters.optJSONObject(i);
+                    if (cl != null) {
+                        long stay = cl.optLong("stay_minutes", 0);
+                        if (stay > maxStay) {
+                            maxStay = stay;
+                            primaryCluster = cl;
+                        }
+                    }
+                }
+                if (primaryCluster != null) {
+                    locationSummary.put("primary_stay_minutes", maxStay);
+                }
+            }
+
+            // 总移动距离（带 GPS 抖动过滤）
+            double totalDistanceM = computeTrailDistance(locationTrail);
+            locationSummary.put("total_distance_meters", Math.round(totalDistanceM));
+            if (totalDistanceM >= 1000) {
+                locationSummary.put("total_distance_km",
+                        Math.round(totalDistanceM / 100.0) / 10.0);
+            }
+
+            // 判断是否基本没移动
+            locationSummary.put("is_stationary", uniqueLocations <= 1 && totalDistanceM < 200);
 
             JSONArray addrArray = new JSONArray();
             for (String a : locationAddresses) addrArray.put(a);
@@ -466,13 +506,57 @@ public class DataAggregator {
     }
 
     /**
-     * Simple greedy clustering: walk through trail points, if a point is farther
-     * than {@code radiusMeters} from all existing cluster centers, it's a new location.
+     * 计算轨迹总距离（米），带 GPS 抖动过滤。
+     *
+     * 策略：跳过 stale 点；两点间距离若小于两点精度之和（即在各自误差圆
+     * 重叠范围内），视为 GPS 噪声不计入总距离。这避免了静止时因信号
+     * 漂移虚增几百米的问题。
      */
-    private int countUniqueLocations(JSONArray trail, double radiusMeters) {
-        if (trail == null || trail.length() == 0) return 0;
+    private double computeTrailDistance(JSONArray trail) {
+        if (trail == null || trail.length() < 2) return 0;
 
-        List<double[]> centers = new ArrayList<>();
+        double total = 0;
+        double prevLat = Double.NaN, prevLng = Double.NaN;
+        double prevAcc = 0;
+
+        for (int i = 0; i < trail.length(); i++) {
+            JSONObject pt = trail.optJSONObject(i);
+            if (pt == null || pt.optBoolean("stale", false)) continue;
+
+            double lat = pt.optDouble("lat", 0);
+            double lng = pt.optDouble("lng", 0);
+            double acc = pt.optDouble("acc", 50);
+            if (lat == 0 && lng == 0) continue;
+
+            if (!Double.isNaN(prevLat)) {
+                double d = haversineMeters(prevLat, prevLng, lat, lng);
+                // 抖动过滤：移动距离需超过两点精度之和才算真实位移
+                double jitterThreshold = prevAcc + acc;
+                if (d > jitterThreshold) {
+                    total += d;
+                }
+            }
+            prevLat = lat;
+            prevLng = lng;
+            prevAcc = acc;
+        }
+        return total;
+    }
+
+    /**
+     * 精度加权聚类 + 停留时长追踪。
+     *
+     * 改进点：
+     * 1. 聚类中心用精度加权平均更新，不再由第一个到达的点决定
+     * 2. 记录每个簇的首末时间戳，计算停留时长
+     * 3. 返回结构化的簇信息（JSONArray），而不仅是数量
+     */
+    private JSONArray clusterLocations(JSONArray trail, double radiusMeters) {
+        if (trail == null || trail.length() == 0) return new JSONArray();
+
+        // 每个簇：[sumLat, sumLng, totalWeight, count, firstTimestamp, lastTimestamp]
+        List<double[]> clusters = new ArrayList<>();
+
         for (int i = 0; i < trail.length(); i++) {
             JSONObject pt = trail.optJSONObject(i);
             if (pt == null) continue;
@@ -480,18 +564,60 @@ public class DataAggregator {
             double lng = pt.optDouble("lng", 0);
             if (lat == 0 && lng == 0) continue;
 
-            boolean matched = false;
-            for (double[] c : centers) {
-                if (haversineMeters(lat, lng, c[0], c[1]) < radiusMeters) {
-                    matched = true;
-                    break;
+            double acc = pt.optDouble("acc", 50);
+            // 精度越高（acc 越小）权重越大；最低权重 0.1 防止除零
+            double weight = Math.max(0.1, 1.0 / Math.max(acc, 1.0));
+            long ts = pt.optLong("t", 0);
+
+            int matchedIdx = -1;
+            double minDist = Double.MAX_VALUE;
+            for (int j = 0; j < clusters.size(); j++) {
+                double[] c = clusters.get(j);
+                double cLat = c[0] / c[2];
+                double cLng = c[1] / c[2];
+                double d = haversineMeters(lat, lng, cLat, cLng);
+                if (d < radiusMeters && d < minDist) {
+                    minDist = d;
+                    matchedIdx = j;
                 }
             }
-            if (!matched) {
-                centers.add(new double[]{lat, lng});
+
+            if (matchedIdx >= 0) {
+                double[] c = clusters.get(matchedIdx);
+                c[0] += lat * weight;    // sumLat
+                c[1] += lng * weight;    // sumLng
+                c[2] += weight;          // totalWeight
+                c[3] += 1;              // count
+                c[4] = Math.min(c[4], ts); // firstTimestamp
+                c[5] = Math.max(c[5], ts); // lastTimestamp
+            } else {
+                clusters.add(new double[]{
+                        lat * weight, lng * weight, weight, 1, ts, ts
+                });
             }
         }
-        return centers.size();
+
+        // 构建输出
+        JSONArray result = new JSONArray();
+        for (double[] c : clusters) {
+            try {
+                JSONObject cluster = new JSONObject();
+                cluster.put("lat", c[0] / c[2]);
+                cluster.put("lng", c[1] / c[2]);
+                cluster.put("point_count", (int) c[3]);
+                long stayMs = (long) (c[5] - c[4]);
+                cluster.put("stay_minutes", stayMs / 60_000L);
+                cluster.put("first_seen", (long) c[4]);
+                cluster.put("last_seen", (long) c[5]);
+                result.put(cluster);
+            } catch (JSONException ignored) {}
+        }
+        return result;
+    }
+
+    /** 向后兼容：返回唯一地点数 */
+    private int countUniqueLocations(JSONArray trail, double radiusMeters) {
+        return clusterLocations(trail, radiusMeters).length();
     }
 
     private static double haversineMeters(double lat1, double lng1, double lat2, double lng2) {

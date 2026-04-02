@@ -178,12 +178,13 @@ public class DeepSeekApiClient {
                 }
             }
 
-            // 6. 位置信息（去过什么地方）
+            // 6. 位置信息（去过什么地方、移动距离）
             JSONObject loc = data.optJSONObject("location_summary");
             if (loc != null) {
                 JSONArray places = loc.optJSONArray("visited_places");
                 JSONObject ctxSum = loc.optJSONObject("context_summary");
                 int pts = loc.optInt("unique_points", 0);
+                boolean stationary = loc.optBoolean("is_stationary", false);
 
                 if (places != null && places.length() > 0) {
                     sb.append("【到过的地方】\n");
@@ -196,6 +197,31 @@ public class DeepSeekApiClient {
                         sb.append("一直在同一个地方，没有移动");
                     } else {
                         sb.append("去过").append(pts).append("个不同的地方");
+                    }
+                    sb.append("\n");
+                }
+
+                // 移动与停留摘要
+                if (stationary) {
+                    long stayMin = loc.optLong("primary_stay_minutes", 0);
+                    if (stayMin > 0) {
+                        sb.append("【移动状态】基本没有移动，已在原地停留约")
+                          .append(stayMin).append("分钟\n");
+                    } else {
+                        sb.append("【移动状态】基本没有移动\n");
+                    }
+                } else {
+                    double distKm = loc.optDouble("total_distance_km", 0);
+                    long distM = loc.optLong("total_distance_meters", 0);
+                    if (distKm > 0) {
+                        sb.append("【移动距离】约").append(distKm).append("公里");
+                    } else if (distM > 0) {
+                        sb.append("【移动距离】约").append(distM).append("米");
+                    }
+                    // 补充在各地的停留时间
+                    JSONArray clusters = loc.optJSONArray("location_clusters");
+                    if (clusters != null && clusters.length() > 1) {
+                        sb.append("，途经").append(clusters.length()).append("个地点");
                     }
                     sb.append("\n");
                 }

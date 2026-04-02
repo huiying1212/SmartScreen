@@ -245,30 +245,123 @@ public class DataCollectionService extends Service implements DataCollectorManag
     }
 
     /**
-     * 从位置 + 活动数据推断粗略位置上下文（家/公司/户外）。
+     * 多信号加权评分推断位置上下文。
+     *
+     * 为每个候选标签（通勤中、户外、室内、家、公司/学校）累加来自
+     * 活动识别、GPS 精度/速度、WiFi、蓝牙、时间段等信号的分数，
+     * 最后取得分最高者。这样避免了硬编码 if-else 在边界情况下的误判，
+     * 且新增信号源只需添加一段评分逻辑。
      */
     private String inferLocationContext(JSONObject contextData) {
         try {
+            // 候选标签及其累计分数
+            double sCommute  = 0; // 通勤中
+            double sOutdoor  = 0; // 户外
+            double sIndoor   = 0; // 室内
+            double sHome     = 0; // 家
+            double sWork     = 0; // 公司/学校
+
+            // ── 提取各维度原始数据 ──
             JSONObject activity = contextData.optJSONObject("user_activity");
             String actType = activity != null ? activity.optString("activity_type", "unknown") : "unknown";
-
-            if ("driving".equals(actType) || "cycling".equals(actType)) {
-                return "通勤中";
-            }
-            if ("walking".equals(actType) || "running".equals(actType)) {
-                return "户外";
-            }
+            int actConf = activity != null ? activity.optInt("confidence", 50) : 0;
+            double confWeight = actConf / 100.0; // 活动识别置信度 [0,1]
 
             JSONObject location = contextData.optJSONObject("location");
-            if (location != null) {
-                double accuracy = location.optDouble("accuracy", 999);
-                if (accuracy > 100) return "室内";
+            double accuracy = 999;
+            float speed = 0;
+            boolean hasGps = false;
+            boolean isStale = false;
+            if (location != null && location.has("latitude")) {
+                accuracy = location.optDouble("accuracy", 999);
+                speed = (float) location.optDouble("speed", 0);
+                isStale = location.optBoolean("is_stale", false);
+                hasGps = true;
             }
 
+            JSONObject wifi = contextData.optJSONObject("wifi_info");
+            boolean connectedToWifi = wifi != null && wifi.has("ssid")
+                    && !wifi.optString("ssid", "").isEmpty();
+
+            JSONObject bt = contextData.optJSONObject("bluetooth_devices");
+            int btCount = bt != null ? bt.optInt("device_count", 0) : 0;
+
             int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
-            if (hour >= 22 || hour < 7) return "家";
-            if (hour >= 9 && hour < 18) return "公司/学校";
-            return "未知";
+
+            // ── 信号 1: 活动识别（权重 ×置信度）──
+            if ("driving".equals(actType) || "cycling".equals(actType)) {
+                sCommute += 5.0 * confWeight;
+            } else if ("running".equals(actType)) {
+                sOutdoor += 4.0 * confWeight;
+            } else if ("walking".equals(actType)) {
+                sOutdoor += 2.5 * confWeight;
+                sCommute += 0.5 * confWeight; // 走路去车站也可能是通勤
+            } else if ("still".equals(actType)) {
+                sIndoor += 1.5 * confWeight;
+            }
+
+            // ── 信号 2: GPS 速度（非过期数据时有效）──
+            if (hasGps && !isStale) {
+                if (speed > 5.0f)      sCommute += 4.0;  // >18km/h
+                else if (speed > 3.0f) sCommute += 2.5;  // >10km/h
+                else if (speed > 1.2f) sOutdoor += 1.5;  // 步行速度
+                else                   sIndoor  += 0.5;   // 基本静止
+            }
+
+            // ── 信号 3: GPS 精度（反映室内/室外环境）──
+            if (hasGps && !isStale) {
+                if (accuracy < 15)       sOutdoor += 3.0;  // 开阔天空
+                else if (accuracy < 30)  sOutdoor += 1.5;
+                else if (accuracy < 60)  { /* 模糊地带，不加分 */ }
+                else if (accuracy < 150) sIndoor  += 2.0;
+                else                     sIndoor  += 3.0;  // 信号极差
+            }
+
+            // ── 信号 4: WiFi 连接 ──
+            if (connectedToWifi) {
+                sIndoor += 2.5;
+                sHome   += 1.0;
+                sWork   += 1.0;
+            } else {
+                sOutdoor += 0.8;
+                sCommute += 0.5;
+            }
+
+            // ── 信号 5: 蓝牙设备数 ──
+            if (btCount >= 5) {
+                sIndoor += 1.5;  // 很多蓝牙设备 → 室内公共空间
+                sWork   += 0.5;
+            } else if (btCount >= 2) {
+                sIndoor += 0.5;
+            }
+
+            // ── 信号 6: 时间段（弱信号，仅微调）──
+            if (hour >= 23 || hour < 6) {
+                sHome   += 2.0;
+                sIndoor += 0.5;
+            } else if (hour >= 7 && hour < 9) {
+                sCommute += 1.0;  // 通勤高峰
+            } else if (hour >= 9 && hour < 18) {
+                sWork   += 1.5;
+            } else if (hour >= 18 && hour < 20) {
+                sCommute += 0.8;  // 下班通勤
+            }
+
+            // 家和公司/学校本质是室内的子类，继承室内基础分
+            sHome += sIndoor * 0.3;
+            sWork += sIndoor * 0.3;
+
+            // ── 选出得分最高的标签 ──
+            String best = "未知";
+            double bestScore = 1.0; // 最低门槛，低于此分数判定为"未知"
+
+            if (sCommute > bestScore) { best = "通勤中"; bestScore = sCommute; }
+            if (sOutdoor > bestScore) { best = "户外";   bestScore = sOutdoor; }
+            if (sIndoor  > bestScore) { best = "室内";   bestScore = sIndoor;  }
+            if (sHome    > bestScore) { best = "家";     bestScore = sHome;    }
+            if (sWork    > bestScore) { best = "公司/学校"; bestScore = sWork;  }
+
+            return best;
 
         } catch (Exception e) {
             return "未知";
