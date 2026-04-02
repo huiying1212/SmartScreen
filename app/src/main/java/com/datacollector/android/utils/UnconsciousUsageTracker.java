@@ -33,7 +33,8 @@ public class UnconsciousUsageTracker {
     private static final int APP_SWITCH_PENALTY = 20;
     private static final int APP_SWITCH_THRESHOLD = 4;
     private static final long APP_SWITCH_WINDOW_MS = 5 * 60_000L;  // 5 min window
-    private static final long SCREEN_OFF_DECAY_MS = 15 * 60_000L;  // 15 min → full reset
+    private static final long SCREEN_OFF_DECAY_MS = 15 * 60_000L;  // 15 min → full reset threshold (legacy)
+    private static final double DECAY_TAU_MINUTES = 10.0;           // 指数衰减时间常数（分钟）
     private static final long PRODUCTIVE_DECAY_START_MS = 10 * 60_000L; // 10 min productive → start decay
     private static final int PRODUCTIVE_DECAY_PER_MINUTE = 3;
 
@@ -72,10 +73,10 @@ public class UnconsciousUsageTracker {
     private void restoreState() {
         uutValue = prefs.getInt("uut_value", 0);
         long lastSave = prefs.getLong("last_save_time", 0);
-        long elapsed = System.currentTimeMillis() - lastSave;
-        if (elapsed > SCREEN_OFF_DECAY_MS) {
-            uutValue = 0;
-        }
+        double elapsedMinutes = (System.currentTimeMillis() - lastSave) / 60_000.0;
+        // 指数衰减：长时间未保存时 UUT 自然趋近于零
+        int decayed = (int) Math.round(uutValue * Math.exp(-elapsedMinutes / DECAY_TAU_MINUTES));
+        uutValue = Math.max(UUT_MIN, decayed);
     }
 
     private void saveState() {
@@ -94,15 +95,16 @@ public class UnconsciousUsageTracker {
     public synchronized void update(String foregroundPackage, boolean screenOn) {
         long now = System.currentTimeMillis();
 
-        // --- 屏幕关闭处理 ---
+        // --- 屏幕关闭处理：指数衰减 ---
         if (!screenOn) {
             if (screenOffSince < 0) {
                 screenOffSince = now;
             }
             long offDuration = now - screenOffSince;
-            if (offDuration >= SCREEN_OFF_DECAY_MS) {
-                uutValue = 0;
-            }
+            double offMinutes = offDuration / 60_000.0;
+            // 指数衰减：uut = uut * e^(-offMinutes / tau)
+            int decayed = (int) Math.round(uutValue * Math.exp(-offMinutes / DECAY_TAU_MINUTES));
+            uutValue = Math.max(UUT_MIN, decayed);
             unconsciousAppStartTime = -1;
             productiveAppStartTime = -1;
             lastAccumulationTime = -1;
@@ -223,11 +225,10 @@ public class UnconsciousUsageTracker {
     public synchronized void onScreenOn() {
         long now = System.currentTimeMillis();
         if (screenOffSince > 0) {
-            long offDuration = now - screenOffSince;
-            if (offDuration >= SCREEN_OFF_DECAY_MS) {
-                uutValue = 0;
-                saveState();
-            }
+            double offMinutes = (now - screenOffSince) / 60_000.0;
+            int decayed = (int) Math.round(uutValue * Math.exp(-offMinutes / DECAY_TAU_MINUTES));
+            uutValue = Math.max(UUT_MIN, decayed);
+            saveState();
         }
         screenOffSince = -1;
     }

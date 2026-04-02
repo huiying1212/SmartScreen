@@ -6,7 +6,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.RadialGradient;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
@@ -87,25 +89,39 @@ public class MoodFaceView extends View {
         }
     }
 
+    /** Overall opacity of the face [0..255]. 255 = fully opaque, default = semi-transparent. */
+    private int globalAlpha = 178;  // ~70% opacity — lets screen content show through
+
     private FaceStyle style = FaceStyle.CLASSIC;
     private float currentStress = 0f;
     private float targetStress = 0f;
     private ValueAnimator stressAnimator;
 
     private final Paint facePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint faceShadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint faceOutlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint eyeWhitePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint irisPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint pupilPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint eyePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint highlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint highlightSmallPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint mouthPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mouthFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint darkCirclePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint spiralPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint sweatPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint sweatHighlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint blushPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint eyebrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint nosePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private final Path mouthPath = new Path();
     private final Path spiralPath = new Path();
     private final Path eyebrowPath = new Path();
+    private final Path nosePath = new Path();
     private final RectF eyeOval = new RectF();
+    private final RectF tmpOval = new RectF();
 
     public MoodFaceView(Context context) {
         super(context);
@@ -127,22 +143,39 @@ public class MoodFaceView extends View {
 
         mouthPaint.setStyle(Paint.Style.STROKE);
         mouthPaint.setStrokeCap(Paint.Cap.ROUND);
+        mouthFillPaint.setStyle(Paint.Style.FILL);
         darkCirclePaint.setStyle(Paint.Style.FILL);
         spiralPaint.setStyle(Paint.Style.STROKE);
         spiralPaint.setStrokeCap(Paint.Cap.ROUND);
         sweatPaint.setStyle(Paint.Style.FILL);
+        sweatHighlightPaint.setStyle(Paint.Style.FILL);
+        sweatHighlightPaint.setColor(Color.WHITE);
         blushPaint.setStyle(Paint.Style.FILL);
         eyebrowPaint.setStyle(Paint.Style.STROKE);
         eyebrowPaint.setStrokeCap(Paint.Cap.ROUND);
         highlightPaint.setColor(Color.WHITE);
         highlightPaint.setStyle(Paint.Style.FILL);
+        highlightSmallPaint.setColor(0xCCFFFFFF);
+        highlightSmallPaint.setStyle(Paint.Style.FILL);
         eyePaint.setStyle(Paint.Style.FILL);
+        eyeWhitePaint.setStyle(Paint.Style.FILL);
+        eyeWhitePaint.setColor(Color.WHITE);
+        irisPaint.setStyle(Paint.Style.FILL);
+        pupilPaint.setStyle(Paint.Style.FILL);
+        pupilPaint.setColor(0xFF1A1A2E);
+        faceShadowPaint.setStyle(Paint.Style.FILL);
+        faceOutlinePaint.setStyle(Paint.Style.STROKE);
+        faceOutlinePaint.setStrokeCap(Paint.Cap.ROUND);
+        nosePaint.setStyle(Paint.Style.STROKE);
+        nosePaint.setStrokeCap(Paint.Cap.ROUND);
     }
 
     private void applyStyleColors() {
         eyePaint.setColor(style.lineColor);
         mouthPaint.setColor(style.lineColor);
         eyebrowPaint.setColor(style.lineColor);
+        nosePaint.setColor(withAlpha(style.lineColor, 60));
+        irisPaint.setColor(darken(style.lineColor, 0.3f));
     }
 
     public void setFaceStyle(FaceStyle newStyle) {
@@ -154,6 +187,19 @@ public class MoodFaceView extends View {
 
     public FaceStyle getFaceStyle() {
         return style;
+    }
+
+    /**
+     * Set the overall opacity of the face.
+     * @param alpha 0 (fully transparent) to 255 (fully opaque). Default is 178 (~70%).
+     */
+    public void setGlobalAlpha(int alpha) {
+        globalAlpha = Math.max(0, Math.min(255, alpha));
+        invalidate();
+    }
+
+    public int getGlobalAlpha() {
+        return globalAlpha;
     }
 
     /**
@@ -211,41 +257,87 @@ public class MoodFaceView extends View {
         float r = size * 0.46f;
         float s = currentStress;
 
+        // Apply uniform semi-transparency to the entire face composite.
+        // saveLayerAlpha ensures overlapping elements blend correctly
+        // instead of each having individual alpha artifacts.
+        if (globalAlpha < 255) {
+            canvas.saveLayerAlpha(0, 0, w, h, globalAlpha);
+        }
+
         drawFace(canvas, cx, cy, r, s);
         drawEyebrows(canvas, cx, cy, r, s);
         drawEyes(canvas, cx, cy, r, s);
+        drawNose(canvas, cx, cy, r, s);
         drawMouth(canvas, cx, cy, r, s);
         drawDarkCircles(canvas, cx, cy, r, s);
         drawBlush(canvas, cx, cy, r, s);
         drawSweatDrop(canvas, cx, cy, r, s);
         drawSpiral(canvas, cx, cy, r, s);
+
+        if (globalAlpha < 255) {
+            canvas.restore();
+        }
     }
 
     private void drawFace(Canvas canvas, float cx, float cy, float r, float s) {
-        facePaint.setColor(lerpColor(style.faceHappy, style.faceExhausted, s));
+        // 1. Subtle drop shadow beneath the face (lighter for semi-transparent look)
+        faceShadowPaint.setColor(0x10000000);
+        canvas.drawCircle(cx, cy + r * 0.06f, r * 1.02f, faceShadowPaint);
+
+        // 2. Main face fill with radial gradient (lighter top-left, darker bottom-right)
+        int baseColor = lerpColor(style.faceHappy, style.faceExhausted, s);
+        int lightColor = lighten(baseColor, 0.18f);
+        int darkColor = darken(baseColor, 0.10f);
+        RadialGradient faceGrad = new RadialGradient(
+                cx - r * 0.25f, cy - r * 0.25f, r * 1.6f,
+                lightColor, darkColor, Shader.TileMode.CLAMP);
+        facePaint.setShader(faceGrad);
         facePaint.setStyle(Paint.Style.FILL);
         canvas.drawCircle(cx, cy, r, facePaint);
+        facePaint.setShader(null);
+
+        // 3. Soft inner highlight (top-left crescent for 3D feel)
+        int hlColor = withAlpha(Color.WHITE, 45);
+        RadialGradient hlGrad = new RadialGradient(
+                cx - r * 0.30f, cy - r * 0.35f, r * 0.7f,
+                hlColor, 0x00FFFFFF, Shader.TileMode.CLAMP);
+        faceShadowPaint.setShader(hlGrad);
+        canvas.drawCircle(cx, cy, r, faceShadowPaint);
+        faceShadowPaint.setShader(null);
+
+        // 4. Thin face outline for definition
+        faceOutlinePaint.setColor(withAlpha(darken(baseColor, 0.25f), 40));
+        faceOutlinePaint.setStrokeWidth(r * 0.025f);
+        canvas.drawCircle(cx, cy, r - r * 0.012f, faceOutlinePaint);
     }
 
     private void drawEyebrows(Canvas canvas, float cx, float cy, float r, float s) {
-        if (s < 0.15f) return;
+        if (s < 0.12f) return;
 
-        float browAlpha = Math.min(1f, (s - 0.15f) / 0.25f);
+        float browAlpha = Math.min(1f, (s - 0.12f) / 0.25f);
         eyebrowPaint.setAlpha((int) (browAlpha * 255));
-        eyebrowPaint.setStrokeWidth(r * 0.06f);
+        eyebrowPaint.setStrokeWidth(r * 0.05f);
 
         float eyeSpacing = r * 0.36f;
         float eyeY = cy - r * 0.15f;
-        float browY = eyeY - r * 0.28f;
+        float browY = eyeY - r * 0.30f;
 
-        float innerDrop = lerp(0f, r * 0.12f, s);
+        float innerDrop = lerp(0f, r * 0.14f, s);
+        float browLen = r * 0.18f;
 
         for (int side = -1; side <= 1; side += 2) {
             float ex = cx + side * eyeSpacing;
             eyebrowPath.reset();
-            eyebrowPath.moveTo(ex - r * 0.16f, browY + (side == -1 ? innerDrop : 0));
-            eyebrowPath.quadTo(ex, browY - r * 0.06f,
-                    ex + r * 0.16f, browY + (side == 1 ? innerDrop : 0));
+            // Smoother cubic bezier eyebrow
+            float startX = ex - browLen;
+            float endX = ex + browLen;
+            float startY = browY + (side == -1 ? innerDrop : 0);
+            float endY = browY + (side == 1 ? innerDrop : 0);
+            eyebrowPath.moveTo(startX, startY);
+            eyebrowPath.cubicTo(
+                    ex - browLen * 0.3f, browY - r * 0.08f,
+                    ex + browLen * 0.3f, browY - r * 0.08f,
+                    endX, endY);
             canvas.drawPath(eyebrowPath, eyebrowPaint);
         }
     }
@@ -254,36 +346,68 @@ public class MoodFaceView extends View {
         float eyeSpacing = r * 0.36f;
         float eyeY = cy - r * 0.15f;
 
-        float eyeRadiusX = r * lerp(0.13f, 0.10f, s);
-        float eyeRadiusY = r * lerp(0.13f, 0.04f, s);
+        float eyeRadiusX = r * lerp(0.15f, 0.11f, s);
+        float eyeRadiusY = r * lerp(0.15f, 0.045f, s);
 
-        float pupilR = r * lerp(0.06f, 0.03f, s);
-        float highlightR = r * lerp(0.035f, 0.015f, s);
+        float irisR = r * lerp(0.09f, 0.05f, s);
+        float pupilR = r * lerp(0.045f, 0.025f, s);
+        float hlR = r * lerp(0.035f, 0.018f, s);
+        float hlSmallR = r * lerp(0.018f, 0.008f, s);
 
         for (int side = -1; side <= 1; side += 2) {
             float ex = cx + side * eyeSpacing;
 
             if (s < 0.85f) {
+                // Eye white (slightly off-white for warmth)
                 eyeOval.set(ex - eyeRadiusX, eyeY - eyeRadiusY,
                         ex + eyeRadiusX, eyeY + eyeRadiusY);
-                canvas.drawOval(eyeOval, eyePaint);
+                eyeWhitePaint.setColor(0xFFFAFAFA);
+                canvas.drawOval(eyeOval, eyeWhitePaint);
 
+                // Thin eye outline
+                Paint eyeOutline = new Paint(Paint.ANTI_ALIAS_FLAG);
+                eyeOutline.setStyle(Paint.Style.STROKE);
+                eyeOutline.setColor(withAlpha(style.lineColor, 50));
+                eyeOutline.setStrokeWidth(r * 0.015f);
+                canvas.drawOval(eyeOval, eyeOutline);
+
+                // Iris with gradient
+                int irisColor = darken(style.lineColor, 0.15f);
+                int irisEdge = darken(style.lineColor, 0.35f);
+                RadialGradient irisGrad = new RadialGradient(
+                        ex - irisR * 0.15f, eyeY - irisR * 0.15f, irisR,
+                        irisColor, irisEdge, Shader.TileMode.CLAMP);
+                irisPaint.setShader(irisGrad);
+                canvas.drawCircle(ex, eyeY, irisR, irisPaint);
+                irisPaint.setShader(null);
+
+                // Pupil
+                canvas.drawCircle(ex, eyeY, pupilR, pupilPaint);
+
+                // Main highlight (top-left)
                 if (s < 0.7f) {
-                    canvas.drawCircle(ex, eyeY, highlightR, highlightPaint);
+                    canvas.drawCircle(ex - irisR * 0.25f, eyeY - irisR * 0.25f, hlR, highlightPaint);
+                    // Secondary small highlight (bottom-right)
+                    canvas.drawCircle(ex + irisR * 0.30f, eyeY + irisR * 0.20f, hlSmallR, highlightSmallPaint);
                 }
             } else {
+                // X-eyes for extreme stress
                 float xLen = r * 0.10f;
                 float xAlpha = (s - 0.85f) / 0.15f;
-                Paint xPaint = new Paint(mouthPaint);
-                xPaint.setStrokeWidth(r * 0.06f);
+                Paint xPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                xPaint.setStrokeWidth(r * 0.055f);
+                xPaint.setColor(style.lineColor);
                 xPaint.setAlpha((int) (255 * xAlpha));
                 xPaint.setStyle(Paint.Style.STROKE);
+                xPaint.setStrokeCap(Paint.Cap.ROUND);
 
+                // Fade out normal eye
                 eyeOval.set(ex - eyeRadiusX, eyeY - eyeRadiusY,
                         ex + eyeRadiusX, eyeY + eyeRadiusY);
-                eyePaint.setAlpha((int) (255 * (1f - xAlpha)));
-                canvas.drawOval(eyeOval, eyePaint);
-                eyePaint.setAlpha(255);
+                eyeWhitePaint.setColor(0xFFFAFAFA);
+                eyeWhitePaint.setAlpha((int) (255 * (1f - xAlpha)));
+                canvas.drawOval(eyeOval, eyeWhitePaint);
+                eyeWhitePaint.setAlpha(255);
 
                 canvas.drawLine(ex - xLen, eyeY - xLen, ex + xLen, eyeY + xLen, xPaint);
                 canvas.drawLine(ex + xLen, eyeY - xLen, ex - xLen, eyeY + xLen, xPaint);
@@ -291,15 +415,27 @@ public class MoodFaceView extends View {
         }
     }
 
+    private void drawNose(Canvas canvas, float cx, float cy, float r, float s) {
+        // Subtle small nose — just a tiny curved line
+        nosePaint.setStrokeWidth(r * 0.025f);
+        nosePaint.setColor(withAlpha(style.lineColor, 55));
+        float noseY = cy + r * 0.08f;
+        nosePath.reset();
+        nosePath.moveTo(cx - r * 0.03f, noseY);
+        nosePath.quadTo(cx, noseY + r * 0.06f, cx + r * 0.03f, noseY);
+        canvas.drawPath(nosePath, nosePaint);
+    }
+
     private void drawMouth(Canvas canvas, float cx, float cy, float r, float s) {
-        mouthPaint.setStrokeWidth(r * 0.07f);
+        mouthPaint.setStrokeWidth(r * 0.055f);
 
         float mouthY = cy + r * 0.35f;
-        float mouthHalfW = r * 0.30f;
+        float mouthHalfW = r * lerp(0.28f, 0.22f, s);
 
         float curveOffset = lerp(r * 0.22f, -r * 0.18f, s);
 
         if (s > 0.75f) {
+            // Wobbly/wavy mouth for high stress
             float waviness = (s - 0.75f) / 0.25f;
             float wave = waviness * r * 0.08f;
 
@@ -310,7 +446,25 @@ public class MoodFaceView extends View {
                     cx + mouthHalfW * 0.5f, mouthY + curveOffset - wave,
                     cx + mouthHalfW, mouthY);
             canvas.drawPath(mouthPath, mouthPaint);
+        } else if (s < 0.25f) {
+            // Happy open smile — draw filled mouth interior
+            mouthPath.reset();
+            mouthPath.moveTo(cx - mouthHalfW, mouthY);
+            mouthPath.quadTo(cx, mouthY + curveOffset, cx + mouthHalfW, mouthY);
+            canvas.drawPath(mouthPath, mouthPaint);
+
+            // Subtle tongue/mouth fill for big smile
+            float openness = (1f - s / 0.25f) * 0.5f;
+            if (openness > 0.1f) {
+                mouthFillPaint.setColor(withAlpha(darken(style.lineColor, 0.5f), (int)(openness * 80)));
+                Path fillPath = new Path();
+                fillPath.moveTo(cx - mouthHalfW * 0.8f, mouthY + r * 0.02f);
+                fillPath.quadTo(cx, mouthY + curveOffset * 0.7f, cx + mouthHalfW * 0.8f, mouthY + r * 0.02f);
+                fillPath.close();
+                canvas.drawPath(fillPath, mouthFillPaint);
+            }
         } else {
+            // Normal mouth
             mouthPath.reset();
             mouthPath.moveTo(cx - mouthHalfW, mouthY);
             mouthPath.quadTo(cx, mouthY + curveOffset, cx + mouthHalfW, mouthY);
@@ -339,18 +493,27 @@ public class MoodFaceView extends View {
     }
 
     private void drawBlush(Canvas canvas, float cx, float cy, float r, float s) {
-        if (s > 0.4f) return;
+        if (s > 0.45f) return;
 
-        float blushAlpha = (1f - s / 0.4f) * 50;
-        blushPaint.setColor(withAlpha(style.blushTint, (int) blushAlpha));
-
+        float blushAlpha = (1f - s / 0.45f);
         float eyeSpacing = r * 0.36f;
-        float blushY = cy + r * 0.08f;
-        float blushR = r * 0.10f;
+        float blushY = cy + r * 0.10f;
+        float blushRx = r * 0.13f;
+        float blushRy = r * 0.07f;
 
         for (int side = -1; side <= 1; side += 2) {
-            canvas.drawCircle(cx + side * (eyeSpacing + r * 0.08f), blushY, blushR, blushPaint);
+            float bx = cx + side * (eyeSpacing + r * 0.10f);
+            // Radial gradient blush for soft, natural look
+            RadialGradient blushGrad = new RadialGradient(
+                    bx, blushY, blushRx,
+                    withAlpha(style.blushTint, (int)(blushAlpha * 65)),
+                    withAlpha(style.blushTint, 0),
+                    Shader.TileMode.CLAMP);
+            blushPaint.setShader(blushGrad);
+            tmpOval.set(bx - blushRx, blushY - blushRy, bx + blushRx, blushY + blushRy);
+            canvas.drawOval(tmpOval, blushPaint);
         }
+        blushPaint.setShader(null);
     }
 
     private void drawSweatDrop(Canvas canvas, float cx, float cy, float r, float s) {
@@ -362,14 +525,18 @@ public class MoodFaceView extends View {
 
         float dropX = cx + r * 0.62f;
         float dropY = cy - r * 0.50f;
-        float dropR = r * 0.06f * (0.5f + intensity * 0.5f);
+        float dropR = r * 0.07f * (0.5f + intensity * 0.5f);
 
         Path dropPath = new Path();
         dropPath.moveTo(dropX, dropY - dropR * 2.5f);
-        dropPath.quadTo(dropX + dropR * 1.2f, dropY, dropX, dropY + dropR);
-        dropPath.quadTo(dropX - dropR * 1.2f, dropY, dropX, dropY - dropR * 2.5f);
+        dropPath.quadTo(dropX + dropR * 1.3f, dropY, dropX, dropY + dropR);
+        dropPath.quadTo(dropX - dropR * 1.3f, dropY, dropX, dropY - dropR * 2.5f);
         dropPath.close();
         canvas.drawPath(dropPath, sweatPaint);
+
+        // Small white highlight on the sweat drop
+        sweatHighlightPaint.setAlpha((int)(intensity * 160));
+        canvas.drawCircle(dropX - dropR * 0.25f, dropY - dropR * 0.6f, dropR * 0.25f, sweatHighlightPaint);
     }
 
     private void drawSpiral(Canvas canvas, float cx, float cy, float r, float s) {
@@ -419,6 +586,27 @@ public class MoodFaceView extends View {
     private static int withAlpha(int color, int alpha) {
         return Color.argb(Math.max(0, Math.min(255, alpha)),
                 Color.red(color), Color.green(color), Color.blue(color));
+    }
+
+    /** Lighten a color by blending towards white. factor in [0,1]. */
+    private static int lighten(int color, float factor) {
+        int r = Color.red(color);
+        int g = Color.green(color);
+        int b = Color.blue(color);
+        r = r + (int) ((255 - r) * factor);
+        g = g + (int) ((255 - g) * factor);
+        b = b + (int) ((255 - b) * factor);
+        return Color.argb(Color.alpha(color),
+                Math.min(255, r), Math.min(255, g), Math.min(255, b));
+    }
+
+    /** Darken a color by blending towards black. factor in [0,1]. */
+    private static int darken(int color, float factor) {
+        int r = (int) (Color.red(color) * (1f - factor));
+        int g = (int) (Color.green(color) * (1f - factor));
+        int b = (int) (Color.blue(color) * (1f - factor));
+        return Color.argb(Color.alpha(color),
+                Math.max(0, r), Math.max(0, g), Math.max(0, b));
     }
 
     @Override

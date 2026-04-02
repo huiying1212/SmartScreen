@@ -10,4 +10,4 @@
             <solid android:color="@color/launcher_small_button_bg" />
         </shape>
     </item>
-</selector> 
+</selector>

@@ -10,4 +10,4 @@
             <solid android:color="@color/launcher_small_exit_bg" />
         </shape>
     </item>
-</selector> 
+</selector>

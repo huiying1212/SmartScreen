@@ -2,14 +2,16 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF141420"
+    android:background="@color/launcher_background"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingHorizontal="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="32dp">
 
         <!-- 顶部栏 -->
         <LinearLayout
@@ -17,27 +19,28 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="20dp">
+            android:layout_marginBottom="24dp">
 
             <TextView
                 android:id="@+id/btn_back"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="← 返回"
-                android:textColor="#c3c2f2"
-                android:textSize="14sp"
-                android:padding="4dp" />
+                android:text="←"
+                android:textColor="#9594c4"
+                android:textSize="20sp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp" />
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="个人设置"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/launcher_text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:gravity="center"
-                android:layout_marginEnd="48dp" />
+                android:layout_marginEnd="36dp" />
         </LinearLayout>
 
         <!-- 壁纸生成偏好 -->
@@ -46,29 +49,44 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
+            android:padding="18dp"
             android:layout_marginBottom="12dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="壁纸风格偏好"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="16dp"
+                    android:background="#c3c2f2"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="壁纸风格偏好"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="选择生成壁纸时的艺术风格"
-                android:textColor="#9090A0"
+                android:textColor="@color/launcher_text_secondary"
                 android:textSize="12sp"
-                android:layout_marginTop="2dp" />
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="12dp" />
 
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:scrollbars="none"
-                android:layout_marginTop="12dp">
+                android:scrollbars="none">
 
                 <LinearLayout
                     android:id="@+id/style_chips_container"
@@ -80,30 +98,45 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#2A2A3E"
+                android:background="@color/divider"
                 android:layout_marginVertical="16dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="自动生成时间"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="点击时间可修改，每天在这三个时刻自动生成壁纸"
-                android:textColor="#9090A0"
-                android:textSize="12sp"
-                android:layout_marginTop="2dp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center"
-                android:layout_marginTop="12dp">
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="16dp"
+                    android:background="#c3c2f2"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="自动生成时间"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="点击时间可修改，每天在这三个时刻自动生成壁纸"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="12sp"
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="14dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -111,14 +144,14 @@
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:background="#1Ac3c2f2"
-                    android:padding="12dp">
+                    android:background="@color/theme_accent_tint"
+                    android:padding="14dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="上午"
-                        android:textColor="#9090A0"
+                        android:textColor="@color/launcher_text_secondary"
                         android:textSize="11sp" />
 
                     <TextView
@@ -126,7 +159,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="08:00"
-                        android:textColor="#c3c2f2"
+                        android:textColor="#7B79B2"
                         android:textSize="20sp"
                         android:textStyle="bold"
                         android:layout_marginTop="2dp" />
@@ -138,15 +171,15 @@
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:background="#1Ac3c2f2"
-                    android:padding="12dp"
+                    android:background="@color/theme_accent_tint"
+                    android:padding="14dp"
                     android:layout_marginHorizontal="8dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="中午"
-                        android:textColor="#9090A0"
+                        android:textColor="@color/launcher_text_secondary"
                         android:textSize="11sp" />
 
                     <TextView
@@ -154,7 +187,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="12:00"
-                        android:textColor="#c3c2f2"
+                        android:textColor="#7B79B2"
                         android:textSize="20sp"
                         android:textStyle="bold"
                         android:layout_marginTop="2dp" />
@@ -166,14 +199,14 @@
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:background="#1Ac3c2f2"
-                    android:padding="12dp">
+                    android:background="@color/theme_accent_tint"
+                    android:padding="14dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="晚上"
-                        android:textColor="#9090A0"
+                        android:textColor="@color/launcher_text_secondary"
                         android:textSize="11sp" />
 
                     <TextView
@@ -181,7 +214,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="20:00"
-                        android:textColor="#c3c2f2"
+                        android:textColor="#7B79B2"
                         android:textSize="20sp"
                         android:textStyle="bold"
                         android:layout_marginTop="2dp" />
@@ -196,29 +229,44 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
+            android:padding="18dp"
             android:layout_marginBottom="12dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="图标风格"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="16dp"
+                    android:background="#c3c2f2"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="图标风格"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="选择悬浮窗表情的视觉风格（表情会随使用状态实时变化）"
-                android:textColor="#9090A0"
+                android:textColor="@color/launcher_text_secondary"
                 android:textSize="12sp"
-                android:layout_marginTop="2dp" />
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="12dp" />
 
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:scrollbars="none"
-                android:layout_marginTop="12dp">
+                android:scrollbars="none">
 
                 <LinearLayout
                     android:id="@+id/icon_grid_container"
@@ -234,23 +282,39 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
-            android:layout_marginBottom="48dp">
+            android:padding="18dp"
+            android:layout_marginBottom="12dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="个人目标"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="16dp"
+                    android:background="#c3c2f2"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="个人目标"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="设置你的手机使用目标，AI 会参考你的目标给出更贴切的建议"
-                android:textColor="#9090A0"
+                android:textColor="@color/launcher_text_secondary"
                 android:textSize="12sp"
-                android:layout_marginTop="2dp" />
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="12dp" />
 
             <EditText
                 android:id="@+id/et_personal_goal"
@@ -258,25 +322,96 @@
                 android:layout_height="wrap_content"
                 android:minHeight="100dp"
                 android:gravity="top|start"
-                android:background="#1Ac3c2f2"
-                android:padding="12dp"
-                android:textColor="#FFFFFF"
-                android:textColorHint="#6A6A80"
+                android:background="@color/input_bg"
+                android:padding="14dp"
+                android:textColor="@color/launcher_text_primary"
+                android:textColorHint="@color/input_hint"
                 android:textSize="14sp"
                 android:hint="例如：\n• 晚上超过十一点一定要睡觉\n• 工作日不要花太多时间刷视频\n• 每天屏幕使用时间尽量不超过七小时\n• 每隔一小时要起身活动一下"
                 android:inputType="textMultiLine"
-                android:maxLines="8"
-                android:layout_marginTop="12dp" />
+                android:maxLines="8" />
 
             <Button
                 android:id="@+id/btn_save_goal"
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
+                android:layout_height="44dp"
                 android:text="保存目标"
                 android:textSize="14sp"
-                android:textColor="#1A1A2E"
-                android:backgroundTint="#c3c2f2"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#9594c4"
+                android:layout_marginTop="12dp" />
+        </LinearLayout>
+
+        <!-- 结构化使用目标（影响表情变化） -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/launcher_button_bg"
+            android:padding="18dp"
+            android:layout_marginBottom="48dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="16dp"
+                    android:background="#c3c2f2"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="使用量化目标"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="设置量化的使用限制，表情会根据目标达成情况实时变化"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="12sp"
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="14dp" />
+
+            <!-- 已设置的目标列表（动态填充） -->
+            <LinearLayout
+                android:id="@+id/structured_goals_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <!-- 空状态提示 -->
+            <TextView
+                android:id="@+id/tv_goals_empty_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="还没有设置量化目标\n点击下方按钮添加你的第一个目标"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="13sp"
+                android:gravity="center"
+                android:paddingVertical="16dp"
+                android:visibility="gone" />
+
+            <!-- 添加目标按钮 -->
+            <Button
+                android:id="@+id/btn_add_goal"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="＋ 添加目标"
+                android:textSize="14sp"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#9594c4"
                 android:layout_marginTop="10dp" />
+
         </LinearLayout>
 
     </LinearLayout>

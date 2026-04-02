@@ -64,6 +64,7 @@ public class CollectionConfig {
     public static final String KEY_SELECTED_ICON_INDEX = "selected_icon_index"; // deprecated
     public static final String KEY_FACE_STYLE = "face_style";
     public static final String KEY_USER_PERSONAL_GOAL = "user_personal_goal";
+    public static final String KEY_STRUCTURED_GOALS = "structured_goals";
 
     private final SharedPreferences prefs;
     private static CollectionConfig instance;
@@ -128,6 +129,7 @@ public class CollectionConfig {
         putIfAbsent(editor, KEY_WALLPAPER_STYLE, "唯美艺术");
         putIfAbsent(editor, KEY_FACE_STYLE, "CLASSIC");
         putIfAbsent(editor, KEY_USER_PERSONAL_GOAL, "");
+        putIfAbsent(editor, KEY_STRUCTURED_GOALS, "[]");
 
         editor.apply();
     }

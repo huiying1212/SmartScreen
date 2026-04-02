@@ -2,69 +2,97 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF141420"
+    android:background="@color/launcher_background"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingHorizontal="20dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="32dp">
 
-        <!-- ══════ 模块一：基础信息 ══════ -->
+        <!-- 顶部欢迎区 -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="基础信息"
-            android:textColor="#c3c2f2"
-            android:textSize="13sp"
+            android:text="CATIA"
+            android:textColor="#9594c4"
+            android:textSize="28sp"
             android:textStyle="bold"
-            android:letterSpacing="0.1"
-            android:layout_marginBottom="10dp" />
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="4dp" />
 
-        <!-- AI 使用提醒 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Contextual AI for Thoughtful Insight &amp; Awareness"
+            android:textColor="#B0AECE"
+            android:textSize="12sp"
+            android:letterSpacing="0.02"
+            android:layout_marginBottom="28dp" />
+
+        <!-- ══════ AI 使用提醒卡片 ══════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
+            android:padding="18dp"
             android:layout_marginBottom="12dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="AI 使用提醒"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="16dp"
+                    android:background="#c3c2f2"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AI 使用提醒"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tv_reminder_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="生成中..."
-                android:textColor="#9090A0"
+                android:textColor="@color/launcher_text_secondary"
                 android:textSize="12sp"
-                android:layout_marginTop="4dp" />
+                android:layout_marginStart="14dp" />
 
             <TextView
                 android:id="@+id/tv_reminder_result"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textColor="#c3c2f2"
+                android:textColor="#6B69A0"
                 android:textSize="15sp"
-                android:layout_marginTop="8dp" />
+                android:lineSpacingExtra="3dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginStart="14dp" />
         </LinearLayout>
 
-        <!-- 功能开关 -->
+        <!-- ══════ 功能开关卡片 ══════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
-            android:layout_marginBottom="24dp">
+            android:padding="18dp"
+            android:layout_marginBottom="28dp">
 
             <!-- 图标开关 -->
             <LinearLayout
@@ -83,15 +111,17 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="图标"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp" />
+                        android:textColor="@color/launcher_text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="悬浮窗拟人表情，UUT 驱动，点击获取 AI 提醒"
-                        android:textColor="#9090A0"
-                        android:textSize="12sp" />
+                        android:textColor="@color/launcher_text_secondary"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
                 </LinearLayout>
 
                 <Switch
@@ -104,8 +134,8 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#2A2A3E"
-                android:layout_marginVertical="12dp" />
+                android:background="@color/divider"
+                android:layout_marginVertical="14dp" />
 
             <!-- 壁纸开关 -->
             <LinearLayout
@@ -124,15 +154,17 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="壁纸"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp" />
+                        android:textColor="@color/launcher_text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="定时生成 AI 隐喻壁纸反映使用状态"
-                        android:textColor="#9090A0"
-                        android:textSize="12sp" />
+                        android:textColor="@color/launcher_text_secondary"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
                 </LinearLayout>
 
                 <Switch
@@ -143,15 +175,15 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ══════ 设置导航 ══════ -->
+        <!-- ══════ 设置区标题 ══════ -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="设置"
-            android:textColor="#c3c2f2"
+            android:textColor="#9594c4"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:letterSpacing="0.1"
+            android:letterSpacing="0.08"
             android:layout_marginBottom="10dp" />
 
         <!-- 个人设置入口 -->
@@ -162,8 +194,8 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
-            android:layout_marginBottom="12dp">
+            android:padding="18dp"
+            android:layout_marginBottom="10dp">
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -175,21 +207,22 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="个人设置"
-                    android:textColor="#FFFFFF"
-                    android:textSize="16sp" />
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="壁纸风格、生成时间、图标风格、个人目标"
-                    android:textColor="#9090A0"
+                    android:textColor="@color/launcher_text_secondary"
                     android:textSize="12sp"
                     android:layout_marginTop="2dp" />
             </LinearLayout>
 
             <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:src="@drawable/ic_arrow_right"
                 android:contentDescription="进入" />
         </LinearLayout>
@@ -202,7 +235,7 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
+            android:padding="18dp"
             android:layout_marginBottom="48dp">
 
             <LinearLayout
@@ -215,21 +248,22 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="系统设置"
-                    android:textColor="#FFFFFF"
-                    android:textSize="16sp" />
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="数据收集、系统权限、壁纸历史、开发者测试"
-                    android:textColor="#9090A0"
+                    android:textColor="@color/launcher_text_secondary"
                     android:textSize="12sp"
                     android:layout_marginTop="2dp" />
             </LinearLayout>
 
             <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:src="@drawable/ic_arrow_right"
                 android:contentDescription="进入" />
         </LinearLayout>

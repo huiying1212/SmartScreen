@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * DeepSeek API 客户端，提供：
  * 1. 壁纸引擎关键词提取（3 个元素词）
- * 2. 悬浮窗气泡文本生成（≤15 字短提醒）
+ * 2. 悬浮窗气泡文本生成（使用小结 + 建议，30～60 字）
  * 3. 通用聊天完成接口
  */
 public class DeepSeekApiClient {
@@ -293,37 +293,45 @@ public class DeepSeekApiClient {
         String userGoal = cfg.getString(CollectionConfig.KEY_USER_PERSONAL_GOAL, "");
 
         StringBuilder sb = new StringBuilder();
-        sb.append("You are a phone-use feedback assistant. ");
-        sb.append("Based on the user's current phone usage, generate a short reminder.\n\n");
-        sb.append("Rules:\n");
-        sb.append("1. No more than 15 Chinese characters\n");
-        sb.append("2. Friendly but guiding tone\n");
-        sb.append("3. Return ONLY the reminder text, no explanation\n");
-        sb.append("4. Do NOT wrap in quotes\n");
-        sb.append("5. Each response must be different");
+        sb.append("你是一个手机使用反馈助手，语气温和、像朋友一样关心用户。\n");
+        sb.append("根据用户当前的手机使用情况，生成一段简短的中文提醒。\n\n");
+        sb.append("提醒内容分为两部分：\n");
+        sb.append("1. 使用小结：用一两句话概括用户最近的屏幕使用情况（在用什么、用了多久等）\n");
+        sb.append("2. 建议：结合用户的使用情况");
         if (userGoal != null && !userGoal.trim().isEmpty()) {
-            sb.append("\n\nUser's personal goals:\n").append(userGoal.trim());
+            sb.append("和用户设定的个人目标");
+        }
+        sb.append("，给出一条友善、有针对性的建议（比如该休息了、可以去做目标相关的事、喝杯水、活动一下等）\n\n");
+        sb.append("格式要求：\n");
+        sb.append("- 总字数控制在 30～60 字之间\n");
+        sb.append("- 两部分之间用换行分隔\n");
+        sb.append("- 不要加标题、编号或引号\n");
+        sb.append("- 语气亲切自然，不要说教\n");
+        sb.append("- 每次回复要有变化，不要重复");
+        if (userGoal != null && !userGoal.trim().isEmpty()) {
+            sb.append("\n\n用户设定的个人目标：\n").append(userGoal.trim());
+            sb.append("\n（请在建议部分适当结合此目标，但不要每次都生硬提及，自然融入即可）");
         }
         String systemPrompt = sb.toString();
 
         StringBuilder userContent = new StringBuilder();
-        userContent.append("User is on [").append(currentApp).append("], ");
-        userContent.append("spent [").append(usageMins).append(" min], ");
-        userContent.append("unconscious-usage-index: ").append(uutValue).append("/100");
+        userContent.append("用户正在使用【").append(currentApp).append("】，");
+        userContent.append("已使用【").append(usageMins).append("分钟】，");
+        userContent.append("无意识使用指数：").append(uutValue).append("/100");
         if (calendarInfo != null && !calendarInfo.isEmpty()) {
-            userContent.append(", calendar: [").append(calendarInfo).append("]");
+            userContent.append("，日程：【").append(calendarInfo).append("】");
         }
         if (weatherInfo != null && !weatherInfo.isEmpty()) {
-            userContent.append(", weather: [").append(weatherInfo).append("]");
+            userContent.append("，天气：【").append(weatherInfo).append("】");
         }
-        userContent.append(". Generate a short Chinese reminder. (t=")
+        userContent.append("。请生成提醒。(t=")
                 .append(System.currentTimeMillis()).append(")");
 
         Log.i(TAG, "generateBubbleText: calling LLM, app=" + currentApp
                 + " mins=" + usageMins + " uut=" + uutValue);
 
         try {
-            String response = callChatSync(systemPrompt, userContent.toString(), 48, 0.95f);
+            String response = callChatSync(systemPrompt, userContent.toString(), 120, 0.95f);
 
             if (response == null || response.isEmpty()) {
                 return "[LLM returned empty] see Logcat DeepSeekApiClient";
@@ -333,7 +341,7 @@ public class DeepSeekApiClient {
             response = response.trim()
                     .replaceAll("^[\"'\u201c\u201d]+", "")
                     .replaceAll("[\"'\u201c\u201d\u3002\uff01!.]+$", "");
-            if (response.length() > 20) response = response.substring(0, 20);
+            if (response.length() > 80) response = response.substring(0, 80);
             return response;
 
         } catch (Exception e) {

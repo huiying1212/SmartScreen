@@ -3,65 +3,84 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@color/launcher_background"
+    android:padding="20dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="用户行为数据收集器"
-        android:textSize="24sp"
+        android:textSize="22sp"
         android:textStyle="bold"
+        android:textColor="@color/launcher_text_primary"
         android:gravity="center"
-        android:layout_marginBottom="24dp" />
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="28dp" />
 
     <Button
         android:id="@+id/btn_start_collection"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:text="开始数据收集"
-        android:layout_marginBottom="16dp" />
+        android:textSize="15sp"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#9594c4"
+        android:layout_marginBottom="10dp" />
 
     <Button
         android:id="@+id/btn_stop_collection"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:text="停止数据收集"
-        android:layout_marginBottom="16dp" />
+        android:textSize="15sp"
+        android:textColor="@color/button_secondary_text"
+        android:backgroundTint="@color/button_secondary_bg"
+        android:layout_marginBottom="10dp" />
 
     <Button
         android:id="@+id/btn_view_data"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:text="查看收集的数据"
-        android:layout_marginBottom="16dp" />
+        android:textSize="15sp"
+        android:textColor="@color/button_secondary_text"
+        android:backgroundTint="@color/button_secondary_bg"
+        android:layout_marginBottom="10dp" />
 
     <Button
         android:id="@+id/btn_call_gemini"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="调用Gemini AI分析"
-        android:layout_marginBottom="16dp" />
+        android:layout_height="48dp"
+        android:text="调用 Gemini AI 分析"
+        android:textSize="15sp"
+        android:textColor="@color/button_secondary_text"
+        android:backgroundTint="@color/button_secondary_bg"
+        android:layout_marginBottom="10dp" />
 
     <Button
         android:id="@+id/btn_call_deepseek"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="调用DeepSeek AI分析"
-        android:layout_marginBottom="16dp" />
+        android:layout_height="48dp"
+        android:text="调用 DeepSeek AI 分析"
+        android:textSize="15sp"
+        android:textColor="@color/button_secondary_text"
+        android:backgroundTint="@color/button_secondary_bg"
+        android:layout_marginBottom="10dp" />
 
     <TextView
         android:id="@+id/tv_status"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="状态：未开始"
-        android:textSize="16sp"
-        android:layout_marginTop="24dp" />
+        android:textSize="14sp"
+        android:textColor="@color/launcher_text_secondary"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="12dp" />
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="16dp">
+        android:layout_weight="1">
 
         <TextView
             android:id="@+id/tv_data_preview"
@@ -69,10 +88,11 @@
             android:layout_height="wrap_content"
             android:text="数据预览将在这里显示..."
             android:textSize="12sp"
+            android:textColor="#5C5A8A"
             android:fontFamily="monospace"
-            android:background="#f5f5f5"
-            android:padding="8dp" />
+            android:background="@color/input_bg"
+            android:padding="12dp" />
 
     </ScrollView>
 
-</LinearLayout> 
+</LinearLayout>

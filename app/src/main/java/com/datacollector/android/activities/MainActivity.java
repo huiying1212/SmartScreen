@@ -1,9 +1,11 @@
 package com.datacollector.android.activities;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
@@ -14,22 +16,32 @@ import android.provider.Settings;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import android.util.Log;
+
 import com.datacollector.android.R;
 import com.datacollector.android.api.DeepSeekApiClient;
+import com.datacollector.android.collectors.CalendarDataCollector;
 import com.datacollector.android.collectors.ScreenUsageCollector;
+import com.datacollector.android.collectors.WeatherDataCollector;
 import com.datacollector.android.services.DataCollectionService;
 import com.datacollector.android.services.FloatingOverlayService;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.UnconsciousUsageTracker;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class MainActivity extends Activity {
 
     private static final String TAG = "MainActivity";
+    public static final String ACTION_BUBBLE_TEXT_UPDATED =
+            "com.datacollector.android.BUBBLE_TEXT_UPDATED";
+    public static final String EXTRA_BUBBLE_TEXT = "bubble_text";
 
     private CollectionConfig config;
     private ScreenUsageCollector screenUsageCollector;
+    private CalendarDataCollector calendarCollector;
+    private WeatherDataCollector weatherCollector;
     private DeepSeekApiClient deepSeekClient;
     private UnconsciousUsageTracker uutTracker;
     private Handler uiHandler;
@@ -41,6 +53,18 @@ public class MainActivity extends Activity {
     // Service
     private DataCollectionService dataCollectionService;
     private boolean serviceBound = false;
+
+    private final BroadcastReceiver bubbleTextReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String text = intent.getStringExtra(EXTRA_BUBBLE_TEXT);
+            if (text != null && !text.isEmpty()) {
+                tvReminderStatus.setVisibility(android.view.View.GONE);
+                tvReminderResult.setText(text);
+                tvReminderResult.setTextColor(0xFF6B69A0);
+            }
+        }
+    };
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -65,6 +89,8 @@ public class MainActivity extends Activity {
 
         config = CollectionConfig.getInstance(this);
         screenUsageCollector = new ScreenUsageCollector(this);
+        calendarCollector = new CalendarDataCollector(this);
+        weatherCollector = new WeatherDataCollector(this);
         deepSeekClient = new DeepSeekApiClient(this);
         uutTracker = new UnconsciousUsageTracker(this);
         uiHandler = new Handler(Looper.getMainLooper());
@@ -104,19 +130,49 @@ public class MainActivity extends Activity {
 
         new Thread(() -> {
             try {
-                String currentApp = uutTracker.getCurrentPackage();
-                if (currentApp == null) currentApp = "unknown";
-                int uut = uutTracker.getUUT();
+                String currentApp = null;
                 int usageMins = 0;
 
                 try {
                     JSONObject screenData = screenUsageCollector.collectData();
                     if (screenData != null) {
-                        usageMins = (int) (screenData.optLong("foreground_app_current_open_ms", 0) / 60_000L);
+                        currentApp = screenData.optString("foreground_app_package", null);
+                        usageMins = (int) (screenData.optLong(
+                                "foreground_app_current_open_ms", 0) / 60_000L);
+                        if (usageMins == 0) {
+                            usageMins = (int) (screenData.optLong(
+                                    "current_session_ms", 0) / 60_000L);
+                        }
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to get screen usage data", e);
+                }
 
-                final String text = deepSeekClient.generateBubbleText(currentApp, usageMins, uut, null, null);
+                if (currentApp == null || currentApp.isEmpty()) {
+                    currentApp = uutTracker.getCurrentPackage();
+                }
+                if (currentApp == null || currentApp.isEmpty()) {
+                    currentApp = "unknown";
+                }
+
+                int uut = uutTracker.getUUT();
+
+                String calendarInfo = getCalendarContext();
+
+                String weatherInfo = null;
+                try {
+                    if (weatherCollector != null && weatherCollector.isAvailable()) {
+                        JSONObject weatherData = weatherCollector.collectData();
+                        if (weatherData != null) {
+                            weatherInfo = weatherData.optString("readable_summary", null);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to get weather data", e);
+                }
+
+                final String text = deepSeekClient.generateBubbleText(
+                        currentApp, usageMins, uut, calendarInfo, weatherInfo);
 
                 uiHandler.post(() -> {
                     tvReminderStatus.setVisibility(android.view.View.GONE);
@@ -130,6 +186,42 @@ public class MainActivity extends Activity {
                 });
             }
         }).start();
+    }
+
+    private String getCalendarContext() {
+        try {
+            if (calendarCollector == null || !calendarCollector.isAvailable()) return null;
+            JSONObject calData = calendarCollector.collectData();
+            if (calData == null) return null;
+
+            JSONArray events = calData.optJSONArray("events");
+            if (events == null || events.length() == 0) return "空闲时间";
+
+            long now = System.currentTimeMillis();
+
+            for (int i = 0; i < events.length(); i++) {
+                JSONObject ev = events.optJSONObject(i);
+                if (ev == null) continue;
+                long start = ev.optLong("begin_timestamp", 0);
+                long end = ev.optLong("end_timestamp", 0);
+                if (now >= start && now <= end) {
+                    return "计划: " + ev.optString("title", "日程中");
+                }
+            }
+
+            for (int i = 0; i < events.length(); i++) {
+                JSONObject ev = events.optJSONObject(i);
+                if (ev == null) continue;
+                long start = ev.optLong("begin_timestamp", 0);
+                if (start > now && start - now < 3600_000L) {
+                    return "即将: " + ev.optString("title", "有安排");
+                }
+            }
+
+            return "空闲时间";
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // ══════ Navigation ══════
@@ -188,10 +280,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        registerReceiver(bubbleTextReceiver, new IntentFilter(ACTION_BUBBLE_TEXT_UPDATED));
         if (config.getBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, true)
                 && Settings.canDrawOverlays(this)) {
             startOverlayService();
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        try { unregisterReceiver(bubbleTextReceiver); } catch (Exception ignored) {}
     }
 
     @Override

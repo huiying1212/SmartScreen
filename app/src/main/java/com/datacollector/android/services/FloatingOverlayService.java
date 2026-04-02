@@ -16,6 +16,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -35,8 +36,10 @@ import com.datacollector.android.collectors.ScreenUsageCollector;
 import com.datacollector.android.collectors.WeatherDataCollector;
 import com.datacollector.android.utils.AppForegroundTracker;
 import com.datacollector.android.utils.CollectionConfig;
+import com.datacollector.android.utils.MoodScoreEngine;
 import com.datacollector.android.utils.UnconsciousUsageTracker;
 import com.datacollector.android.views.MoodFaceView;
+import com.datacollector.android.views.SpeechBubbleDrawable;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -46,8 +49,9 @@ import org.json.JSONObject;
  *
  * 核心功能：
  * 1. 全局悬浮窗展示拟人表情，表情由 UUT 算法驱动
- * 2. 点击后由 LLM 生成 ≤15 字的短提醒气泡，5 秒后消失
- * 3. 支持拖动定位
+ * 2. 点击后由 LLM 生成提醒气泡（独立悬浮窗，带小尾巴指向图标），8 秒后消失
+ * 3. 气泡自动避免遮挡图标和超出屏幕
+ * 4. 支持拖动定位
  */
 public class FloatingOverlayService extends Service {
 
@@ -59,12 +63,19 @@ public class FloatingOverlayService extends Service {
     private WindowManager windowManager;
     private View overlayView;
     private MoodFaceView moodFace;
-    private TextView bubbleText;
     private WindowManager.LayoutParams layoutParams;
+
+    // ── Bubble (separate floating window) ──
+    private View bubbleView;
+    private TextView bubbleText;
+    private WindowManager.LayoutParams bubbleParams;
+    private SpeechBubbleDrawable bubbleDrawable;
+    private boolean bubbleAdded = false;
 
     private Handler mainHandler;
     private UnconsciousUsageTracker uutTracker;
     private ScreenUsageCollector screenUsageCollector;
+    private MoodScoreEngine moodScoreEngine;
     private DeepSeekApiClient deepSeekClient;
     private CalendarDataCollector calendarCollector;
     private WeatherDataCollector weatherCollector;
@@ -116,6 +127,7 @@ public class FloatingOverlayService extends Service {
 
         uutTracker = new UnconsciousUsageTracker(this);
         screenUsageCollector = new ScreenUsageCollector(this);
+        moodScoreEngine = new MoodScoreEngine(this);
         deepSeekClient = new DeepSeekApiClient(this);
         calendarCollector = new CalendarDataCollector(this);
         weatherCollector = new WeatherDataCollector(this);
@@ -163,7 +175,6 @@ public class FloatingOverlayService extends Service {
     private void createOverlay() {
         overlayView = LayoutInflater.from(this).inflate(R.layout.floating_overlay, null);
         moodFace = overlayView.findViewById(R.id.overlay_mood_face);
-        bubbleText = overlayView.findViewById(R.id.overlay_bubble_text);
 
         String styleName = config.getString(CollectionConfig.KEY_FACE_STYLE, "CLASSIC");
         moodFace.setFaceStyle(MoodFaceView.FaceStyle.fromName(styleName));
@@ -186,6 +197,21 @@ public class FloatingOverlayService extends Service {
 
         setupTouchListener();
         windowManager.addView(overlayView, layoutParams);
+
+        // ── Prepare bubble window (hidden, added on first use) ──
+        bubbleView = LayoutInflater.from(this).inflate(R.layout.floating_bubble, null);
+        bubbleText = bubbleView.findViewById(R.id.bubble_text);
+        bubbleDrawable = new SpeechBubbleDrawable();
+        bubbleText.setBackground(bubbleDrawable);
+
+        bubbleParams = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                overlayType,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                PixelFormat.TRANSLUCENT);
+        bubbleParams.gravity = Gravity.TOP | Gravity.START;
     }
 
     private void setupTouchListener() {
@@ -215,6 +241,10 @@ public class FloatingOverlayService extends Service {
                         layoutParams.x = initialX + (int) dx;
                         layoutParams.y = initialY + (int) dy;
                         windowManager.updateViewLayout(overlayView, layoutParams);
+                        // Bubble follows the icon during drag
+                        if (isBubbleShowing && bubbleAdded) {
+                            positionBubble();
+                        }
                         return true;
 
                     case MotionEvent.ACTION_UP:
@@ -234,7 +264,7 @@ public class FloatingOverlayService extends Service {
         if (isBubbleShowing || isGeneratingBubble) return;
         isGeneratingBubble = true;
 
-        showBubble("thinking...", false);
+        showBubble("思考中...", false);
 
         new Thread(() -> {
             try {
@@ -293,16 +323,19 @@ public class FloatingOverlayService extends Service {
 
                 final String displayText = (text != null && !text.isEmpty()) ? text : "注意休息一下吧";
                 mainHandler.post(() -> {
-                    dismissBubbleImmediately();
-                    showBubble(displayText);
+                    updateBubbleText(displayText);
                 });
+
+                // Notify MainActivity to sync the reminder text
+                Intent updateIntent = new Intent("com.datacollector.android.BUBBLE_TEXT_UPDATED");
+                updateIntent.putExtra("bubble_text", displayText);
+                sendBroadcast(updateIntent);
 
             } catch (Exception e) {
                 Log.e(TAG, "Error generating bubble", e);
-                final String err = "Error: " + e.getMessage();
+                final String err = "出错了，稍后再试";
                 mainHandler.post(() -> {
-                    dismissBubbleImmediately();
-                    showBubble(err);
+                    updateBubbleText(err);
                 });
             } finally {
                 isGeneratingBubble = false;
@@ -348,15 +381,53 @@ public class FloatingOverlayService extends Service {
     }
 
     private void dismissBubbleImmediately() {
-        if (bubbleText != null) {
-            bubbleText.clearAnimation();
-            bubbleText.setVisibility(View.GONE);
+        if (bubbleView != null) {
+            bubbleView.clearAnimation();
+            bubbleView.setVisibility(View.GONE);
         }
         isBubbleShowing = false;
-        mainHandler.removeCallbacksAndMessages(null);
-        // 恢复定期更新（removeCallbacksAndMessages 会移除所有回调）
-        startPeriodicUpdates();
+        mainHandler.removeCallbacks(bubbleDismissRunnable);
     }
+
+    /**
+     * Replace the text in the already-visible bubble, reposition it,
+     * and start the auto-dismiss countdown.
+     */
+    private void updateBubbleText(String text) {
+        if (bubbleText == null || text == null) return;
+        bubbleText.setText(text);
+        // Clear any running animation (e.g. fadeIn) before scheduling dismiss
+        if (bubbleView != null) bubbleView.clearAnimation();
+        // Reposition — bubble size may have changed with new text
+        if (bubbleAdded) {
+            positionBubble();
+        }
+        // Start auto-dismiss timer
+        scheduleBubbleDismiss();
+    }
+
+    private void scheduleBubbleDismiss() {
+        // Remove any previous dismiss callback (but keep periodic updates)
+        mainHandler.removeCallbacks(bubbleDismissRunnable);
+        mainHandler.postDelayed(bubbleDismissRunnable, BUBBLE_DISPLAY_MS);
+    }
+
+    private final Runnable bubbleDismissRunnable = () -> {
+        if (bubbleView == null) return;
+        AlphaAnimation fadeOut = new AlphaAnimation(1f, 0f);
+        fadeOut.setDuration(400);
+        fadeOut.setFillAfter(true);
+        bubbleView.startAnimation(fadeOut);
+        // Don't rely on onAnimationEnd — it's unreliable for WindowManager views.
+        // Force-hide after the animation duration.
+        mainHandler.postDelayed(() -> {
+            if (bubbleView != null) {
+                bubbleView.clearAnimation();
+                bubbleView.setVisibility(View.GONE);
+            }
+            isBubbleShowing = false;
+        }, 420);
+    };
 
     private void showBubble(String text) {
         showBubble(text, true);
@@ -370,27 +441,89 @@ public class FloatingOverlayService extends Service {
         isBubbleShowing = true;
 
         bubbleText.setText(text);
-        bubbleText.setVisibility(View.VISIBLE);
+
+        // Add bubble window if not yet added
+        if (!bubbleAdded) {
+            windowManager.addView(bubbleView, bubbleParams);
+            bubbleAdded = true;
+        }
+
+        // Position the bubble relative to the icon
+        positionBubble();
+
+        bubbleView.setVisibility(View.VISIBLE);
 
         AlphaAnimation fadeIn = new AlphaAnimation(0f, 1f);
         fadeIn.setDuration(300);
-        bubbleText.startAnimation(fadeIn);
+        bubbleView.startAnimation(fadeIn);
 
         if (autoDismiss) {
-            mainHandler.postDelayed(() -> {
-                AlphaAnimation fadeOut = new AlphaAnimation(1f, 0f);
-                fadeOut.setDuration(500);
-                fadeOut.setAnimationListener(new Animation.AnimationListener() {
-                    @Override public void onAnimationStart(Animation a) {}
-                    @Override public void onAnimationRepeat(Animation a) {}
-                    @Override public void onAnimationEnd(Animation a) {
-                        bubbleText.setVisibility(View.GONE);
-                        isBubbleShowing = false;
-                    }
-                });
-                bubbleText.startAnimation(fadeOut);
-            }, BUBBLE_DISPLAY_MS);
+            scheduleBubbleDismiss();
         }
+    }
+
+    /**
+     * Position the bubble window so it appears to "speak" from the icon.
+     * - Prefers placing the bubble above the icon.
+     * - If not enough room above, places it below.
+     * - Horizontally centers on the icon, clamped to screen edges.
+     * - Adjusts the tail position on the SpeechBubbleDrawable to point at the icon center.
+     */
+    private void positionBubble() {
+        if (bubbleView == null || overlayView == null) return;
+
+        // Measure the bubble to know its size
+        bubbleView.measure(
+                View.MeasureSpec.makeMeasureSpec(dpToPx(260), View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int bubbleW = bubbleView.getMeasuredWidth();
+        int bubbleH = bubbleView.getMeasuredHeight();
+
+        // Icon position and size
+        int iconX = layoutParams.x;
+        int iconY = layoutParams.y;
+        int iconW = overlayView.getWidth();
+        int iconH = overlayView.getHeight();
+        if (iconW == 0) iconW = dpToPx(56);
+        if (iconH == 0) iconH = dpToPx(56);
+        int iconCenterX = iconX + iconW / 2;
+
+        // Screen dimensions
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        int screenW = dm.widthPixels;
+        int screenH = dm.heightPixels;
+        int margin = dpToPx(6);
+        int gap = dpToPx(4); // gap between bubble and icon
+
+        // ── Vertical: prefer above, fall back to below ──
+        boolean placeAbove = (iconY - bubbleH - gap) >= 0;
+        int bubbleY;
+        if (placeAbove) {
+            bubbleY = iconY - bubbleH - gap;
+            bubbleDrawable.setTailAtBottom(true);
+        } else {
+            bubbleY = iconY + iconH + gap;
+            bubbleDrawable.setTailAtBottom(false);
+        }
+        // Clamp vertical
+        bubbleY = Math.max(0, Math.min(bubbleY, screenH - bubbleH));
+
+        // ── Horizontal: center on icon, clamp to screen ──
+        int bubbleX = iconCenterX - bubbleW / 2;
+        bubbleX = Math.max(margin, Math.min(bubbleX, screenW - bubbleW - margin));
+
+        // ── Tail position: point at icon center ──
+        float tailPos = (float)(iconCenterX - bubbleX) / (float) Math.max(1, bubbleW);
+        tailPos = Math.max(0.12f, Math.min(0.88f, tailPos));
+        bubbleDrawable.setTailPosition(tailPos);
+
+        bubbleParams.x = bubbleX;
+        bubbleParams.y = bubbleY;
+        windowManager.updateViewLayout(bubbleView, bubbleParams);
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     // ── 定期 UUT 更新 ────────────────────────────────────────
@@ -461,14 +594,20 @@ public class FloatingOverlayService extends Service {
     }
 
     private void updateMoodFromUUT(int uut) {
-        // 将 UUT (0-100) 映射为 stress [0.0, 1.0]，ease-in-out 曲线
-        float t = Math.max(0f, Math.min(1f, uut / 100f));
-        float stress = t * t * (3f - 2f * t);
+        // 多维度评分引擎：综合全天时长、娱乐占比、会话强度、目标达成度
+        float stress = moodScoreEngine.computeStress(uut, screenUsageCollector);
         if (moodFace != null) {
             moodFace.setStress(stress);
         }
         Log.d(TAG, "Mood updated: stress=" + String.format("%.3f", stress)
                 + " (UUT=" + uut + ")");
+    }
+
+    /**
+     * 获取 MoodScoreEngine 实例（供外部调试面板读取各维度分数）。
+     */
+    public MoodScoreEngine getMoodScoreEngine() {
+        return moodScoreEngine;
     }
 
     @Override
@@ -477,6 +616,10 @@ public class FloatingOverlayService extends Service {
         if (mainHandler != null) mainHandler.removeCallbacksAndMessages(null);
         if (overlayView != null && windowManager != null) {
             try { windowManager.removeView(overlayView); } catch (Exception ignored) {}
+        }
+        if (bubbleAdded && bubbleView != null && windowManager != null) {
+            try { windowManager.removeView(bubbleView); } catch (Exception ignored) {}
+            bubbleAdded = false;
         }
         try { unregisterReceiver(screenReceiver); } catch (Exception ignored) {}
         if (deepSeekClient != null) deepSeekClient.shutdown();

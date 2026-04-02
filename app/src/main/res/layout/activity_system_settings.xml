@@ -2,14 +2,16 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF141420"
+    android:background="@color/launcher_background"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingHorizontal="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="32dp">
 
         <!-- 顶部栏 -->
         <LinearLayout
@@ -17,27 +19,28 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="20dp">
+            android:layout_marginBottom="24dp">
 
             <TextView
                 android:id="@+id/btn_back"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="← 返回"
-                android:textColor="#c3c2f2"
-                android:textSize="14sp"
-                android:padding="4dp" />
+                android:text="←"
+                android:textColor="#9594c4"
+                android:textSize="20sp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp" />
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="系统设置"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/launcher_text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:gravity="center"
-                android:layout_marginEnd="48dp" />
+                android:layout_marginEnd="36dp" />
         </LinearLayout>
 
         <!-- 数据收集权限控制 -->
@@ -46,24 +49,39 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
+            android:padding="18dp"
             android:layout_marginBottom="12dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="数据收集权限控制"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="16dp"
+                    android:background="#c3c2f2"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="数据收集权限控制"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="细粒度控制系统收集哪些数据用于 AI 分析"
-                android:textColor="#9090A0"
+                android:textColor="@color/launcher_text_secondary"
                 android:textSize="12sp"
-                android:layout_marginTop="2dp"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="14dp" />
 
             <!-- 位置信息 -->
             <LinearLayout
@@ -71,7 +89,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -82,13 +100,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="位置信息"
-                        android:textColor="#FFFFFF"
+                        android:textColor="@color/launcher_text_primary"
                         android:textSize="14sp" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="GPS 定位数据，用于推断使用场景"
-                        android:textColor="#6A6A80"
+                        android:textColor="@color/launcher_text_secondary"
                         android:textSize="11sp" />
                 </LinearLayout>
                 <Switch
@@ -97,13 +115,19 @@
                     android:layout_height="wrap_content" />
             </LinearLayout>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider"
+                android:layout_marginBottom="12dp" />
+
             <!-- 活动识别 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -114,13 +138,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="活动识别"
-                        android:textColor="#FFFFFF"
+                        android:textColor="@color/launcher_text_primary"
                         android:textSize="14sp" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="传感器活动分类（步行、静止等）"
-                        android:textColor="#6A6A80"
+                        android:textColor="@color/launcher_text_secondary"
                         android:textSize="11sp" />
                 </LinearLayout>
                 <Switch
@@ -129,13 +153,19 @@
                     android:layout_height="wrap_content" />
             </LinearLayout>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider"
+                android:layout_marginBottom="12dp" />
+
             <!-- 屏幕使用 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -146,13 +176,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="屏幕使用统计"
-                        android:textColor="#FFFFFF"
+                        android:textColor="@color/launcher_text_primary"
                         android:textSize="14sp" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="应用使用时长、解锁次数、前台应用"
-                        android:textColor="#6A6A80"
+                        android:textColor="@color/launcher_text_secondary"
                         android:textSize="11sp" />
                 </LinearLayout>
                 <Switch
@@ -161,13 +191,18 @@
                     android:layout_height="wrap_content" />
             </LinearLayout>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider"
+                android:layout_marginBottom="12dp" />
+
             <!-- 日历信息 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="10dp">
+                android:gravity="center_vertical">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -178,13 +213,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="日历信息"
-                        android:textColor="#FFFFFF"
+                        android:textColor="@color/launcher_text_primary"
                         android:textSize="14sp" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="日程事件，用于提供上下文提醒"
-                        android:textColor="#6A6A80"
+                        android:textColor="@color/launcher_text_secondary"
                         android:textSize="11sp" />
                 </LinearLayout>
                 <Switch
@@ -201,16 +236,30 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
+            android:padding="18dp"
             android:layout_marginBottom="12dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="系统权限"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:layout_marginBottom="12dp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="14dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="16dp"
+                    android:background="#c3c2f2"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="系统权限"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <Button
                 android:id="@+id/btn_perm_overlay"
@@ -218,8 +267,8 @@
                 android:layout_height="44dp"
                 android:text="授权悬浮窗权限"
                 android:textSize="13sp"
-                android:textColor="#FFFFFF"
-                android:backgroundTint="#2A2A3E"
+                android:textColor="@color/button_secondary_text"
+                android:backgroundTint="@color/button_secondary_bg"
                 android:layout_marginBottom="8dp" />
 
             <Button
@@ -228,8 +277,8 @@
                 android:layout_height="44dp"
                 android:text="授权使用情况访问"
                 android:textSize="13sp"
-                android:textColor="#FFFFFF"
-                android:backgroundTint="#2A2A3E"
+                android:textColor="@color/button_secondary_text"
+                android:backgroundTint="@color/button_secondary_bg"
                 android:layout_marginBottom="8dp" />
 
             <Button
@@ -238,8 +287,8 @@
                 android:layout_height="44dp"
                 android:text="启动数据收集服务"
                 android:textSize="13sp"
-                android:textColor="#1A1A2E"
-                android:backgroundTint="#c3c2f2" />
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#9594c4" />
         </LinearLayout>
 
         <!-- 屏幕使用历史 -->
@@ -248,23 +297,38 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
+            android:padding="18dp"
             android:layout_marginBottom="12dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="屏幕使用历史"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="16dp"
+                    android:background="#c3c2f2"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="屏幕使用历史"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="每天生成的壁纸记录"
-                android:textColor="#9090A0"
+                android:textColor="@color/launcher_text_secondary"
                 android:textSize="12sp"
-                android:layout_marginTop="2dp"
+                android:layout_marginStart="14dp"
                 android:layout_marginBottom="10dp" />
 
             <LinearLayout
@@ -280,24 +344,39 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/launcher_button_bg"
-            android:padding="16dp"
+            android:padding="18dp"
             android:layout_marginBottom="48dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="开发者测试"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="16dp"
+                    android:background="#c3c2f2"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="开发者测试"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="调试功能和 Prompt 结构查看"
-                android:textColor="#9090A0"
+                android:textColor="@color/launcher_text_secondary"
                 android:textSize="12sp"
-                android:layout_marginTop="2dp"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="14dp" />
 
             <Button
                 android:id="@+id/btn_test_data"
@@ -305,8 +384,8 @@
                 android:layout_height="40dp"
                 android:text="获取当前收集数据"
                 android:textSize="13sp"
-                android:textColor="#B0B0C0"
-                android:backgroundTint="#1A1A2E"
+                android:textColor="@color/button_secondary_text"
+                android:backgroundTint="@color/button_secondary_bg"
                 android:layout_marginBottom="6dp" />
 
             <Button
@@ -315,8 +394,8 @@
                 android:layout_height="40dp"
                 android:text="测试 AI 提醒功能"
                 android:textSize="13sp"
-                android:textColor="#B0B0C0"
-                android:backgroundTint="#1A1A2E"
+                android:textColor="@color/button_secondary_text"
+                android:backgroundTint="@color/button_secondary_bg"
                 android:layout_marginBottom="6dp" />
 
             <Button
@@ -325,8 +404,8 @@
                 android:layout_height="40dp"
                 android:text="测试壁纸生成功能"
                 android:textSize="13sp"
-                android:textColor="#B0B0C0"
-                android:backgroundTint="#1A1A2E"
+                android:textColor="@color/button_secondary_text"
+                android:backgroundTint="@color/button_secondary_bg"
                 android:layout_marginBottom="4dp" />
 
             <TextView
@@ -334,7 +413,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textColor="#B0B0C0"
+                android:textColor="@color/launcher_text_secondary"
                 android:textSize="12sp"
                 android:layout_marginBottom="6dp" />
 
@@ -344,8 +423,8 @@
                 android:layout_height="40dp"
                 android:text="查看图标提醒 Prompt 结构"
                 android:textSize="13sp"
-                android:textColor="#B0B0C0"
-                android:backgroundTint="#1A1A2E"
+                android:textColor="@color/button_secondary_text"
+                android:backgroundTint="@color/button_secondary_bg"
                 android:layout_marginBottom="6dp" />
 
             <Button
@@ -354,8 +433,18 @@
                 android:layout_height="40dp"
                 android:text="查看壁纸生成 Prompt 结构"
                 android:textSize="13sp"
-                android:textColor="#B0B0C0"
-                android:backgroundTint="#1A1A2E"
+                android:textColor="@color/button_secondary_text"
+                android:backgroundTint="@color/button_secondary_bg"
+                android:layout_marginBottom="6dp" />
+
+            <Button
+                android:id="@+id/btn_test_mood_score"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="查看 MoodScore 各维度"
+                android:textSize="13sp"
+                android:textColor="@color/button_secondary_text"
+                android:backgroundTint="@color/button_secondary_bg"
                 android:layout_marginBottom="6dp" />
 
             <TextView
@@ -363,11 +452,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textColor="#CCCCCC"
+                android:textColor="#5C5A8A"
                 android:textSize="11sp"
                 android:fontFamily="monospace"
-                android:background="#181828"
-                android:padding="10dp"
+                android:background="@color/input_bg"
+                android:padding="12dp"
                 android:textIsSelectable="true"
                 android:visibility="gone" />
         </LinearLayout>

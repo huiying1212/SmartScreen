@@ -388,6 +388,63 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
                 || packageName.contains(".systemui");
     }
 
+    /**
+     * 获取今日各 App 分类的前台使用时长（毫秒）。
+     * key = AppCategory.labelEn (如 "social", "short_video")，value = 累计毫秒数。
+     * 同时返回特殊 key "__total__" 表示今日总屏幕时长。
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP_MR1)
+    public Map<String, Long> getCategoryUsageToday() {
+        Map<String, Long> result = new java.util.LinkedHashMap<>();
+        long now = System.currentTimeMillis();
+
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        long todayStartMs = cal.getTimeInMillis();
+
+        UsageStatsManager usm = (UsageStatsManager)
+                context.getSystemService(Context.USAGE_STATS_SERVICE);
+        if (usm == null) return result;
+
+        Map<String, UsageStats> statsMap = usm.queryAndAggregateUsageStats(todayStartMs, now);
+        if (statsMap == null) return result;
+
+        long totalMs = 0;
+        for (UsageStats stats : statsMap.values()) {
+            long fg = stats.getTotalTimeInForeground();
+            if (fg <= 0) continue;
+            String pkg = stats.getPackageName();
+            if (isSystemPackage(pkg) || pkg.equals(context.getPackageName())) continue;
+
+            AppCategoryClassifier.AppCategory cat = categoryClassifier.classify(pkg);
+            result.merge(cat.labelEn, fg, Long::sum);
+            totalMs += fg;
+        }
+        result.put("__total__", totalMs);
+        return result;
+    }
+
+    /**
+     * 获取今日指定包名的前台使用时长（毫秒）。
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP_MR1)
+    public long getAppUsageTodayMs(String packageName) {
+        long now = System.currentTimeMillis();
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+
+        UsageStatsManager usm = (UsageStatsManager)
+                context.getSystemService(Context.USAGE_STATS_SERVICE);
+        if (usm == null) return 0;
+        return getAppUsageToday(usm, packageName, cal.getTimeInMillis(), now);
+    }
+
     private String formatDuration(long ms) {
         if (ms <= 0) return "0m";
         long totalMin = ms / 60000;

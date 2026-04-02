@@ -18,6 +18,7 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Switch;
@@ -30,6 +31,7 @@ import com.datacollector.android.collectors.ScreenUsageCollector;
 import com.datacollector.android.managers.WallpaperGenerationManager;
 import com.datacollector.android.services.DataCollectionService;
 import com.datacollector.android.utils.CollectionConfig;
+import com.datacollector.android.utils.MoodScoreEngine;
 import com.datacollector.android.utils.UnconsciousUsageTracker;
 
 import org.json.JSONObject;
@@ -55,12 +57,13 @@ public class SystemSettingsActivity extends Activity {
     private ScreenUsageCollector screenUsageCollector;
     private DeepSeekApiClient deepSeekClient;
     private UnconsciousUsageTracker uutTracker;
+    private MoodScoreEngine moodScoreEngine;
     private Handler uiHandler;
 
     private Switch switchLocation, switchActivity, switchScreenUsage, switchCalendar;
     private Button btnPermOverlay, btnPermUsage, btnStartCollection;
     private LinearLayout historyContainer;
-    private Button btnTestData, btnTestAi, btnTestWallpaper, btnTestBubblePrompt, btnTestWallpaperPrompt;
+    private Button btnTestData, btnTestAi, btnTestWallpaper, btnTestBubblePrompt, btnTestWallpaperPrompt, btnTestMoodScore;
     private TextView tvGenerationStatus, tvTestOutput;
 
     private DataCollectionService dataCollectionService;
@@ -97,6 +100,7 @@ public class SystemSettingsActivity extends Activity {
         screenUsageCollector = new ScreenUsageCollector(this);
         deepSeekClient = new DeepSeekApiClient(this);
         uutTracker = new UnconsciousUsageTracker(this);
+        moodScoreEngine = new MoodScoreEngine(this);
         uiHandler = new Handler(Looper.getMainLooper());
 
         initViews();
@@ -126,6 +130,7 @@ public class SystemSettingsActivity extends Activity {
         btnTestWallpaper = findViewById(R.id.btn_test_wallpaper);
         btnTestBubblePrompt = findViewById(R.id.btn_test_bubble_prompt);
         btnTestWallpaperPrompt = findViewById(R.id.btn_test_wallpaper_prompt);
+        btnTestMoodScore = findViewById(R.id.btn_test_mood_score);
         tvGenerationStatus = findViewById(R.id.tv_generation_status);
         tvTestOutput = findViewById(R.id.tv_test_output);
     }
@@ -167,6 +172,7 @@ public class SystemSettingsActivity extends Activity {
         btnTestWallpaper.setOnClickListener(v -> generateWallpaperNow());
         btnTestBubblePrompt.setOnClickListener(v -> showBubblePromptStructure());
         btnTestWallpaperPrompt.setOnClickListener(v -> showWallpaperPromptStructure());
+        btnTestMoodScore.setOnClickListener(v -> testMoodScore());
     }
 
     private void loadSavedState() {
@@ -183,7 +189,7 @@ public class SystemSettingsActivity extends Activity {
         btnTestWallpaper.setEnabled(false);
         btnTestWallpaper.setText("生成中...");
         tvGenerationStatus.setText("");
-        tvGenerationStatus.setTextColor(0xFFB0B0C0);
+        tvGenerationStatus.setTextColor(0xFF8B89B8);
 
         wallpaperManager.generateAndSetWallpaper(
                 new WallpaperGenerationManager.WallpaperGenerationCallback() {
@@ -212,7 +218,7 @@ public class SystemSettingsActivity extends Activity {
                     public void onProgress(String s) {
                         uiHandler.post(() -> {
                             tvGenerationStatus.setText(s);
-                            tvGenerationStatus.setTextColor(0xFFB0B0C0);
+                            tvGenerationStatus.setTextColor(0xFF8B89B8);
                         });
                     }
 
@@ -278,26 +284,31 @@ public class SystemSettingsActivity extends Activity {
 
     private void showBubblePromptStructure() {
         String userGoal = config.getString(CollectionConfig.KEY_USER_PERSONAL_GOAL, "");
-        String goalLine = (userGoal != null && !userGoal.isEmpty()) ? "\nUser's personal goals:\n" + userGoal + "\n" : "";
+        boolean hasGoal = userGoal != null && !userGoal.isEmpty();
+        String goalSection = hasGoal
+                ? "\n用户设定的个人目标：\n" + userGoal + "\n（请在建议部分适当结合此目标，但不要每次都生硬提及，自然融入即可）\n"
+                : "\n（用户未设置个人目标）\n";
 
         showTestOutput(
             "══ 图标提醒 Prompt 结构 ══\n\n" +
             "── System Prompt ──\n" +
-            "You are a phone-use feedback assistant. " +
-            "Based on the user's current phone usage, generate a short reminder.\n\n" +
-            "Rules:\n" +
-            "1. No more than 15 Chinese characters\n" +
-            "2. Friendly but guiding tone\n" +
-            "3. Return ONLY the reminder text, no explanation\n" +
-            "4. Do NOT wrap in quotes\n" +
-            "5. Each response must be different\n" +
-            goalLine +
+            "你是一个手机使用反馈助手，语气温和、像朋友一样关心用户。\n" +
+            "根据用户当前的手机使用情况，生成一段简短的中文提醒。\n\n" +
+            "提醒内容分为两部分：\n" +
+            "1. 使用小结：用一两句话概括用户最近的屏幕使用情况\n" +
+            "2. 建议：结合用户的使用情况" + (hasGoal ? "和用户设定的个人目标" : "") +
+            "，给出一条友善、有针对性的建议\n\n" +
+            "格式要求：\n" +
+            "- 总字数控制在 30～60 字之间\n" +
+            "- 不要加标题、编号或引号\n" +
+            "- 语气亲切自然，不要说教\n" +
+            goalSection +
             "\n── User Content ──\n" +
-            "User is on [{当前应用}], spent [{使用分钟}min], " +
-            "unconscious-usage-index: {UUT}/100, calendar: [{日程信息}]. " +
-            "Generate a short Chinese reminder.\n\n" +
+            "用户正在使用【{当前应用}】，已使用【{使用分钟}分钟】，" +
+            "无意识使用指数：{UUT}/100，日程：【{日程信息}】，" +
+            "天气：【{天气信息}】。请生成提醒。\n\n" +
             "── Parameters ──\n" +
-            "max_tokens: 48\n" +
+            "max_tokens: 120\n" +
             "temperature: 0.95"
         );
     }
@@ -327,6 +338,35 @@ public class SystemSettingsActivity extends Activity {
         );
     }
 
+    private void testMoodScore() {
+        showTestOutput("正在计算 MoodScore 各维度...");
+        new Thread(() -> {
+            try {
+                int uut = uutTracker.getUUT();
+                float stress = moodScoreEngine.computeStress(uut, screenUsageCollector);
+                String summary = moodScoreEngine.getDebugSummary();
+
+                // 附加结构化目标信息
+                String goalsJson = config.getString(CollectionConfig.KEY_STRUCTURED_GOALS, "[]");
+                StringBuilder sb = new StringBuilder();
+                sb.append("══ MoodScore 多维度评分 ══\n\n");
+                sb.append("当前 UUT: ").append(uut).append("/100\n\n");
+                sb.append(summary);
+                sb.append("\n\n── 结构化目标 ──\n");
+                try {
+                    sb.append(new org.json.JSONArray(goalsJson).toString(2));
+                } catch (Exception e) {
+                    sb.append(goalsJson);
+                }
+
+                String result = sb.toString();
+                uiHandler.post(() -> showTestOutput(result));
+            } catch (Exception e) {
+                uiHandler.post(() -> showTestOutput("错误: " + e.getMessage()));
+            }
+        }).start();
+    }
+
     private void showTestOutput(String text) {
         tvTestOutput.setVisibility(View.VISIBLE);
         tvTestOutput.setText(text);
@@ -336,7 +376,6 @@ public class SystemSettingsActivity extends Activity {
 
     private void loadUsageHistory() {
         historyContainer.removeAllViews();
-
         new Thread(() -> {
             try {
                 File wallpaperDir = new File(getExternalFilesDir(null), "wallpapers");
@@ -357,10 +396,18 @@ public class SystemSettingsActivity extends Activity {
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
                 SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
+                long sevenDaysAgo = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000;
+
                 Map<String, List<File>> grouped = new LinkedHashMap<>();
                 for (File f : files) {
+                    if (f.lastModified() < sevenDaysAgo) continue;
                     String dateStr = dateFormat.format(new Date(f.lastModified()));
                     grouped.computeIfAbsent(dateStr, k -> new ArrayList<>()).add(f);
+                }
+
+                if (grouped.isEmpty()) {
+                    uiHandler.post(() -> addHistoryPlaceholder("最近一周暂无壁纸生成记录"));
+                    return;
                 }
 
                 uiHandler.post(() -> {
@@ -378,7 +425,7 @@ public class SystemSettingsActivity extends Activity {
     private void addHistoryPlaceholder(String text) {
         TextView tv = new TextView(this);
         tv.setText(text);
-        tv.setTextColor(0xFF9090A0);
+        tv.setTextColor(0xFF8B89B8);
         tv.setTextSize(13);
         tv.setPadding(0, dp(8), 0, dp(8));
         historyContainer.addView(tv);
@@ -386,24 +433,29 @@ public class SystemSettingsActivity extends Activity {
 
     private void addHistoryDay(String date, List<File> wallpapers, SimpleDateFormat timeFormat) {
         TextView dateLabel = new TextView(this);
-        dateLabel.setText(date + " (" + wallpapers.size() + " 张壁纸)");
-        dateLabel.setTextColor(0xFFFFFFFF);
+        dateLabel.setText(date);
+        dateLabel.setTextColor(0xFF2E2C50);
         dateLabel.setTextSize(14);
         dateLabel.setPadding(0, dp(8), 0, dp(4));
         historyContainer.addView(dateLabel);
+
+        HorizontalScrollView scrollView = new HorizontalScrollView(this);
+        scrollView.setHorizontalScrollBarEnabled(false);
+        scrollView.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         LinearLayout thumbRow = new LinearLayout(this);
         thumbRow.setOrientation(LinearLayout.HORIZONTAL);
         thumbRow.setPadding(0, 0, 0, dp(8));
 
-        for (int i = 0; i < Math.min(wallpapers.size(), 3); i++) {
+        for (int i = 0; i < wallpapers.size(); i++) {
             File file = wallpapers.get(i);
             ImageView thumb = new ImageView(this);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(80), dp(140));
             lp.setMarginEnd(dp(8));
             thumb.setLayoutParams(lp);
             thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            thumb.setBackgroundColor(0xFF2A2A3E);
+            thumb.setBackgroundColor(0xFFEAE9F6);
 
             loadThumbnail(thumb, file);
 
@@ -412,12 +464,13 @@ public class SystemSettingsActivity extends Activity {
             thumbRow.addView(thumb);
         }
 
-        historyContainer.addView(thumbRow);
+        scrollView.addView(thumbRow);
+        historyContainer.addView(scrollView);
 
         View divider = new View(this);
         divider.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(1)));
-        divider.setBackgroundColor(0xFF2A2A3E);
+        divider.setBackgroundColor(0xFFE4E3F0);
         historyContainer.addView(divider);
     }
 
