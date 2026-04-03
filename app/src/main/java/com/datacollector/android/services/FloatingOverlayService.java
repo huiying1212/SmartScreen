@@ -562,6 +562,11 @@ public class FloatingOverlayService extends Service {
                         // 这里拿到的 foreground_app_package 是最终可信值，
                         // 再写回 Tracker 以刷新 lastUpdateTime、更新切换时间。
                         foregroundPkg = data.optString("foreground_app_package", null);
+
+                        // 注入解锁频率和今日屏幕时间用于科学化 UUT 计算
+                        int unlockCount = data.optInt("unlock_count_last_hour", 0);
+                        long todayScreenMs = data.optLong("today_screen_time_ms", 0);
+                        uutTracker.updateExternalMetrics(unlockCount, todayScreenMs);
                     }
                 }
 
