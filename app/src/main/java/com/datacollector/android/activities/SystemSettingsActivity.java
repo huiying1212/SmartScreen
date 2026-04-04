@@ -61,7 +61,7 @@ public class SystemSettingsActivity extends Activity {
     private Switch switchLocation, switchActivity, switchScreenUsage, switchCalendar;
     private Button btnPermOverlay, btnPermUsage, btnStartCollection;
     private LinearLayout historyContainer;
-    private Button btnTestData, btnTestAi, btnTestWallpaper, btnTestBubblePrompt, btnTestWallpaperPrompt, btnTestMoodScore;
+    private Button btnTestData, btnTestAi, btnTestWallpaper, btnTestBubblePrompt, btnTestWallpaperPrompt;
     private TextView tvGenerationStatus, tvTestOutput;
 
     private DataCollectionService dataCollectionService;
@@ -127,7 +127,6 @@ public class SystemSettingsActivity extends Activity {
         btnTestWallpaper = findViewById(R.id.btn_test_wallpaper);
         btnTestBubblePrompt = findViewById(R.id.btn_test_bubble_prompt);
         btnTestWallpaperPrompt = findViewById(R.id.btn_test_wallpaper_prompt);
-        btnTestMoodScore = findViewById(R.id.btn_test_mood_score);
         tvGenerationStatus = findViewById(R.id.tv_generation_status);
         tvTestOutput = findViewById(R.id.tv_test_output);
     }
@@ -149,7 +148,7 @@ public class SystemSettingsActivity extends Activity {
         btnStartCollection.setOnClickListener(v -> {
             if (serviceRunning) {
                 stopDataCollectionService();
-                Toast.makeText(this, "数据收集服务已关闭", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "RI4SU 服务已关闭", Toast.LENGTH_SHORT).show();
             } else {
                 if (!Settings.canDrawOverlays(this) || !hasUsageStatsPermission()) {
                     Toast.makeText(this, "请先授权所有必要权限", Toast.LENGTH_SHORT).show();
@@ -157,7 +156,7 @@ public class SystemSettingsActivity extends Activity {
                 }
                 startDataCollectionService();
                 bindDataCollectionService();
-                Toast.makeText(this, "数据收集服务已启动", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "RI4SU 服务已启动", Toast.LENGTH_SHORT).show();
             }
         });
         updateServiceButton();
@@ -169,7 +168,6 @@ public class SystemSettingsActivity extends Activity {
         btnTestWallpaper.setOnClickListener(v -> generateWallpaperNow());
         btnTestBubblePrompt.setOnClickListener(v -> showBubblePromptStructure());
         btnTestWallpaperPrompt.setOnClickListener(v -> showWallpaperPromptStructure());
-        btnTestMoodScore.setOnClickListener(v -> testMoodScore());
     }
 
     private void loadSavedState() {
@@ -244,10 +242,10 @@ public class SystemSettingsActivity extends Activity {
     }
 
     private void testAiReminder() {
-        showTestOutput("正在调用 AI 生成提醒...");
+        showTestOutput("正在评分 + 生成 AI 提醒...");
         new Thread(() -> {
             try {
-                // Build a snapshot like FloatingOverlayService does
+                // Build snapshot
                 JSONObject snapshot = new JSONObject();
                 snapshot.put("timestamp", System.currentTimeMillis());
                 try {
@@ -259,15 +257,25 @@ public class SystemSettingsActivity extends Activity {
                     }
                 } catch (Exception ignored) {}
 
-                int score = llmScoringEngine.getScore();
-                String result = deepSeekClient.generateBubbleText(snapshot, score);
+                // 1) LLM 评分
+                int oldScore = llmScoringEngine.getScore();
+                int newScore = llmScoringEngine.assess(snapshot);
+                String scoreReason = llmScoringEngine.getLastReason();
+                int delta = newScore - oldScore;
+
+                // 2) AI 提醒
+                String reminder = deepSeekClient.generateBubbleText(snapshot, newScore);
 
                 StringBuilder sb = new StringBuilder();
-                sb.append("── AI 提醒测试结果 ──\n");
+                sb.append("── 使用状态评分 ──\n");
+                sb.append("得分: ").append(newScore).append("/100");
+                sb.append("  (").append(delta >= 0 ? "+" : "").append(delta).append(")\n");
+                if (scoreReason != null && !scoreReason.isEmpty()) {
+                    sb.append("原因: ").append(scoreReason).append("\n");
+                }
+                sb.append("\n── AI 提醒 ──\n");
                 sb.append("当前应用: ").append(snapshot.optString("foreground_app_package", "unknown")).append("\n");
-                sb.append("LLM 评分: ").append(score).append("/100\n");
-                sb.append("──────────────\n");
-                sb.append("AI 回复: ").append(result);
+                sb.append("AI 回复: ").append(reminder);
 
                 uiHandler.post(() -> showTestOutput(sb.toString()));
             } catch (Exception e) {
@@ -279,92 +287,77 @@ public class SystemSettingsActivity extends Activity {
     private void showBubblePromptStructure() {
         String userGoal = config.getString(CollectionConfig.KEY_USER_PERSONAL_GOAL, "");
         boolean hasGoal = userGoal != null && !userGoal.isEmpty();
-        String goalSection = hasGoal
-                ? "\n用户设定的个人目标：\n" + userGoal + "\n（请在建议部分适当结合此目标，但不要每次都生硬提及，自然融入即可）\n"
-                : "\n（用户未设置个人目标）\n";
 
-        showTestOutput(
-            "══ 图标提醒 Prompt 结构 ══\n\n" +
-            "── System Prompt ──\n" +
-            "你是一个手机使用反馈助手，语气温和、像朋友一样关心用户。\n" +
-            "根据用户当前的手机使用情况，生成一段简短的中文提醒。\n\n" +
-            "提醒内容分为两部分：\n" +
-            "1. 使用小结：用一两句话概括用户最近的屏幕使用情况\n" +
-            "2. 建议：结合用户的使用情况" + (hasGoal ? "和用户设定的个人目标" : "") +
-            "，给出一条友善、有针对性的建议\n\n" +
-            "格式要求：\n" +
-            "- 总字数控制在 30～60 字之间\n" +
-            "- 不要加标题、编号或引号\n" +
-            "- 语气亲切自然，不要说教\n" +
-            goalSection +
-            "\n── User Content ──\n" +
-            "用户正在使用【{当前应用}】，已使用【{使用分钟}分钟】，" +
-            "无意识使用指数：{UUT}/100，日程：【{日程信息}】，" +
-            "天气：【{天气信息}】。请生成提醒。\n\n" +
-            "── Parameters ──\n" +
-            "max_tokens: 120\n" +
-            "temperature: 0.95"
-        );
+        StringBuilder sb = new StringBuilder();
+        sb.append("══ 图标提醒 Prompt 结构 ══\n\n");
+
+        sb.append("── System Prompt ──\n");
+        sb.append("你是一个手机使用反馈助手，语气温和、像朋友一样关心用户。\n");
+        sb.append("根据用户当前的手机使用情况，生成一段简短的中文提醒。\n\n");
+        sb.append("你会收到用户手机的实时采集数据（JSON），包含屏幕使用、位置、活动状态、日历、天气、WiFi、蓝牙等信息。\n");
+        sb.append("请综合这些信息来理解用户当前的场景和状态。\n\n");
+        sb.append("提醒内容分为两部分：\n");
+        sb.append("1. 使用小结：用一两句话概括用户当前的状态（在用什么、用了多久、在哪里、在做什么等）\n");
+        sb.append("2. 建议：结合用户的完整使用情况");
+        if (hasGoal) sb.append("和用户设定的个人目标");
+        sb.append("，给出一条友善、有针对性的建议\n\n");
+        sb.append("格式要求：\n");
+        sb.append("- 总字数控制在 30～60 字之间\n");
+        sb.append("- 两部分之间用换行分隔\n");
+        sb.append("- 不要加标题、编号或引号\n");
+        sb.append("- 语气亲切自然，不要说教\n");
+        sb.append("- 每次回复要有变化，不要重复\n");
+        if (hasGoal) {
+            sb.append("\n用户设定的个人目标：\n").append(userGoal.trim());
+            sb.append("\n（请在建议部分适当结合此目标，但不要每次都生硬提及，自然融入即可）\n");
+        } else {
+            sb.append("\n（用户未设置个人目标）\n");
+        }
+
+        sb.append("\n── User Content ──\n");
+        sb.append("以下是用户手机的实时采集数据：\n");
+        sb.append("{完整采集数据 JSON}\n\n");
+        sb.append("无意识使用指数（UUT）：{UUT}/100\n");
+        sb.append("请生成提醒。\n\n");
+
+        sb.append("── Parameters ──\n");
+        sb.append("max_tokens: 120\n");
+        sb.append("temperature: 0.95");
+
+        showTestOutput(sb.toString());
     }
 
     private void showWallpaperPromptStructure() {
         String style = config.getString(CollectionConfig.KEY_WALLPAPER_STYLE, "唯美艺术");
         String styleDesc = CollectionConfig.getStyleDescriptionByName(style);
 
-        showTestOutput(
-            "══ 壁纸生成 Prompt 结构 ══\n\n" +
-            "── 第一步：场景关键词提取 (DeepSeek) ──\n" +
-            "System Prompt:\n" +
-            "根据用户近几小时的手机使用数据，提炼出最能描绘用户这段时间生活场景的关键词。\n" +
-            "关键词数量不限（通常 3-6 个），应为具体的、有画面感的事物或场景元素。\n" +
-            "例如：工作场景→「电脑、咖啡、台灯」；娱乐场景→「沙发、零食、暖光」\n" +
-            "用中文顿号分隔，只输出关键词。\n\n" +
-            "User Content: 用户手机使用数据摘要 (聚合数据)\n" +
-            "max_tokens: 100, temperature: 0.8\n\n" +
-            "── 第二步：图像生成 (Qwen) ──\n" +
-            "Prompt:\n" +
-            "请创作一幅适合手机竖屏壁纸的隐喻性艺术画面。\n" +
-            "场景关键词：{提炼出的关键词}\n" +
-            "风格要求：" + styleDesc + "\n" +
-            "要求：画面中自然融入以上关键词所描绘的场景氛围，不包含文字和 UI 元素，适合作为手机壁纸的高质量竖屏构图。\n\n" +
-            "Negative Prompt: 低分辨率，低画质，画面过饱和...\n" +
-            "图片尺寸: 928×1664"
-        );
-    }
+        StringBuilder sb = new StringBuilder();
+        sb.append("══ 壁纸生成 Prompt 结构 ══\n\n");
 
-    private void testMoodScore() {
-        showTestOutput("正在请求 LLM 评分...");
-        new Thread(() -> {
-            try {
-                // Build snapshot and run LLM assessment
-                JSONObject snapshot = new JSONObject();
-                snapshot.put("timestamp", System.currentTimeMillis());
-                try {
-                    JSONObject screenData = screenUsageCollector.collectData();
-                    if (screenData != null) snapshot.put("screen_usage", screenData);
-                } catch (Exception ignored) {}
+        sb.append("── 第一步：场景关键词提取 (DeepSeek) ──\n");
+        sb.append("System Prompt:\n");
+        sb.append("你是一位擅长场景化表达的创意概念提炼师。\n");
+        sb.append("根据用户近几小时的手机使用数据，提炼出最能描绘用户这段时间生活场景的纯景物关键词。\n\n");
+        sb.append("规则：\n");
+        sb.append("1. 关键词数量不限，通常 3-6 个，视数据丰富程度而定\n");
+        sb.append("2. 关键词必须是具体的、有画面感的事物或静物场景元素，且绝对不能包含人物、人群或任何生物\n");
+        sb.append("3. 场景需注重「写实感」和「环境氛围」，避免任何魔幻、超现实或抽象元素\n");
+        sb.append("4. 用中文顿号分隔，不要输出任何解释，只输出关键词\n\n");
+        sb.append("User Content: 用户手机使用数据摘要 (聚合数据)\n");
+        sb.append("max_tokens: 100, temperature: 0.8\n\n");
 
-                int oldScore = llmScoringEngine.getScore();
-                int newScore = llmScoringEngine.assess(snapshot);
-                String reason = llmScoringEngine.getLastReason();
+        sb.append("── 第二步：图像生成 (Qwen) ──\n");
+        sb.append("Prompt:\n");
+        sb.append("请创作一幅适合手机竖屏壁纸的高度写实风景或静物画面，避免过分虚幻。\n");
+        sb.append("场景关键词：{提炼出的关键词}\n");
+        sb.append("风格要求：").append(styleDesc).append("，注重光影的真实感和材质的写实细节\n");
+        sb.append("要求：画面中自然融入以上关键词所描绘的场景氛围，");
+        sb.append("绝对不要包含任何人物、人脸、剪影或动物，");
+        sb.append("不包含文字和 UI 元素，适合作为手机壁纸的高质量纯景物竖屏构图。\n\n");
+        sb.append("Negative Prompt: 低分辨率，低画质，画面过饱和...\n");
+        sb.append("图片尺寸: 928×1664");
 
-                StringBuilder sb = new StringBuilder();
-                sb.append("══ LLM 使用评分 ══\n\n");
-                sb.append("评分前: ").append(oldScore).append("/100\n");
-                sb.append("评分后: ").append(newScore).append("/100\n");
-                sb.append("变化量: ").append(newScore - oldScore > 0 ? "+" : "").append(newScore - oldScore).append("\n");
-                sb.append("理由: ").append(reason != null ? reason : "无").append("\n");
-
-                String result = sb.toString();
-                uiHandler.post(() -> showTestOutput(result));
-            } catch (Exception e) {
-                uiHandler.post(() -> showTestOutput("错误: " + e.getMessage()));
-            }
-        }).start();
-    }
-                uiHandler.post(() -> showTestOutput("错误: " + e.getMessage()));
-            }
-        }).start();
+        showTestOutput(sb.toString());
     }
 
     private void showTestOutput(String text) {
@@ -515,7 +508,7 @@ public class SystemSettingsActivity extends Activity {
 
     private void updateServiceButton() {
         if (btnStartCollection == null) return;
-        btnStartCollection.setText(serviceRunning ? "关闭数据收集服务" : "启动数据收集服务");
+        btnStartCollection.setText(serviceRunning ? "关闭 RI4SU 服务" : "启动 RI4SU 服务");
     }
 
     private void bindDataCollectionService() {

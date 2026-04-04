@@ -154,8 +154,8 @@ public class FloatingOverlayService extends Service {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "悬浮图标服务", NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("CATIA3 实时反思悬浮窗");
+                    CHANNEL_ID, "RI4SU 反思图标", NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription("RI4SU 反思图标悬浮窗");
             channel.setShowBadge(false);
             channel.setSound(null, null);
             NotificationManager manager = getSystemService(NotificationManager.class);
@@ -165,8 +165,8 @@ public class FloatingOverlayService extends Service {
 
     private Notification buildNotification() {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("CATIA3 心情助手")
-                .setContentText("实时反思引擎运行中")
+                .setContentTitle("RI4SU 反思助手")
+                .setContentText("RI4SU 反思引擎运行中")
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -560,9 +560,15 @@ public class FloatingOverlayService extends Service {
      * 采集完整快照并请求 LLM 评分，更新表情。
      */
     private void refreshLLMScore() {
+        // 息屏时跳过 LLM 评分，节省 API 调用
+        if (!isScreenOn()) {
+            Log.d(TAG, "Screen off — skipping LLM scoring");
+            return;
+        }
+
         new Thread(() -> {
             try {
-                boolean screenOn = isScreenOn();
+                boolean screenOn = true;
                 AppForegroundTracker fgTracker = AppForegroundTracker.getInstance(
                         FloatingOverlayService.this);
 
@@ -570,16 +576,13 @@ public class FloatingOverlayService extends Service {
                 snapshot.put("screen_on", screenOn);
                 snapshot.put("timestamp", System.currentTimeMillis());
 
-                if (screenOn && screenUsageCollector.isAvailable()) {
+                if (screenUsageCollector.isAvailable()) {
                     JSONObject data = screenUsageCollector.collectData();
                     if (data != null) {
                         snapshot.put("screen_usage", data);
                         String pkg = data.optString("foreground_app_package", null);
                         fgTracker.update(pkg);
                     }
-                }
-                if (!screenOn && fgTracker.isStale()) {
-                    fgTracker.reset();
                 }
 
                 try {

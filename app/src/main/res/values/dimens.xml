@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spacing -->
+    <dimen name="spacing_xs">4dp</dimen>
+    <dimen name="spacing_sm">8dp</dimen>
+    <dimen name="spacing_md">12dp</dimen>
+    <dimen name="spacing_lg">16dp</dimen>
+    <dimen name="spacing_xl">20dp</dimen>
+    <dimen name="spacing_xxl">24dp</dimen>
+    <dimen name="spacing_section">28dp</dimen>
+
+    <!-- Card -->
+    <dimen name="card_radius">18dp</dimen>
+    <dimen name="card_padding">20dp</dimen>
+    <dimen name="card_elevation">2dp</dimen>
+    <dimen name="card_margin_bottom">14dp</dimen>
+
+    <!-- Text -->
+    <dimen name="text_title">28sp</dimen>
+    <dimen name="text_subtitle">12sp</dimen>
+    <dimen name="text_section_title">15sp</dimen>
+    <dimen name="text_body">14sp</dimen>
+    <dimen name="text_caption">12sp</dimen>
+    <dimen name="text_small">11sp</dimen>
+
+    <!-- Button -->
+    <dimen name="button_height">46dp</dimen>
+    <dimen name="button_radius">12dp</dimen>
+    <dimen name="button_text_size">14sp</dimen>
+
+    <!-- Input -->
+    <dimen name="input_radius">14dp</dimen>
+    <dimen name="input_padding">16dp</dimen>
+
+    <!-- Chip -->
+    <dimen name="chip_radius">20dp</dimen>
+
+    <!-- Section indicator -->
+    <dimen name="section_indicator_width">3dp</dimen>
+    <dimen name="section_indicator_height">18dp</dimen>
+    <dimen name="section_indicator_radius">2dp</dimen>
+
+    <!-- Time slot -->
+    <dimen name="time_slot_radius">14dp</dimen>
+
+    <!-- Score bar -->
+    <dimen name="score_bar_height">8dp</dimen>
+    <dimen name="score_bar_radius">4dp</dimen>
+</resources>

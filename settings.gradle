@@ -17,5 +17,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "Android Data Collector"
+rootProject.name = "RI4SU"
 include ':app' 

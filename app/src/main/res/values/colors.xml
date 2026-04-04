@@ -38,13 +38,32 @@
     <color name="launcher_small_exit_bg">#FFDC6B6B</color>
 
     <!-- 分割线 -->
-    <color name="divider">#FFE4E3F0</color>
+    <color name="divider">#FFE8E7F2</color>
 
     <!-- 次要按钮 -->
-    <color name="button_secondary_bg">#FFEAE9F6</color>
+    <color name="button_secondary_bg">#FFEDECF8</color>
     <color name="button_secondary_text">#FF5C5A8A</color>
 
+    <!-- 主要按钮 -->
+    <color name="button_primary_bg">#FF9594C4</color>
+    <color name="button_primary_pressed">#FF8584B4</color>
+
     <!-- 输入框背景 -->
-    <color name="input_bg">#FFF5F4FC</color>
+    <color name="input_bg">#FFF7F6FD</color>
+    <color name="input_stroke">#FFE4E3F0</color>
     <color name="input_hint">#FFA8A6C8</color>
+
+    <!-- 卡片阴影 -->
+    <color name="card_shadow">#0D9594C4</color>
+
+    <!-- 时间卡片 -->
+    <color name="time_slot_bg">#FFF0EFFA</color>
+
+    <!-- 成功/警告 -->
+    <color name="score_good">#FF66BB6A</color>
+    <color name="score_warn">#FFFFA726</color>
+    <color name="score_bad">#FFEF5350</color>
+
+    <!-- 标签 -->
+    <color name="tag_bg">#14C3C2F2</color>
 </resources>

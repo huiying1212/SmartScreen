@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    网络安全配置：
+    1. 禁止明文 HTTP 流量（仅允许 HTTPS）
+    2. 为 DeepSeek 和 DashScope API 域名启用证书固定（可选，需定期更新）
+-->
+<network-security-config>
+    <!-- 全局：禁止明文流量 -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

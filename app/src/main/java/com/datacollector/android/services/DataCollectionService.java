@@ -540,8 +540,8 @@ public class DataCollectionService extends Service implements DataCollectorManag
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "数据收集服务", NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("CATIA3 后台数据收集");
+                    CHANNEL_ID, "RI4SU 上下文采集", NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription("RI4SU 后台上下文采集");
             channel.setShowBadge(false);
             channel.setSound(null, null);
             NotificationManager manager = getSystemService(NotificationManager.class);
@@ -555,7 +555,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("CATIA3 数据收集")
+                .setContentTitle("RI4SU 上下文采集")
                 .setContentText("轻量采集 2 分钟 / 全量采集 10 分钟")
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentIntent(pendingIntent)
@@ -570,7 +570,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
     private void acquireWakeLock() {
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         if (pm != null) {
-            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "CATIA3::DataCollectionWakeLock");
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RI4SU::DataCollectionWakeLock");
             wakeLock.acquire(10 * 60 * 1000L);
         }
     }

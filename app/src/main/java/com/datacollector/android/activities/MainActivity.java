@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.provider.Settings;
+import android.view.View;
 import android.widget.Switch;
 import android.widget.TextView;
 

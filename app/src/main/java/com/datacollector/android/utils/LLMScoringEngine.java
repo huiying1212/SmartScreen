@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.datacollector.android.api.DeepSeekApiClient;
+import com.datacollector.android.utils.DataSanitizer;
 
 import org.json.JSONObject;
 
@@ -110,7 +111,10 @@ public class LLMScoringEngine {
                     + " (delta=" + delta + ") reason: " + reason);
 
             currentScore = newScore;
-            lastSnapshotJson = newSnapshot.toString();
+            // 存储到 SharedPreferences 的快照也做脱敏处理
+            JSONObject sanitizedForStorage = DataSanitizer.sanitizeSnapshot(newSnapshot);
+            lastSnapshotJson = sanitizedForStorage != null
+                    ? sanitizedForStorage.toString() : newSnapshot.toString();
             lastReason = reason;
 
             // Persist
@@ -133,18 +137,20 @@ public class LLMScoringEngine {
         }
     }
 
-    /** 获取当前分数 (0-100)。线程安全，可随时调用。 */
+    /** 获取当前分数 (0-100)。从 SharedPreferences 读取最新值，支持跨进程/跨实例同步。 */
     public int getScore() {
+        currentScore = prefs.getInt(KEY_CURRENT_SCORE, 0);
         return currentScore;
     }
 
     /** 获取归一化分数 [0.0, 1.0]，供 MoodFaceView 使用。 */
     public float getScoreNormalized() {
-        return currentScore / 100f;
+        return getScore() / 100f;
     }
 
-    /** 获取上次 LLM 评估的理由。 */
+    /** 获取上次 LLM 评估的理由。从 SharedPreferences 读取最新值。 */
     public String getLastReason() {
+        lastReason = prefs.getString(KEY_LAST_REASON, null);
         return lastReason;
     }
 

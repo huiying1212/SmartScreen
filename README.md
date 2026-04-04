@@ -1,6 +1,21 @@
-# CATIA3 — Android 用户行为数据收集系统
+# RI4SU — Reflective Intervention for Screen Use
 
-Android 用户行为数据收集系统。以前台 Service 为核心，每 10 分钟自动采集一次结构化上下文数据，并输出 JSON 文件；可选地通过 DeepSeek API 进行 LLM 健康分析，通过通义千问图像 API 生成隐喻壁纸。
+Android 智能屏幕使用反思干预系统。通过前台 Service 周期性采集多维上下文数据（位置、活动、屏幕使用、日历、Wi-Fi、蓝牙等），结合 LLM 增量评分引擎与多维心情评估，以悬浮拟人表情图标和 AI 生成的反思提醒实时引导用户建立健康的手机使用习惯；可选地通过通义千问图像 API 生成隐喻壁纸。
+
+---
+
+## 核心功能
+
+| 功能 | 说明 |
+|---|---|
+| 多维上下文采集 | 位置、活动识别、屏幕使用、日历、Wi-Fi、蓝牙、天气，每 2/10 分钟自动采集 |
+| LLM 增量评分 | DeepSeek 驱动，根据前后快照差异输出 delta 分数，范围 [0, 100]，每日重置 |
+| 无意识使用追踪 (UUT) | 基于解锁频率、时段权重、App 切换模式等学术指标量化"无意识刷手机"程度 |
+| 多维心情评分 | 综合日使用时长、娱乐占比、会话强度 (UUT)、个人目标达成度四维度计算 stress 值 |
+| 悬浮拟人表情 | `MoodFaceView` 根据 stress 值连续插值渲染表情，支持多种视觉风格 |
+| AI 反思提醒 | 点击悬浮图标触发 LLM 生成个性化反思文案，通过气泡展示 |
+| AI 隐喻壁纸 | 聚合数据 → LLM 提取关键词 → 通义千问生成壁纸，定时自动更换 |
+| 个人目标设定 | 用户可设定每日屏幕时长上限、娱乐占比上限、免打扰时段等 |
 
 ---
 
@@ -32,7 +47,7 @@ Android 用户行为数据收集系统。以前台 Service 为核心，每 10 �
 | `provider` | 定位提供者（`gps` 等） |
 | `readable_address` | 坐标的可读字符串（`lat, lng` 格式） |
 
-此外，Service 根据活动类型 + 定位精度 + 时段推断 `location_context`（`通勤中` / `户外` / `室内` / `家` / `公司/学校` / `未知`）。
+Service 根据活动类型 + 定位精度 + 时段推断 `location_context`（`通勤中` / `户外` / `室内` / `家` / `公司/学校` / `未知`）。
 
 ---
 
@@ -94,8 +109,6 @@ Android 用户行为数据收集系统。以前台 Service 为核心，每 10 �
 | `ip_address` | 设备 IP 地址 |
 | `wifi_standard` | Wi-Fi 标准（Android 10+ 可用，如 `Wi-Fi 5 (802.11ac)`） |
 
-采集策略：通过 `WifiManager.getConnectionInfo()` 读取当前连接的 AP 信息。
-
 ---
 
 ### 5. 蓝牙设备 — `bluetooth_devices`
@@ -108,22 +121,14 @@ Android 用户行为数据收集系统。以前台 Service 为核心，每 10 �
 |---|---|
 | `name` | 设备名称 |
 | `mac_address` | MAC 地址 |
-| `device_class` | 设备大类（见下表） |
+| `device_class` | 设备大类 |
 | `bond_state` | 配对状态：`bonded` / `bonding` / `none` |
 
 #### `nearby_devices`（周边发现设备，最多 20 条，去重）
 
-在已配对设备字段基础上额外包含：
+额外包含 `rssi`（信号强度 dBm）。
 
-| 字段 | 说明 |
-|---|---|
-| `rssi` | 信号强度（dBm） |
-
-#### 设备大类（`device_class`）
-
-`audio_video` / `computer` / `phone` / `health` / `wearable` / `peripheral` / `imaging` / `networking` / `other`
-
-采集策略：注册 `ACTION_FOUND` 广播被动接收发现事件，`doStartCollection` 时触发一次扫描。适配 Android 12+（`BLUETOOTH_SCAN` / `BLUETOOTH_CONNECT` 权限分离）。
+设备大类：`audio_video` / `computer` / `phone` / `health` / `wearable` / `peripheral` / `imaging` / `networking` / `other`
 
 ---
 
@@ -131,18 +136,7 @@ Android 用户行为数据收集系统。以前台 Service 为核心，每 10 �
 
 **Collector**：`CalendarDataCollector`
 
-默认查询范围：过去 7 天 + 未来 30 天，最多 50 条事件（均可通过 `CollectionConfig` 调整）。
-
-#### `calendars`（日历账户列表）
-
-| 字段 | 说明 |
-|---|---|
-| `id` | 日历 ID |
-| `display_name` | 显示名称 |
-| `account_name` | 账户名 |
-| `account_type` | 账户类型 |
-| `visible` | 是否可见 |
-| `is_primary` | 是否为主日历 |
+默认查询范围：过去 7 天 + 未来 30 天，最多 50 条事件。
 
 #### `events`（事件列表，按开始时间升序）
 
@@ -153,15 +147,11 @@ Android 用户行为数据收集系统。以前台 Service 为核心，每 10 �
 | `description` | 描述（最多 500 字符） |
 | `location` | 地点 |
 | `begin_datetime` / `end_datetime` | 可读时间 |
-| `begin_timestamp` / `end_timestamp` | Unix 毫秒时间戳 |
 | `duration_minutes` | 时长（分钟） |
 | `is_past` | 是否已过去 |
 | `minutes_until` | 距开始还有多少分钟（负值=已过去） |
 | `all_day` | 是否全天事件 |
-| `calendar_name` | 所属日历名称 |
-| `organizer` | 组织者 |
 | `status` | `confirmed` / `tentative` / `canceled` |
-| `availability` | `busy` / `free` / `tentative` |
 | `is_recurring` | 是否为循环事件 |
 
 ---
@@ -179,119 +169,64 @@ Android 用户行为数据收集系统。以前台 Service 为核心，每 10 �
 | `foreground_app_category` / `_en` | 当前 App 分类（中英文） |
 | `foreground_app_today_ms` / `_readable` | 当前 App 今日总使用时长 |
 | `foreground_app_current_open_ms` / `_readable` | 当前 App 本次打开持续时长 |
-| `foreground_app_open_since` | 当前 App 本次打开时间 |
 | `top_apps_today` | 今日使用时长 Top N 应用（含包名、分类、时长） |
 
 App 分类由 `AppCategoryClassifier` 完成，基于包名规则映射到：社交、娱乐、生产力、工具、教育、健康、购物、财务等类别。
 
 ---
 
-## 已规划但尚未实现的数据类别
+### 8. 天气信息
 
-| 类别 | JSON 字段 | 说明 |
-|---|---|---|
-| 屏幕文本内容 | `screen_content` | 需实现 `AccessibilityService`，采集屏幕可见文字、应用包名、聊天识别等 |
-| 当前应用独立字段 | `current_app` | `foreground_app_package` 目前存于 `screen_usage` 内部，尚未单独输出为顶层字段 |
+**Collector**：`WeatherDataCollector`
+
+通过外部天气 API 获取当前天气数据，作为上下文信息辅助 LLM 评估。
 
 ---
 
-## 输出 JSON 格式示例
+## 反思干预引擎
 
-```json
-{
-  "context_data": {
-    "timestamp": 1703123456789,
-    "date_time": "2024-12-21 14:30:45",
-    "day_of_week": "Friday",
-    "trigger_reason": "periodic",
-    "location_context": "公司/学校",
-    "location": {
-      "latitude": 39.9042,
-      "longitude": 116.4074,
-      "accuracy": 10.0,
-      "altitude": 45.2,
-      "speed": 0.0,
-      "bearing": 0.0,
-      "provider": "gps",
-      "readable_address": "39.904200, 116.407400"
-    },
-    "user_activity": {
-      "activity": "stationary",
-      "confidence": 0.95,
-      "timestamp": 1703123456789,
-      "classifier": "decision_tree",
-      "sensor_status": { "accelerometer_available": true }
-    },
-    "wifi_info": {
-      "connected_ap": {
-        "ssid": "OfficeWiFi",
-        "bssid": "00:11:22:33:44:55",
-        "rssi": -52,
-        "link_speed_mbps": 300,
-        "frequency_mhz": 5180,
-        "ip_address": "192.168.1.42",
-        "wifi_standard": "Wi-Fi 5 (802.11ac)"
-      }
-    },
-    "bluetooth_devices": {
-      "paired_devices": [
-        { "name": "AirPods Pro", "mac_address": "AA:BB:CC:DD:EE:FF",
-          "device_class": "audio_video", "bond_state": "bonded" }
-      ],
-      "paired_device_count": 1,
-      "nearby_devices": [],
-      "nearby_device_count": 0,
-      "is_discovering": false
-    },
-    "calendar": {
-      "calendar_count": 2,
-      "event_count": 3,
-      "past_days": 7,
-      "future_days": 30,
-      "events": [
-        {
-          "event_id": 12345,
-          "title": "团队会议",
-          "begin_datetime": "2024-12-21 15:00:00",
-          "end_datetime": "2024-12-21 16:00:00",
-          "duration_minutes": 60,
-          "is_past": false,
-          "minutes_until": 30,
-          "location": "会议室A",
-          "status": "confirmed",
-          "is_recurring": false
-        }
-      ]
-    },
-    "screen_usage": {
-      "today_screen_time_ms": 7200000,
-      "today_screen_time_minutes": 120,
-      "today_screen_time_readable": "2h 0m",
-      "unlock_count_last_hour": 5,
-      "current_session_ms": 900000,
-      "current_session_readable": "15m",
-      "foreground_app_package": "com.tencent.mm",
-      "foreground_app_category": "社交",
-      "foreground_app_category_en": "social",
-      "foreground_app_today_ms": 1800000,
-      "foreground_app_today_readable": "30m",
-      "top_apps_today": [
-        { "package_name": "com.tencent.mm", "category": "社交",
-          "usage_ms": 1800000, "usage_readable": "30m" }
-      ]
-    },
-    "collectors_status": {
-      "location": "available",
-      "activity_recognition": "available",
-      "screen_usage": "available",
-      "calendar": "available",
-      "wifi_info": "available",
-      "bluetooth_devices": "available"
-    }
-  },
-  "collection_time": 1703123456789
-}
-```
+### LLM 增量评分（`LLMScoringEngine`）
+
+取代基于手工公式的评分，改由 DeepSeek LLM 根据完整采集快照进行增量评估：
+
+- 每次评估时，将上一次快照 + 上一次分数 + 本次最新快照发送给 LLM
+- LLM 返回 delta 值（增量），约束规则：
+  - 生产力 App 使用 → delta = 0
+  - 娱乐 App 持续使用 → delta = +1
+  - 深夜 / 无意识使用迹象 → delta 最高 +5
+  - 屏幕关闭 / 主动休息 → delta 可为负数，最低 -5
+- 分数范围 [0, 100]，每日重置为 0
+- 状态持久化到 SharedPreferences，支持进程重启恢复
+
+### 无意识使用追踪（`UnconsciousUsageTracker`，UUT）
+
+UUT 值范围 0-100，量化"无意识刷手机"程度。基于以下学术指标：
+
+| 指标 | 学术依据 |
+|---|---|
+| 时段权重 | Duke & Montag 2017：深夜/睡前使用与焦虑和睡眠障碍强相关 |
+| 解锁频率 | Harari et al. 2016, Montag et al. 2021：每小时解锁次数是核心指标 (r=0.52) |
+| 每日疲劳效应 | Hartmann et al. 2021：日使用超 3 小时后认知控制力下降 |
+| 方向性切换惩罚 | Baumgartner et al. 2018：生产力→娱乐切换更具无意识特征 |
+| 冲动性短会话 | Billieux et al. 2015：短暂重复解锁（<90 秒）是成瘾性使用的强预测因子 |
+
+### 多维心情评分（`MoodScoreEngine`）
+
+综合四个维度计算最终 stress 值 [0, 1]：
+
+| 维度 | 权重 | 说明 |
+|---|---|---|
+| D1 — dailyUsageScore | 0.20 | 全天屏幕时长评估 |
+| D2 — entertainmentRatioScore | 0.20 | 娱乐占比评估 |
+| D3 — sessionIntensityScore | 0.35 | 当前会话强度 (UUT) |
+| D4 — goalComplianceScore | 0.25 | 个人目标达成度 |
+
+### 悬浮拟人表情（`MoodFaceView` + `FloatingOverlayService`）
+
+- 根据 stress 值连续插值渲染面部表情（无离散阶段）
+- 支持多种视觉风格（经典、暖阳、清凉、森林、星空、像素）
+- 点击触发 LLM 生成个性化反思文案，通过 `SpeechBubbleDrawable` 气泡展示
+- 屏幕亮起时自动刷新状态
 
 ---
 
@@ -301,38 +236,85 @@ App 分类由 `AppCategoryClassifier` 完成，基于包名规则映射到：社
 
 | 类 | 职责 |
 |---|---|
-| `DataCollectionService` | 前台 Service，每 10 分钟调度一次采集，协调所有 Collector |
-| `DataCollectorManager` | Collector 注册、生命周期管理（启动/停止/数据获取） |
-| `LocationDataCollector` | GPS 位置采集 |
-| `ActivityRecognitionCollector` | 传感器监听，调用 `ActivityRecognizer` 分类 |
-| `ActivityRecognizer` | 基于决策树的活动识别（StudentLife/Jigsaw 算法） |
-| `WifiDataCollector` | Wi-Fi 连接信息与周边 AP 扫描 |
-| `BluetoothDataCollector` | 已配对设备与周边发现设备 |
-| `CalendarDataCollector` | 系统日历事件读取 |
-| `ScreenUsageCollector` | 屏幕时长、解锁次数、前台 App（UsageStatsManager） |
-| `DataAggregator` | 将多次采集文件聚合为时间窗口摘要，供 LLM 分析使用 |
-| `DeepSeekApiClient` | 调用 DeepSeek 聊天接口进行健康分析 |
-| `WallpaperGenerationManager` | 聚合数据 → LLM 提取关键词 → 通义千问生成壁纸 |
-| `DataCleanupManager` | 定期清理过期数据文件（默认保留 7 天） |
+| `DataCollectionService` | 前台 Service，轻量采集 2 分钟 / 全量采集 10 分钟，协调所有 Collector |
+| `DataCollectorManager` | Collector 注册、生命周期管理 |
+| `LLMScoringEngine` | LLM 驱动的增量评分引擎 |
+| `UnconsciousUsageTracker` | 无意识使用时间 (UUT) 追踪 |
+| `MoodScoreEngine` | 多维心情评分引擎 |
+| `FloatingOverlayService` | 悬浮窗服务，承载 MoodFaceView + 气泡提醒 |
+| `MoodFaceView` | stress 驱动的连续动画表情视图 |
+| `SpeechBubbleDrawable` | 气泡文字绘制 |
+| `DeepSeekApiClient` | DeepSeek 聊天接口调用 |
+| `QwenImageApiClient` | 通义千问图像生成接口 |
+| `WallpaperGenerationManager` | 聚合数据 → LLM 提取关键词 → 生成壁纸 |
+| `DataAggregator` | 多次采集文件聚合为时间窗口摘要 |
+| `AppCategoryClassifier` | 基于包名的 App 分类器 |
+| `AppForegroundTracker` | 前台 App 切换追踪 |
+| `WifiFingerprint` | Wi-Fi 指纹辅助位置推断 |
+| `DataCleanupManager` | 定期清理过期数据文件 |
 | `DataEncryptor` | AES 加密存储 |
 | `CollectionConfig` | 所有运行时参数的 SharedPreferences 统一管理 |
+| `RetryHelper` | API 调用重试工具 |
+| `ErrorCollector` | 错误收集与统计 |
+
+### Collectors
+
+| Collector | 数据 |
+|---|---|
+| `LocationDataCollector` | GPS 位置 |
+| `ActivityRecognitionCollector` + `ActivityRecognizer` | 基于加速度计的活动识别 |
+| `ScreenUsageCollector` | 屏幕时长、解锁次数、前台 App |
+| `CalendarDataCollector` | 系统日历事件 |
+| `WifiDataCollector` | Wi-Fi 连接信息 |
+| `BluetoothDataCollector` | 蓝牙设备 |
+| `WeatherDataCollector` | 天气数据 |
 
 ### 数据流
 
 ```
 传感器 / 系统 API
        ↓
-各 DataCollector（Location / Activity / WiFi / Bluetooth / Calendar / ScreenUsage）
+各 DataCollector（Location / Activity / WiFi / Bluetooth / Calendar / ScreenUsage / Weather）
        ↓
 DataCollectionService.collectCurrentContextData()
   ├─ mergeCollectorData()        — 字段映射 + 位置上下文推断
   ├─ saveContextData()           — 写入加密/压缩/明文 JSON 文件
-  │     └─ 明文副本 context_data_<ts>.json
+  │
+  ├─ LLMScoringEngine.assess()  — LLM 增量评分
+  ├─ UnconsciousUsageTracker     — UUT 实时追踪
+  ├─ MoodScoreEngine             — 多维 stress 计算
+  │     └─ FloatingOverlayService → MoodFaceView 表情更新
   │
   └─ [可选] WallpaperGenerationManager.generateAndSetWallpaper()
         ├─ DataAggregator 聚合 + DeepSeek 提取关键词
         └─ QwenImageApiClient 生成并设置壁纸
 ```
+
+---
+
+## 界面
+
+### 主控制面板（`MainActivity`）
+
+- LLM 评分进度条（实时显示 0-100 分数，颜色随分数变化）
+- AI 反思提醒文案展示
+- 悬浮图标开关
+- AI 壁纸开关
+- 个人设置 / 系统设置入口
+
+### 个人设置（`PersonalSettingsActivity`）
+
+- 壁纸风格选择
+- 壁纸生成时间设定
+- 图标风格选择（经典、暖阳、清凉、森林、星空、像素）
+- 个人目标设定（每日屏幕时长上限、娱乐占比上限等）
+
+### 系统设置（`SystemSettingsActivity`）
+
+- 数据收集参数配置
+- 系统权限管理
+- 壁纸历史查看
+- 开发者测试工具
 
 ---
 
@@ -361,7 +343,7 @@ DataCollectionService.collectCurrentContextData()
 
 | 配置 Key | 默认值 | 说明 |
 |---|---|---|
-| `collection_interval_ms` | 600000（10 分钟）| 周期采集间隔 |
+| `collection_interval_ms` | 600000（10 分钟）| 全量采集间隔 |
 | `location_enabled` | `true` | 位置采集开关 |
 | `location_update_interval_ms` | 60000 | 位置更新间隔 |
 | `location_min_distance_m` | 10 | 位置更新最小距离（米） |
@@ -392,8 +374,12 @@ DataCollectionService.collectCurrentContextData()
 <!-- 前台服务 -->
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 <uses-permission android:name="android.permission.WAKE_LOCK" />
 <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+<!-- 通知（Android 13+） -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
 <!-- 位置（Wi-Fi 扫描也需要） -->
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -406,8 +392,8 @@ DataCollectionService.collectCurrentContextData()
 <!-- 蓝牙 -->
 <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />    <!-- Android 12+ -->
-<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" /> <!-- Android 12+ -->
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
 <!-- 日历 -->
 <uses-permission android:name="android.permission.READ_CALENDAR" />
@@ -423,6 +409,9 @@ DataCollectionService.collectCurrentContextData()
 <!-- 悬浮窗与壁纸 -->
 <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
+<!-- 开机启动 -->
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 ```
 
 > **注意**：`PACKAGE_USAGE_STATS` 为特殊权限，需用户在「设置 → 应用 → 特殊应用访问权限 → 使用情况访问权限」中手动开启。
@@ -442,7 +431,7 @@ QWEN_IMAGE_API_KEY=your_qwen_key_here
 
 | API | 用途 | 配置类 |
 |---|---|---|
-| DeepSeek Chat | 图标提醒文案生成、壁纸关键词提取 | `ApiConfig.DEEPSEEK_API_URL` |
+| DeepSeek Chat | LLM 增量评分、反思文案生成、壁纸关键词提取 | `ApiConfig.DEEPSEEK_API_URL` |
 | 通义千问图像生成 | 壁纸生成（`wallpaper_generation_enabled=true` 时定时调用） | `ApiConfig.QWEN_IMAGE_API_URL` |
 
 ---
@@ -460,17 +449,21 @@ QWEN_IMAGE_API_KEY=your_qwen_key_here
 ## 注意事项
 
 1. **权限申请**：首次运行需用户逐项授权，`PACKAGE_USAGE_STATS` 需手动在系统设置中开启
-2. **屏幕内容采集**：`screen_content` 字段（无障碍服务）尚未实现，需用户手动启用 AccessibilityService
-3. **蓝牙扫描功耗**：主动扫描耗电较高，已改为被动监听策略
-4. **Wi-Fi 扫描限速**：Android 10+ 系统对主动扫描频率有限制，实际扫描结果依赖系统调度
-5. **电池优化**：长期后台运行建议将应用加入电池优化白名单（`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`）
-6. **隐私合规**：所有数据本地存储，LLM 分析需联网，使用前需获得用户明确同意
+2. **蓝牙扫描功耗**：主动扫描耗电较高，已改为被动监听策略
+3. **Wi-Fi 扫描限速**：Android 10+ 系统对主动扫描频率有限制
+4. **电池优化**：长期后台运行建议将应用加入电池优化白名单
+5. **隐私合规**：所有数据本地存储，LLM 分析需联网，使用前需获得用户明确同意
 
 ---
 
 ## 参考文献
 
 - Wang et al., *StudentLife: Assessing Mental Health, Academic Performance and Behavioral Trends of College Students using Smartphones*, UbiComp 2014
+- Duke & Montag, *Smartphone addiction, daily interruptions and self-reported productivity*, Addictive Behaviors Reports 2017
+- Harari et al., *Using Smartphones to Collect Behavioral Data in Psychological Science*, Perspectives on Psychological Science 2016
+- Montag et al., *On the Relationship Between Smartphone Usage and Problematic Smartphone Use*, Technology in Society 2021
+- Hartmann et al., *Smartphone Use and Cognitive Control*, Computers in Human Behavior 2021
+- Baumgartner et al., *The Relationship Between Media Multitasking and Executive Function*, Journal of Communication 2018
+- Billieux et al., *Can Disordered Mobile Phone Use Be Considered a Behavioral Addiction?*, Current Addiction Reports 2015
 - Lu et al., *SoundSense: Scalable Sound Sensing for People-Centric Applications on Mobile Phones*, MobiSys 2009
 - Huckins et al., Beiwe Research Platform, *JMIR mHealth* 2020
-- 论文《Investigating Context-Aware Collaborative Text Entry on Smartphones using Large Language Models》（CATIA）

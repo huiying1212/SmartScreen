@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.CollectionStats;
+import com.datacollector.android.utils.DataSanitizer;
 import com.datacollector.android.utils.RetryHelper;
 
 import okhttp3.MediaType;
@@ -65,6 +66,9 @@ public class DeepSeekApiClient {
         if (!ApiConfig.isDeepSeekApiKeyConfigured()) return null;
 
         try {
+            // 脱敏聚合数据后再发送给 LLM
+            JSONObject sanitizedData = DataSanitizer.sanitizeAggregatedData(aggregatedData);
+
             String systemPrompt = "你是一位擅长场景化表达的创意概念提炼师。"
                     + "根据用户近几小时的手机使用数据，提炼出最能描绘用户这段时间生活场景的纯景物关键词。\n\n"
                     + "规则：\n"
@@ -77,7 +81,7 @@ public class DeepSeekApiClient {
                     + "5. 用中文顿号分隔，不要输出任何解释，只输出关键词\n\n"
                     + "偏好权重说明：\n" + weightDescription;
 
-            String userContent = "用户手机使用数据摘要：\n" + summarizeForKeywords(aggregatedData);
+            String userContent = "用户手机使用数据摘要：\n" + summarizeForKeywords(sanitizedData);
 
             String response = callChatSync(systemPrompt, userContent, 100, 0.8f);
             if (response != null) {
@@ -317,10 +321,11 @@ public class DeepSeekApiClient {
         }
         String systemPrompt = sb.toString();
 
-        // Build user content: full context JSON + UUT
+        // Build user content: sanitized context JSON + UUT
+        JSONObject sanitizedSnapshot = DataSanitizer.sanitizeSnapshot(contextSnapshot);
         StringBuilder userContent = new StringBuilder();
         userContent.append("以下是用户手机的实时采集数据：\n");
-        userContent.append(contextSnapshot.toString()).append("\n\n");
+        userContent.append(sanitizedSnapshot.toString()).append("\n\n");
         userContent.append("无意识使用指数（UUT）：").append(uutValue).append("/100\n");
         userContent.append("请生成提醒。(t=")
                 .append(System.currentTimeMillis()).append(")");
@@ -368,38 +373,54 @@ public class DeepSeekApiClient {
         }
 
         String systemPrompt =
-                "你是一个手机使用行为评估引擎。你的任务是根据用户手机的实时采集数据，评估用户当前的"无意识使用程度"并给出分数增量。\n\n"
+                "你是一个手机使用行为评估引擎。你的任务是根据用户手机的实时采集数据，评估用户当前的「无意识使用程度」并给出分数增量。\n\n"
                 + "## 评分规则\n"
                 + "分数范围 0-100。0 = 完全有意识/健康使用，100 = 极度无意识/沉迷使用。\n"
-                + "你每次返回一个 delta（增量），而非绝对分数。delta 范围 [-5, +5]。\n\n"
+                + "你每次返回一个 delta（增量），而非绝对分数。delta 范围 [-5, +5]。\n"
+                + "本系统每约 2 分钟调用你一次。\n\n"
+                + "## 默认行为\n"
+                + "默认情况下 delta = +1（即用户正常使用手机，分数缓慢上升）。\n"
+                + "只有当你判断情况明显偏离「普通使用」时，才应给出不同的 delta。\n"
+                + "如果 delta ≠ +1，你必须在 reason 中说明为什么偏离默认值。\n"
+                + "如果 delta = +1（默认），reason 可以为空字符串。\n\n"
                 + "## delta 判定标准\n"
-                + "- 生产力/工具类 App（办公、学习、编程、阅读、地图、银行等）→ delta = 0\n"
-                + "- 屏幕关闭 / 用户主动休息 / 刚解锁还没开始用 → delta = -1 到 -3\n"
-                + "- 长时间未使用手机后恢复 → delta = -5\n"
-                + "- 娱乐/社交 App 持续使用（短视频、社交媒体、游戏等）→ delta = +1\n"
-                + "- 深夜（22:00-06:00）使用娱乐 App → delta = +2 到 +3\n"
-                + "- 多个无意识信号叠加（深夜 + 长时间娱乐 + 高频切换 + 忽略日程）→ delta 最高 +5\n"
-                + "- 用户正在做与日历日程相关的事 → delta = 0 或 -1\n"
-                + "- 用户在通勤/移动中短暂使用 → delta = 0\n\n"
+                + "- 普通使用（无明显好坏信号）→ delta = +1（默认，无需解释）\n"
+                + "- 生产力/工具类 App（办公、学习、编程、阅读、地图、银行等）→ delta = 0（reason: 说明在做什么）\n"
+                + "- 屏幕关闭 / 用户主动休息 / 刚解锁还没开始用 → delta = -1 到 -3（reason: 说明休息情况）\n"
+                + "- 长时间未使用手机后恢复 → delta = -5（reason: 说明离开了多久）\n"
+                + "- 娱乐/社交 App 持续使用（短视频、社交媒体、游戏等）→ delta = +2（reason: 说明在用什么）\n"
+                + "- 深夜（22:00-06:00）使用娱乐 App → delta = +3 到 +4（reason: 说明深夜使用情况）\n"
+                + "- 多个无意识信号叠加（深夜 + 长时间娱乐 + 高频切换 + 忽略日程）→ delta 最高 +5（reason: 说明叠加了哪些信号）\n"
+                + "- 用户正在做与日历日程相关的事 → delta = 0 或 -1（reason: 说明与日程的关联）\n"
+                + "- 用户在通勤/移动中短暂使用 → delta = +1（默认）\n\n"
                 + "## 综合考量因素\n"
                 + "你会收到完整的手机采集数据，包括：屏幕使用（当前 App、使用时长、今日总时长）、"
                 + "位置、活动状态（静止/步行/驾车）、日历日程、天气、WiFi、蓝牙设备等。\n"
                 + "请综合所有信息判断用户的使用意图和场景，不要只看单一指标。\n\n"
                 + "## 输出格式\n"
                 + "严格返回 JSON，不要包含任何其他文字：\n"
-                + "{\"delta\": <整数, -5到+5>, \"reason\": \"<一句话中文理由, 20字以内>\"}\n";
+                + "{\"delta\": <整数, -5到+5>, \"reason\": \"<delta≠+1时给出一句话中文理由, 20字以内; delta=+1时可为空>\"}\n";
 
         StringBuilder userContent = new StringBuilder();
         userContent.append("当前分数：").append(currentScore).append("/100\n\n");
 
         if (lastSnapshot != null && !lastSnapshot.isEmpty()) {
-            userContent.append("上一次采集数据：\n").append(lastSnapshot).append("\n\n");
+            // 脱敏上一次快照
+            try {
+                JSONObject lastObj = new JSONObject(lastSnapshot);
+                JSONObject sanitizedLast = DataSanitizer.sanitizeSnapshot(lastObj);
+                userContent.append("上一次采集数据：\n").append(sanitizedLast.toString()).append("\n\n");
+            } catch (JSONException e) {
+                userContent.append("上一次采集数据：\n").append(lastSnapshot).append("\n\n");
+            }
         }
         if (lastReason != null && !lastReason.isEmpty()) {
             userContent.append("上一次评估理由：").append(lastReason).append("\n\n");
         }
 
-        userContent.append("本次最新采集数据：\n").append(newSnapshot.toString()).append("\n\n");
+        // 脱敏本次快照
+        JSONObject sanitizedNew = DataSanitizer.sanitizeSnapshot(newSnapshot);
+        userContent.append("本次最新采集数据：\n").append(sanitizedNew.toString()).append("\n\n");
         userContent.append("请评估并返回 JSON。");
 
         Log.i(TAG, "assessUsageScore: calling LLM, currentScore=" + currentScore);

@@ -90,7 +90,7 @@ public class MoodFaceView extends View {
     }
 
     /** Overall opacity of the face [0..255]. 255 = fully opaque, default = semi-transparent. */
-    private int globalAlpha = 178;  // ~70% opacity — lets screen content show through
+    private int globalAlpha = 220;  // ~86% opacity — clearer icon while still slightly translucent
 
     private FaceStyle style = FaceStyle.CLASSIC;
     private float currentStress = 0f;
