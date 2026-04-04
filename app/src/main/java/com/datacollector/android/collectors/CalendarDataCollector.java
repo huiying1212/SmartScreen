@@ -54,6 +54,9 @@ public class CalendarDataCollector extends BaseDataCollector<JSONObject> {
     }
 
     @Override
+    public CollectionWeight getWeight() { return CollectionWeight.LIGHT; }
+
+    @Override
     public boolean isAvailable() {
         if (!isEnabled()) return false;
         if (!CollectionConfig.getInstance(context).getBoolean(

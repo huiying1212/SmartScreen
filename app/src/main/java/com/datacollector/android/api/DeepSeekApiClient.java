@@ -279,10 +279,11 @@ public class DeepSeekApiClient {
     /**
      * 生成悬浮窗气泡提醒文本（同步调用，需在后台线程执行）。
      * 只走 LLM 路径，失败时返回错误原因字符串（不会返回 null）。
+     *
+     * @param contextSnapshot 各采集器最新一次采集的完整数据快照
+     * @param uutValue        当前无意识使用指数 (0-100)
      */
-    public String generateBubbleText(String currentApp, int usageMins,
-                                     int uutValue, String calendarInfo,
-                                     String weatherInfo) {
+    public String generateBubbleText(JSONObject contextSnapshot, int uutValue) {
         if (!ApiConfig.isDeepSeekApiKeyConfigured()) {
             String err = "[API Key not set] check local.properties";
             Log.e(TAG, "generateBubbleText: " + err);
@@ -295,13 +296,15 @@ public class DeepSeekApiClient {
         StringBuilder sb = new StringBuilder();
         sb.append("你是一个手机使用反馈助手，语气温和、像朋友一样关心用户。\n");
         sb.append("根据用户当前的手机使用情况，生成一段简短的中文提醒。\n\n");
+        sb.append("你会收到用户手机的实时采集数据（JSON），包含屏幕使用、位置、活动状态、日历、天气、WiFi、蓝牙等信息。\n");
+        sb.append("请综合这些信息来理解用户当前的场景和状态。\n\n");
         sb.append("提醒内容分为两部分：\n");
-        sb.append("1. 使用小结：用一两句话概括用户最近的屏幕使用情况（在用什么、用了多久等）\n");
-        sb.append("2. 建议：结合用户的使用情况");
+        sb.append("1. 使用小结：用一两句话概括用户当前的状态（在用什么、用了多久、在哪里、在做什么等）\n");
+        sb.append("2. 建议：结合用户的完整使用情况");
         if (userGoal != null && !userGoal.trim().isEmpty()) {
             sb.append("和用户设定的个人目标");
         }
-        sb.append("，给出一条友善、有针对性的建议（比如该休息了、可以去做目标相关的事、喝杯水、活动一下等）\n\n");
+        sb.append("，给出一条友善、有针对性的建议\n\n");
         sb.append("格式要求：\n");
         sb.append("- 总字数控制在 30～60 字之间\n");
         sb.append("- 两部分之间用换行分隔\n");
@@ -314,21 +317,17 @@ public class DeepSeekApiClient {
         }
         String systemPrompt = sb.toString();
 
+        // Build user content: full context JSON + UUT
         StringBuilder userContent = new StringBuilder();
-        userContent.append("用户正在使用【").append(currentApp).append("】，");
-        userContent.append("已使用【").append(usageMins).append("分钟】，");
-        userContent.append("无意识使用指数：").append(uutValue).append("/100");
-        if (calendarInfo != null && !calendarInfo.isEmpty()) {
-            userContent.append("，日程：【").append(calendarInfo).append("】");
-        }
-        if (weatherInfo != null && !weatherInfo.isEmpty()) {
-            userContent.append("，天气：【").append(weatherInfo).append("】");
-        }
-        userContent.append("。请生成提醒。(t=")
+        userContent.append("以下是用户手机的实时采集数据：\n");
+        userContent.append(contextSnapshot.toString()).append("\n\n");
+        userContent.append("无意识使用指数（UUT）：").append(uutValue).append("/100\n");
+        userContent.append("请生成提醒。(t=")
                 .append(System.currentTimeMillis()).append(")");
 
+        String currentApp = contextSnapshot.optString("foreground_app_package", "unknown");
         Log.i(TAG, "generateBubbleText: calling LLM, app=" + currentApp
-                + " mins=" + usageMins + " uut=" + uutValue);
+                + " uut=" + uutValue + " keys=" + contextSnapshot.length());
 
         try {
             String response = callChatSync(systemPrompt, userContent.toString(), 120, 0.95f);
@@ -348,6 +347,78 @@ public class DeepSeekApiClient {
             Log.e(TAG, "generateBubbleText exception", e);
             return "[Error] " + e.getClass().getSimpleName();
         }
+    }
+
+    // ── LLM 使用评分 ──────────────────────────────────────────
+
+    /**
+     * 请求 LLM 对用户当前使用状态进行增量评分（同步调用，需在后台线程执行）。
+     *
+     * @param currentScore   当前分数 (0-100)
+     * @param lastSnapshot   上一次采集快照 JSON 字符串（首次可为 null）
+     * @param lastReason     上一次评估理由（首次可为 null）
+     * @param newSnapshot    本次最新采集快照
+     * @return LLM 返回的 JSON 字符串，格式 {"delta": N, "reason": "..."}，失败返回 null
+     */
+    public String assessUsageScore(int currentScore, String lastSnapshot,
+                                   String lastReason, JSONObject newSnapshot) {
+        if (!ApiConfig.isDeepSeekApiKeyConfigured()) {
+            Log.e(TAG, "assessUsageScore: API key not configured");
+            return null;
+        }
+
+        String systemPrompt =
+                "你是一个手机使用行为评估引擎。你的任务是根据用户手机的实时采集数据，评估用户当前的"无意识使用程度"并给出分数增量。\n\n"
+                + "## 评分规则\n"
+                + "分数范围 0-100。0 = 完全有意识/健康使用，100 = 极度无意识/沉迷使用。\n"
+                + "你每次返回一个 delta（增量），而非绝对分数。delta 范围 [-5, +5]。\n\n"
+                + "## delta 判定标准\n"
+                + "- 生产力/工具类 App（办公、学习、编程、阅读、地图、银行等）→ delta = 0\n"
+                + "- 屏幕关闭 / 用户主动休息 / 刚解锁还没开始用 → delta = -1 到 -3\n"
+                + "- 长时间未使用手机后恢复 → delta = -5\n"
+                + "- 娱乐/社交 App 持续使用（短视频、社交媒体、游戏等）→ delta = +1\n"
+                + "- 深夜（22:00-06:00）使用娱乐 App → delta = +2 到 +3\n"
+                + "- 多个无意识信号叠加（深夜 + 长时间娱乐 + 高频切换 + 忽略日程）→ delta 最高 +5\n"
+                + "- 用户正在做与日历日程相关的事 → delta = 0 或 -1\n"
+                + "- 用户在通勤/移动中短暂使用 → delta = 0\n\n"
+                + "## 综合考量因素\n"
+                + "你会收到完整的手机采集数据，包括：屏幕使用（当前 App、使用时长、今日总时长）、"
+                + "位置、活动状态（静止/步行/驾车）、日历日程、天气、WiFi、蓝牙设备等。\n"
+                + "请综合所有信息判断用户的使用意图和场景，不要只看单一指标。\n\n"
+                + "## 输出格式\n"
+                + "严格返回 JSON，不要包含任何其他文字：\n"
+                + "{\"delta\": <整数, -5到+5>, \"reason\": \"<一句话中文理由, 20字以内>\"}\n";
+
+        StringBuilder userContent = new StringBuilder();
+        userContent.append("当前分数：").append(currentScore).append("/100\n\n");
+
+        if (lastSnapshot != null && !lastSnapshot.isEmpty()) {
+            userContent.append("上一次采集数据：\n").append(lastSnapshot).append("\n\n");
+        }
+        if (lastReason != null && !lastReason.isEmpty()) {
+            userContent.append("上一次评估理由：").append(lastReason).append("\n\n");
+        }
+
+        userContent.append("本次最新采集数据：\n").append(newSnapshot.toString()).append("\n\n");
+        userContent.append("请评估并返回 JSON。");
+
+        Log.i(TAG, "assessUsageScore: calling LLM, currentScore=" + currentScore);
+
+        String response = callChatSync(systemPrompt, userContent.toString(), 80, 0.3f);
+
+        if (response == null || response.isEmpty()) {
+            Log.w(TAG, "assessUsageScore: LLM returned empty");
+            return null;
+        }
+
+        // Strip markdown code fences if present
+        response = response.trim();
+        if (response.startsWith("```")) {
+            response = response.replaceAll("^```[a-z]*\\s*", "").replaceAll("\\s*```$", "").trim();
+        }
+
+        Log.i(TAG, "assessUsageScore: raw response: " + response);
+        return response;
     }
 
     // ── 通用同步聊天接口 ─────────────────────────────────────

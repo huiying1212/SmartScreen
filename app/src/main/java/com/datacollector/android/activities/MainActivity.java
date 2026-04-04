@@ -26,7 +26,7 @@ import com.datacollector.android.collectors.WeatherDataCollector;
 import com.datacollector.android.services.DataCollectionService;
 import com.datacollector.android.services.FloatingOverlayService;
 import com.datacollector.android.utils.CollectionConfig;
-import com.datacollector.android.utils.UnconsciousUsageTracker;
+import com.datacollector.android.utils.LLMScoringEngine;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -43,7 +43,7 @@ public class MainActivity extends Activity {
     private CalendarDataCollector calendarCollector;
     private WeatherDataCollector weatherCollector;
     private DeepSeekApiClient deepSeekClient;
-    private UnconsciousUsageTracker uutTracker;
+    private LLMScoringEngine llmScoringEngine;
     private Handler uiHandler;
 
     // Module 1: Basic Info
@@ -92,7 +92,7 @@ public class MainActivity extends Activity {
         calendarCollector = new CalendarDataCollector(this);
         weatherCollector = new WeatherDataCollector(this);
         deepSeekClient = new DeepSeekApiClient(this);
-        uutTracker = new UnconsciousUsageTracker(this);
+        llmScoringEngine = new LLMScoringEngine(this, deepSeekClient);
         uiHandler = new Handler(Looper.getMainLooper());
 
         initViews();
@@ -130,49 +130,37 @@ public class MainActivity extends Activity {
 
         new Thread(() -> {
             try {
-                String currentApp = null;
-                int usageMins = 0;
+                // Build full snapshot like FloatingOverlayService
+                JSONObject snapshot = new JSONObject();
+                snapshot.put("timestamp", System.currentTimeMillis());
 
                 try {
                     JSONObject screenData = screenUsageCollector.collectData();
                     if (screenData != null) {
-                        currentApp = screenData.optString("foreground_app_package", null);
-                        usageMins = (int) (screenData.optLong(
-                                "foreground_app_current_open_ms", 0) / 60_000L);
-                        if (usageMins == 0) {
-                            usageMins = (int) (screenData.optLong(
-                                    "current_session_ms", 0) / 60_000L);
-                        }
+                        snapshot.put("screen_usage", screenData);
+                        snapshot.put("foreground_app_package",
+                                screenData.optString("foreground_app_package", "unknown"));
                     }
                 } catch (Exception e) {
                     Log.w(TAG, "Failed to get screen usage data", e);
                 }
 
-                if (currentApp == null || currentApp.isEmpty()) {
-                    currentApp = uutTracker.getCurrentPackage();
-                }
-                if (currentApp == null || currentApp.isEmpty()) {
-                    currentApp = "unknown";
-                }
+                try {
+                    if (calendarCollector != null && calendarCollector.isAvailable()) {
+                        JSONObject data = calendarCollector.collectData();
+                        if (data != null) snapshot.put("calendar", data);
+                    }
+                } catch (Exception ignored) {}
 
-                int uut = uutTracker.getUUT();
-
-                String calendarInfo = getCalendarContext();
-
-                String weatherInfo = null;
                 try {
                     if (weatherCollector != null && weatherCollector.isAvailable()) {
-                        JSONObject weatherData = weatherCollector.collectData();
-                        if (weatherData != null) {
-                            weatherInfo = weatherData.optString("readable_summary", null);
-                        }
+                        JSONObject data = weatherCollector.collectData();
+                        if (data != null) snapshot.put("weather", data);
                     }
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to get weather data", e);
-                }
+                } catch (Exception ignored) {}
 
-                final String text = deepSeekClient.generateBubbleText(
-                        currentApp, usageMins, uut, calendarInfo, weatherInfo);
+                int score = llmScoringEngine.getScore();
+                final String text = deepSeekClient.generateBubbleText(snapshot, score);
 
                 uiHandler.post(() -> {
                     tvReminderStatus.setVisibility(android.view.View.GONE);

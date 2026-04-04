@@ -21,6 +21,7 @@ import com.datacollector.android.activities.MainActivity;
 import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.collectors.ActivityRecognitionCollector;
 import com.datacollector.android.collectors.BluetoothDataCollector;
+import com.datacollector.android.collectors.BaseDataCollector;
 import com.datacollector.android.collectors.CalendarDataCollector;
 import com.datacollector.android.collectors.LocationDataCollector;
 import com.datacollector.android.collectors.ScreenUsageCollector;
@@ -50,9 +51,9 @@ import java.util.Locale;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * 数据收集服务 —— 每 10 分钟自动采集一次结构化数据：
- *   screenTime, unlockCount, currentApp, appCategory,
- *   userActivity, locationContext, calendar
+ * 数据收集服务 —— 分级定期采集：
+ *   轻量（screen_usage / activity / calendar）：每 2 分钟更新内存缓存
+ *   重量（location / weather / wifi / bluetooth）：每 10 分钟全量采集并落盘
  *
  * 采集完成后触发壁纸引擎检查。
  */
@@ -73,7 +74,11 @@ public class DataCollectionService extends Service implements DataCollectorManag
     private JSONObject currentContextData;
     private Handler collectionHandler;
     private Runnable periodicCollectionRunnable;
+    private Runnable lightCollectionRunnable;
     private PowerManager.WakeLock wakeLock;
+
+    /** 轻量采集器最新数据缓存，每次全量落盘时合并 */
+    private volatile JSONObject latestLightData = new JSONObject();
 
     public class DataCollectionBinder extends Binder {
         public DataCollectionService getService() {
@@ -160,9 +165,27 @@ public class DataCollectionService extends Service implements DataCollectorManag
         Log.i(TAG, "Initialized " + collectorManager.getCollectorIds().size() + " collectors");
     }
 
-    // ── 定期采集（每 10 分钟）──────────────────────────────
+    // ── 分级定期采集 ─────────────────────────────────────────
+    //   轻量（screen_usage / activity / calendar）：每 2 分钟
+    //   重量（location / weather / wifi / bluetooth）：每 10 分钟
+    //   全量落盘仅在重量轮询时执行，轻量轮询只更新内存缓存。
 
     private void startPeriodicCollection() {
+        // ── 轻量轮询 ──
+        lightCollectionRunnable = new Runnable() {
+            @Override
+            public void run() {
+                collectLightData();
+                long interval = collectionConfig.getLong(
+                        CollectionConfig.KEY_LIGHT_COLLECTION_INTERVAL_MS, 2 * 60_000L);
+                collectionHandler.postDelayed(this, interval);
+            }
+        };
+        collectionHandler.postDelayed(lightCollectionRunnable, 15_000L); // 首次 15s 后
+        Log.i(TAG, "Light collection started (interval=" + collectionConfig.getLong(
+                CollectionConfig.KEY_LIGHT_COLLECTION_INTERVAL_MS, 2 * 60_000L) / 1000 + "s)");
+
+        // ── 重量轮询（含全量落盘）──
         periodicCollectionRunnable = new Runnable() {
             @Override
             public void run() {
@@ -172,13 +195,40 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 collectionHandler.postDelayed(this, interval);
             }
         };
-
         collectionHandler.postDelayed(periodicCollectionRunnable, 30_000L);
-        Log.i(TAG, "Periodic collection started (interval=" + collectionConfig.getLong(
+        Log.i(TAG, "Heavy collection started (interval=" + collectionConfig.getLong(
                 CollectionConfig.KEY_COLLECTION_INTERVAL_MS, 10 * 60_000L) / 60000 + "min)");
     }
 
-    // ── 数据采集 ─────────────────────────────────────────────
+    /**
+     * 轻量采集：仅运行 LIGHT 权重的采集器，结果缓存到内存并落盘。
+     * 落盘格式与全量采集一致（context_data_*.json/enc/gz），
+     * DataAggregator 无需修改即可读取。
+     */
+    private void collectLightData() {
+        try {
+            JSONObject lightData = collectorManager.collectByWeight(
+                    BaseDataCollector.CollectionWeight.LIGHT);
+            if (lightData.length() > 0) {
+                latestLightData = lightData;
+
+                // 构造与全量落盘相同结构的 contextData，便于 DataAggregator 统一读取
+                JSONObject contextData = new JSONObject();
+                contextData.put("timestamp", System.currentTimeMillis());
+                contextData.put("date_time", getCurrentDateTime());
+                contextData.put("day_of_week", getCurrentDayOfWeek());
+                contextData.put("trigger_reason", "light");
+                mergeCollectorData(contextData, lightData);
+                saveContextData(contextData);
+
+                Log.d(TAG, "Light collection done & saved (" + lightData.length() + " collectors)");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Light collection error", e);
+        }
+    }
+
+    // ── 数据采集（全量落盘）────────────────────────────────
 
     private void collectCurrentContextData(String triggerReason) {
         ErrorCollector errors = new ErrorCollector("data_collection");
@@ -190,22 +240,27 @@ public class DataCollectionService extends Service implements DataCollectorManag
             contextData.put("day_of_week", getCurrentDayOfWeek());
             contextData.put("trigger_reason", triggerReason);
 
-            JSONObject collectorData = new JSONObject();
+            // 重量采集器：实时采集
+            JSONObject heavyData = collectorManager.collectByWeight(
+                    BaseDataCollector.CollectionWeight.HEAVY);
 
-            for (String collectorId : collectorManager.getCollectorIds()) {
-                errors.runSafely("collect_" + collectorId, () -> {
-                    Object data = collectorManager.collectData(collectorId);
-                    if (data != null) {
-                        try {
-                            collectorData.put(collectorId, data);
-                            collectionStats.recordCollectorResult(collectorId, true);
-                        } catch (JSONException e) {
-                            throw new RuntimeException(e);
-                        }
-                    } else {
-                        collectionStats.recordCollectorResult(collectorId, false);
-                    }
-                });
+            // 轻量采集器：使用最新缓存（刚在 2 分钟内更新过），
+            // 同时也做一次实时采集以保证落盘数据最新
+            JSONObject freshLightData = collectorManager.collectByWeight(
+                    BaseDataCollector.CollectionWeight.LIGHT);
+            if (freshLightData.length() > 0) {
+                latestLightData = freshLightData;
+            }
+
+            // 合并两级数据
+            JSONObject collectorData = new JSONObject();
+            copyKeys(heavyData, collectorData);
+            copyKeys(latestLightData, collectorData);
+
+            // 记录采集统计
+            java.util.Iterator<String> keys = collectorData.keys();
+            while (keys.hasNext()) {
+                collectionStats.recordCollectorResult(keys.next(), true);
             }
 
             mergeCollectorData(contextData, collectorData);
@@ -233,6 +288,14 @@ public class DataCollectionService extends Service implements DataCollectorManag
         } catch (JSONException e) {
             Log.e(TAG, "Error collecting context data", e);
             collectionStats.recordCollectionAttempt(false);
+        }
+    }
+
+    private static void copyKeys(JSONObject src, JSONObject dst) throws JSONException {
+        java.util.Iterator<String> it = src.keys();
+        while (it.hasNext()) {
+            String k = it.next();
+            dst.put(k, src.get(k));
         }
     }
 
@@ -493,7 +556,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("CATIA3 数据收集")
-                .setContentText("每10分钟自动采集使用数据")
+                .setContentText("轻量采集 2 分钟 / 全量采集 10 分钟")
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)

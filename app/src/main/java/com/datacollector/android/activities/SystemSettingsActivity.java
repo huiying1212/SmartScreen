@@ -31,8 +31,7 @@ import com.datacollector.android.collectors.ScreenUsageCollector;
 import com.datacollector.android.managers.WallpaperGenerationManager;
 import com.datacollector.android.services.DataCollectionService;
 import com.datacollector.android.utils.CollectionConfig;
-import com.datacollector.android.utils.MoodScoreEngine;
-import com.datacollector.android.utils.UnconsciousUsageTracker;
+import com.datacollector.android.utils.LLMScoringEngine;
 
 import org.json.JSONObject;
 
@@ -56,8 +55,7 @@ public class SystemSettingsActivity extends Activity {
     private WallpaperGenerationManager wallpaperManager;
     private ScreenUsageCollector screenUsageCollector;
     private DeepSeekApiClient deepSeekClient;
-    private UnconsciousUsageTracker uutTracker;
-    private MoodScoreEngine moodScoreEngine;
+    private LLMScoringEngine llmScoringEngine;
     private Handler uiHandler;
 
     private Switch switchLocation, switchActivity, switchScreenUsage, switchCalendar;
@@ -99,8 +97,7 @@ public class SystemSettingsActivity extends Activity {
         wallpaperManager = new WallpaperGenerationManager(this);
         screenUsageCollector = new ScreenUsageCollector(this);
         deepSeekClient = new DeepSeekApiClient(this);
-        uutTracker = new UnconsciousUsageTracker(this);
-        moodScoreEngine = new MoodScoreEngine(this);
+        llmScoringEngine = new LLMScoringEngine(this, deepSeekClient);
         uiHandler = new Handler(Looper.getMainLooper());
 
         initViews();
@@ -250,28 +247,25 @@ public class SystemSettingsActivity extends Activity {
         showTestOutput("正在调用 AI 生成提醒...");
         new Thread(() -> {
             try {
-                String currentApp = uutTracker.getCurrentPackage();
-                if (currentApp == null) currentApp = "unknown";
-                int uut = uutTracker.getUUT();
-                int usageMins = 0;
+                // Build a snapshot like FloatingOverlayService does
+                JSONObject snapshot = new JSONObject();
+                snapshot.put("timestamp", System.currentTimeMillis());
                 try {
                     JSONObject screenData = screenUsageCollector.collectData();
                     if (screenData != null) {
-                        usageMins = (int) (screenData.optLong("foreground_app_current_open_ms", 0) / 60_000L);
+                        snapshot.put("screen_usage", screenData);
+                        snapshot.put("foreground_app_package",
+                                screenData.optString("foreground_app_package", "unknown"));
                     }
                 } catch (Exception ignored) {}
 
-                final String app = currentApp;
-                final int mins = usageMins;
-                final int uutVal = uut;
-
-                String result = deepSeekClient.generateBubbleText(app, mins, uutVal, null, null);
+                int score = llmScoringEngine.getScore();
+                String result = deepSeekClient.generateBubbleText(snapshot, score);
 
                 StringBuilder sb = new StringBuilder();
                 sb.append("── AI 提醒测试结果 ──\n");
-                sb.append("当前应用: ").append(app).append("\n");
-                sb.append("使用时长: ").append(mins).append(" 分钟\n");
-                sb.append("UUT 值: ").append(uutVal).append("/100\n");
+                sb.append("当前应用: ").append(snapshot.optString("foreground_app_package", "unknown")).append("\n");
+                sb.append("LLM 评分: ").append(score).append("/100\n");
                 sb.append("──────────────\n");
                 sb.append("AI 回复: ").append(result);
 
@@ -339,29 +333,35 @@ public class SystemSettingsActivity extends Activity {
     }
 
     private void testMoodScore() {
-        showTestOutput("正在计算 MoodScore 各维度...");
+        showTestOutput("正在请求 LLM 评分...");
         new Thread(() -> {
             try {
-                int uut = uutTracker.getUUT();
-                float stress = moodScoreEngine.computeStress(uut, screenUsageCollector);
-                String summary = moodScoreEngine.getDebugSummary();
-
-                // 附加结构化目标信息
-                String goalsJson = config.getString(CollectionConfig.KEY_STRUCTURED_GOALS, "[]");
-                StringBuilder sb = new StringBuilder();
-                sb.append("══ MoodScore 多维度评分 ══\n\n");
-                sb.append("当前 UUT: ").append(uut).append("/100\n\n");
-                sb.append(summary);
-                sb.append("\n\n── 结构化目标 ──\n");
+                // Build snapshot and run LLM assessment
+                JSONObject snapshot = new JSONObject();
+                snapshot.put("timestamp", System.currentTimeMillis());
                 try {
-                    sb.append(new org.json.JSONArray(goalsJson).toString(2));
-                } catch (Exception e) {
-                    sb.append(goalsJson);
-                }
+                    JSONObject screenData = screenUsageCollector.collectData();
+                    if (screenData != null) snapshot.put("screen_usage", screenData);
+                } catch (Exception ignored) {}
+
+                int oldScore = llmScoringEngine.getScore();
+                int newScore = llmScoringEngine.assess(snapshot);
+                String reason = llmScoringEngine.getLastReason();
+
+                StringBuilder sb = new StringBuilder();
+                sb.append("══ LLM 使用评分 ══\n\n");
+                sb.append("评分前: ").append(oldScore).append("/100\n");
+                sb.append("评分后: ").append(newScore).append("/100\n");
+                sb.append("变化量: ").append(newScore - oldScore > 0 ? "+" : "").append(newScore - oldScore).append("\n");
+                sb.append("理由: ").append(reason != null ? reason : "无").append("\n");
 
                 String result = sb.toString();
                 uiHandler.post(() -> showTestOutput(result));
             } catch (Exception e) {
+                uiHandler.post(() -> showTestOutput("错误: " + e.getMessage()));
+            }
+        }).start();
+    }
                 uiHandler.post(() -> showTestOutput("错误: " + e.getMessage()));
             }
         }).start();

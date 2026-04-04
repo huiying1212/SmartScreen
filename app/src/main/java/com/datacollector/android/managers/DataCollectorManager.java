@@ -3,6 +3,7 @@ package com.datacollector.android.managers;
 import android.content.Context;
 import android.util.Log;
 
+import com.datacollector.android.collectors.BaseDataCollector;
 import com.datacollector.android.interfaces.DataCollector;
 
 import org.json.JSONException;
@@ -213,6 +214,59 @@ public class DataCollectorManager {
         }
         Log.w(TAG, "Collector not found: " + collectorId);
         return null;
+    }
+
+    /**
+     * 按权重分级采集：仅运行匹配指定 weight 的采集器。
+     * 用于分级轮询——轻量采集器高频调用，重量采集器低频调用。
+     */
+    public JSONObject collectByWeight(BaseDataCollector.CollectionWeight weight) {
+        JSONObject result = new JSONObject();
+        List<Map.Entry<String, DataCollector<?>>> targets = new ArrayList<>();
+
+        for (Map.Entry<String, DataCollector<?>> entry : collectors.entrySet()) {
+            DataCollector<?> c = entry.getValue();
+            if (c instanceof BaseDataCollector) {
+                if (((BaseDataCollector<?>) c).getWeight() == weight) {
+                    targets.add(entry);
+                }
+            } else if (weight == BaseDataCollector.CollectionWeight.HEAVY) {
+                // 非 BaseDataCollector 的实现默认归入重量级
+                targets.add(entry);
+            }
+        }
+
+        if (targets.isEmpty()) return result;
+
+        CountDownLatch latch = new CountDownLatch(targets.size());
+        for (Map.Entry<String, DataCollector<?>> entry : targets) {
+            String collectorId = entry.getKey();
+            DataCollector<?> collector = entry.getValue();
+            executorService.submit(() -> {
+                try {
+                    Object data = collector.collectData();
+                    if (data != null) {
+                        synchronized (result) {
+                            result.put(collectorId, data);
+                        }
+                        if (callback != null) callback.onDataCollected(collectorId, data);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error collecting data from " + collectorId, e);
+                    if (callback != null) callback.onCollectionError(collectorId, e);
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        try {
+            latch.await(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Log.w(TAG, "collectByWeight interrupted");
+            Thread.currentThread().interrupt();
+        }
+        return result;
     }
     
     /**

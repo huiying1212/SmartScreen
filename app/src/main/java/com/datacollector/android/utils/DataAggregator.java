@@ -72,7 +72,6 @@ public class DataAggregator {
             JSONArray locationTrail = new JSONArray();
             Map<String, Integer> activityCounts = new HashMap<>();
             Map<String, Integer> appUsageCounts = new HashMap<>();
-            JSONArray screenContentSamples = new JSONArray();
             JSONArray wifiHistory = new JSONArray();
             // Calendar / reminder accumulators (deduplicated by event_id)
             Map<Long, JSONObject> calendarEventMap = new HashMap<>();
@@ -93,6 +92,10 @@ public class DataAggregator {
             // Weather: keep the latest snapshot
             JSONObject latestWeather = null;
             long latestWeatherTimestamp = 0;
+            // Bluetooth: device class distribution + peak nearby count
+            Map<String, Integer> btClassCounts = new LinkedHashMap<>();
+            int btMaxNearbyCount = 0;
+            List<String> btDeviceNames = new ArrayList<>();
 
             for (File file : files) {
                 long fileTimestamp = extractTimestamp(file.getName());
@@ -164,14 +167,6 @@ public class DataAggregator {
                     }
                 }
 
-                // Aggregate screen content (sample the latest few)
-                JSONArray screens = contextData.optJSONArray("screen_content");
-                if (screens != null && screenContentSamples.length() < 10) {
-                    for (int i = 0; i < Math.min(screens.length(), 3); i++) {
-                        screenContentSamples.put(screens.get(i));
-                    }
-                }
-
                 // Track trigger reasons as a proxy for app usage
                 String trigger = contextData.optString("trigger_reason", "");
                 if (!trigger.isEmpty()) {
@@ -232,6 +227,44 @@ public class DataAggregator {
                     if (wTs > latestWeatherTimestamp) {
                         latestWeatherTimestamp = wTs;
                         latestWeather = weather;
+                    }
+                }
+
+                // Aggregate Bluetooth: device classes, nearby count, unique names
+                JSONObject bt = contextData.optJSONObject("bluetooth_devices");
+                if (bt != null) {
+                    int nearbyCount = bt.optInt("nearby_device_count", 0);
+                    btMaxNearbyCount = Math.max(btMaxNearbyCount, nearbyCount);
+
+                    JSONArray nearby = bt.optJSONArray("nearby_devices");
+                    if (nearby != null) {
+                        for (int i = 0; i < nearby.length(); i++) {
+                            JSONObject d = nearby.optJSONObject(i);
+                            if (d == null) continue;
+                            String cls = d.optString("device_class", "other");
+                            btClassCounts.merge(cls, 1, Integer::sum);
+                            String name = d.optString("name", "");
+                            if (!name.isEmpty() && !"unknown".equals(name)
+                                    && !"unnamed".equals(name)
+                                    && !btDeviceNames.contains(name)) {
+                                btDeviceNames.add(name);
+                            }
+                        }
+                    }
+                    JSONArray paired = bt.optJSONArray("paired_devices");
+                    if (paired != null) {
+                        for (int i = 0; i < paired.length(); i++) {
+                            JSONObject d = paired.optJSONObject(i);
+                            if (d == null) continue;
+                            String cls = d.optString("device_class", "other");
+                            btClassCounts.merge(cls, 1, Integer::sum);
+                            String name = d.optString("name", "");
+                            if (!name.isEmpty() && !"unknown".equals(name)
+                                    && !"unnamed".equals(name)
+                                    && !btDeviceNames.contains(name)) {
+                                btDeviceNames.add(name);
+                            }
+                        }
                     }
                 }
             }
@@ -318,9 +351,6 @@ public class DataAggregator {
             }
             summary.put("wifi_ssid_summary", wifiSummary);
 
-            // Screen content samples
-            summary.put("recent_screen_content", screenContentSamples);
-
             // Usage pattern
             JSONObject usagePattern = new JSONObject();
             for (Map.Entry<String, Integer> entry : appUsageCounts.entrySet()) {
@@ -385,6 +415,19 @@ public class DataAggregator {
             }
             summary.put("reminder_events", reminderSummary);
             summary.put("reminder_event_count", reminderSummary.length());
+
+            // Bluetooth summary
+            JSONObject btSummary = new JSONObject();
+            btSummary.put("max_nearby_device_count", btMaxNearbyCount);
+            JSONObject btClasses = new JSONObject();
+            for (Map.Entry<String, Integer> e : btClassCounts.entrySet()) {
+                btClasses.put(e.getKey(), e.getValue());
+            }
+            btSummary.put("device_class_distribution", btClasses);
+            JSONArray btNames = new JSONArray();
+            for (String n : btDeviceNames) btNames.put(n);
+            btSummary.put("unique_device_names", btNames);
+            summary.put("bluetooth_summary", btSummary);
 
             // Weather summary (latest snapshot)
             if (latestWeather != null) {

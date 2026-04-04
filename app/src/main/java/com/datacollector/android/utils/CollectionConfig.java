@@ -20,6 +20,7 @@ public class CollectionConfig {
 
     // ── 数据采集 ──────────────────────────────────────────────
     public static final String KEY_COLLECTION_INTERVAL_MS = "collection_interval_ms";
+    public static final String KEY_LIGHT_COLLECTION_INTERVAL_MS = "light_collection_interval_ms";
     public static final String KEY_LOCATION_INTERVAL = "location_update_interval_ms";
     public static final String KEY_LOCATION_MIN_DISTANCE = "location_min_distance_m";
     public static final String KEY_LOCATION_ENABLED = "location_enabled";
@@ -85,7 +86,8 @@ public class CollectionConfig {
         SharedPreferences.Editor editor = prefs.edit();
 
         // 数据采集
-        putIfAbsent(editor, KEY_COLLECTION_INTERVAL_MS, 10 * 60_000L); // 10 min
+        putIfAbsent(editor, KEY_COLLECTION_INTERVAL_MS, 10 * 60_000L); // 10 min (heavyweight)
+        putIfAbsent(editor, KEY_LIGHT_COLLECTION_INTERVAL_MS, 2 * 60_000L); // 2 min (lightweight)
         putIfAbsent(editor, KEY_LOCATION_INTERVAL, 60_000L);
         putIfAbsent(editor, KEY_LOCATION_MIN_DISTANCE, 10f);
         putIfAbsent(editor, KEY_LOCATION_ENABLED, true);

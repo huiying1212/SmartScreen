@@ -31,17 +31,19 @@ import androidx.core.app.NotificationCompat;
 
 import com.datacollector.android.R;
 import com.datacollector.android.api.DeepSeekApiClient;
+import com.datacollector.android.collectors.ActivityRecognitionCollector;
+import com.datacollector.android.collectors.BluetoothDataCollector;
 import com.datacollector.android.collectors.CalendarDataCollector;
+import com.datacollector.android.collectors.LocationDataCollector;
 import com.datacollector.android.collectors.ScreenUsageCollector;
 import com.datacollector.android.collectors.WeatherDataCollector;
+import com.datacollector.android.collectors.WifiDataCollector;
 import com.datacollector.android.utils.AppForegroundTracker;
 import com.datacollector.android.utils.CollectionConfig;
-import com.datacollector.android.utils.MoodScoreEngine;
-import com.datacollector.android.utils.UnconsciousUsageTracker;
+import com.datacollector.android.utils.LLMScoringEngine;
 import com.datacollector.android.views.MoodFaceView;
 import com.datacollector.android.views.SpeechBubbleDrawable;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
@@ -73,12 +75,15 @@ public class FloatingOverlayService extends Service {
     private boolean bubbleAdded = false;
 
     private Handler mainHandler;
-    private UnconsciousUsageTracker uutTracker;
+    private LLMScoringEngine llmScoringEngine;
     private ScreenUsageCollector screenUsageCollector;
-    private MoodScoreEngine moodScoreEngine;
     private DeepSeekApiClient deepSeekClient;
     private CalendarDataCollector calendarCollector;
     private WeatherDataCollector weatherCollector;
+    private LocationDataCollector locationCollector;
+    private ActivityRecognitionCollector activityCollector;
+    private WifiDataCollector wifiCollector;
+    private BluetoothDataCollector bluetoothCollector;
     private CollectionConfig config;
 
     private boolean isBubbleShowing = false;
@@ -88,11 +93,7 @@ public class FloatingOverlayService extends Service {
     private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
-                uutTracker.onScreenOff();
-            } else if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
-                uutTracker.onScreenOn();
-            }
+            // Screen on/off events are captured by the periodic LLM scoring snapshot
         }
     };
 
@@ -125,12 +126,15 @@ public class FloatingOverlayService extends Service {
         mainHandler = new Handler(Looper.getMainLooper());
         config = CollectionConfig.getInstance(this);
 
-        uutTracker = new UnconsciousUsageTracker(this);
         screenUsageCollector = new ScreenUsageCollector(this);
-        moodScoreEngine = new MoodScoreEngine(this);
         deepSeekClient = new DeepSeekApiClient(this);
+        llmScoringEngine = new LLMScoringEngine(this, deepSeekClient);
         calendarCollector = new CalendarDataCollector(this);
         weatherCollector = new WeatherDataCollector(this);
+        locationCollector = new LocationDataCollector(this);
+        activityCollector = new ActivityRecognitionCollector(this);
+        wifiCollector = new WifiDataCollector(this);
+        bluetoothCollector = new BluetoothDataCollector(this);
 
         if (Settings.canDrawOverlays(this)) {
             createOverlay();
@@ -268,56 +272,97 @@ public class FloatingOverlayService extends Service {
 
         new Thread(() -> {
             try {
-                // Collect fresh screen data first — this also serves as the
-                // authoritative source for both foreground app and usage time.
-                String currentApp = null;
-                int usageMins = 0;
+                // Build a full context snapshot from all available collectors
+                JSONObject snapshot = new JSONObject();
+
+                // Screen usage (authoritative source for foreground app + usage time)
                 try {
                     JSONObject screenData = screenUsageCollector.collectData();
                     if (screenData != null) {
-                        currentApp = screenData.optString(
-                                "foreground_app_package", null);
-                        usageMins = (int) (screenData.optLong(
-                                "foreground_app_current_open_ms", 0) / 60_000L);
-                        // If per-app open time is 0, fall back to session time
-                        if (usageMins == 0) {
-                            usageMins = (int) (screenData.optLong(
-                                    "current_session_ms", 0) / 60_000L);
-                        }
+                        snapshot.put("screen_usage", screenData);
+                        // Also put foreground app at top level for easy access
+                        snapshot.put("foreground_app_package",
+                                screenData.optString("foreground_app_package", "unknown"));
                     }
                 } catch (Exception e) {
-                    Log.w(TAG, "Failed to get screen usage data", e);
+                    Log.w(TAG, "Failed to collect screen usage", e);
                 }
 
-                // Fall back to UUT tracker's cached package if collector missed it
-                if (currentApp == null || currentApp.isEmpty()) {
-                    currentApp = uutTracker.getCurrentPackage();
+                // Fallback foreground app from UUT tracker
+                if (!snapshot.has("foreground_app_package")
+                        || "unknown".equals(snapshot.optString("foreground_app_package"))) {
+                    String pkg = AppForegroundTracker.getInstance(
+                            FloatingOverlayService.this).getCurrentPackage();
+                    if (pkg != null && !pkg.isEmpty()) {
+                        snapshot.put("foreground_app_package", pkg);
+                    }
                 }
-                if (currentApp == null || currentApp.isEmpty()) {
-                    currentApp = "unknown";
+
+                // Activity recognition
+                try {
+                    if (activityCollector != null && activityCollector.isAvailable()) {
+                        JSONObject data = activityCollector.collectData();
+                        if (data != null) snapshot.put("user_activity", data);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to collect activity", e);
                 }
 
-                int uutValue = uutTracker.getUUT();
-                Log.i(TAG, "onOverlayClicked: app=" + currentApp
-                        + " mins=" + usageMins + " uut=" + uutValue);
+                // Calendar
+                try {
+                    if (calendarCollector != null && calendarCollector.isAvailable()) {
+                        JSONObject data = calendarCollector.collectData();
+                        if (data != null) snapshot.put("calendar", data);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to collect calendar", e);
+                }
 
-                String calendarInfo = getCalendarContext();
-
-                // Collect weather info
-                String weatherInfo = null;
+                // Weather
                 try {
                     if (weatherCollector != null && weatherCollector.isAvailable()) {
-                        JSONObject weatherData = weatherCollector.collectData();
-                        if (weatherData != null) {
-                            weatherInfo = weatherData.optString("readable_summary", null);
-                        }
+                        JSONObject data = weatherCollector.collectData();
+                        if (data != null) snapshot.put("weather", data);
                     }
                 } catch (Exception e) {
-                    Log.w(TAG, "Failed to get weather data", e);
+                    Log.w(TAG, "Failed to collect weather", e);
                 }
 
-                final String text = deepSeekClient.generateBubbleText(
-                        currentApp, usageMins, uutValue, calendarInfo, weatherInfo);
+                // Location
+                try {
+                    if (locationCollector != null && locationCollector.isAvailable()) {
+                        JSONObject data = locationCollector.collectData();
+                        if (data != null) snapshot.put("location", data);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to collect location", e);
+                }
+
+                // WiFi
+                try {
+                    if (wifiCollector != null && wifiCollector.isAvailable()) {
+                        JSONObject data = wifiCollector.collectData();
+                        if (data != null) snapshot.put("wifi_info", data);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to collect wifi", e);
+                }
+
+                // Bluetooth
+                try {
+                    if (bluetoothCollector != null && bluetoothCollector.isAvailable()) {
+                        JSONObject data = bluetoothCollector.collectData();
+                        if (data != null) snapshot.put("bluetooth_devices", data);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to collect bluetooth", e);
+                }
+
+                int uutValue = llmScoringEngine.getScore();
+                Log.i(TAG, "onOverlayClicked: snapshot keys=" + snapshot.length()
+                        + " uut=" + uutValue);
+
+                final String text = deepSeekClient.generateBubbleText(snapshot, uutValue);
 
                 Log.i(TAG, "Bubble text result: " + text);
 
@@ -341,43 +386,6 @@ public class FloatingOverlayService extends Service {
                 isGeneratingBubble = false;
             }
         }).start();
-    }
-
-    private String getCalendarContext() {
-        try {
-            if (calendarCollector == null || !calendarCollector.isAvailable()) return null;
-            JSONObject calData = calendarCollector.collectData();
-            if (calData == null) return null;
-
-            JSONArray events = calData.optJSONArray("events");
-            if (events == null || events.length() == 0) return "空闲时间";
-
-            long now = System.currentTimeMillis();
-
-            // CalendarDataCollector outputs "begin_timestamp" / "end_timestamp"
-            for (int i = 0; i < events.length(); i++) {
-                JSONObject ev = events.optJSONObject(i);
-                if (ev == null) continue;
-                long start = ev.optLong("begin_timestamp", 0);
-                long end = ev.optLong("end_timestamp", 0);
-                if (now >= start && now <= end) {
-                    return "计划: " + ev.optString("title", "日程中");
-                }
-            }
-
-            for (int i = 0; i < events.length(); i++) {
-                JSONObject ev = events.optJSONObject(i);
-                if (ev == null) continue;
-                long start = ev.optLong("begin_timestamp", 0);
-                if (start > now && start - now < 3600_000L) {
-                    return "即将: " + ev.optString("title", "有安排");
-                }
-            }
-
-            return "空闲时间";
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     private void dismissBubbleImmediately() {
@@ -526,7 +534,7 @@ public class FloatingOverlayService extends Service {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
-    // ── 定期 UUT 更新 ────────────────────────────────────────
+    // ── 定期 LLM 评分 ────────────────────────────────────────
 
     private void startPeriodicUpdates() {
         // Cancel any existing periodic update to avoid duplicate chains
@@ -535,59 +543,92 @@ public class FloatingOverlayService extends Service {
         }
 
         long interval = config.getLong(
-                CollectionConfig.KEY_OVERLAY_UPDATE_INTERVAL_MS, 30_000L);
+                CollectionConfig.KEY_LIGHT_COLLECTION_INTERVAL_MS, 2 * 60_000L);
 
         periodicUpdateRunnable = new Runnable() {
             @Override
             public void run() {
-                refreshUUT();
+                refreshLLMScore();
                 mainHandler.postDelayed(this, interval);
             }
         };
-        mainHandler.post(periodicUpdateRunnable);
+        // First scoring after 15s to let collectors warm up
+        mainHandler.postDelayed(periodicUpdateRunnable, 15_000L);
     }
 
-    private void refreshUUT() {
+    /**
+     * 采集完整快照并请求 LLM 评分，更新表情。
+     */
+    private void refreshLLMScore() {
         new Thread(() -> {
             try {
                 boolean screenOn = isScreenOn();
                 AppForegroundTracker fgTracker = AppForegroundTracker.getInstance(
                         FloatingOverlayService.this);
 
-                String foregroundPkg = null;
+                JSONObject snapshot = new JSONObject();
+                snapshot.put("screen_on", screenOn);
+                snapshot.put("timestamp", System.currentTimeMillis());
+
                 if (screenOn && screenUsageCollector.isAvailable()) {
                     JSONObject data = screenUsageCollector.collectData();
                     if (data != null) {
-                        // ScreenUsageCollector 内部已优先读 Tracker 缓存；
-                        // 这里拿到的 foreground_app_package 是最终可信值，
-                        // 再写回 Tracker 以刷新 lastUpdateTime、更新切换时间。
-                        foregroundPkg = data.optString("foreground_app_package", null);
-
-                        // 注入解锁频率和今日屏幕时间用于科学化 UUT 计算
-                        int unlockCount = data.optInt("unlock_count_last_hour", 0);
-                        long todayScreenMs = data.optLong("today_screen_time_ms", 0);
-                        uutTracker.updateExternalMetrics(unlockCount, todayScreenMs);
+                        snapshot.put("screen_usage", data);
+                        String pkg = data.optString("foreground_app_package", null);
+                        fgTracker.update(pkg);
                     }
                 }
-
-                // 将最新前台 App 写入全局 Tracker（null 时也刷新 lastUpdateTime）
-                fgTracker.update(foregroundPkg);
-
-                // 屏幕关闭超过阈值时重置 Tracker，避免缓存污染下次采集
-                if (!screenOn) {
-                    // 具体衰减逻辑已在 UUT 内处理，这里仅在 Tracker 过期后 reset
-                    if (fgTracker.isStale()) {
-                        fgTracker.reset();
-                    }
+                if (!screenOn && fgTracker.isStale()) {
+                    fgTracker.reset();
                 }
 
-                uutTracker.update(foregroundPkg, screenOn);
-                int uut = uutTracker.getUUT();
+                try {
+                    if (activityCollector != null && activityCollector.isAvailable()) {
+                        JSONObject data = activityCollector.collectData();
+                        if (data != null) snapshot.put("user_activity", data);
+                    }
+                } catch (Exception e) { Log.w(TAG, "activity collect failed", e); }
 
-                mainHandler.post(() -> updateMoodFromUUT(uut));
+                try {
+                    if (calendarCollector != null && calendarCollector.isAvailable()) {
+                        JSONObject data = calendarCollector.collectData();
+                        if (data != null) snapshot.put("calendar", data);
+                    }
+                } catch (Exception e) { Log.w(TAG, "calendar collect failed", e); }
+
+                try {
+                    if (weatherCollector != null && weatherCollector.isAvailable()) {
+                        JSONObject data = weatherCollector.collectData();
+                        if (data != null) snapshot.put("weather", data);
+                    }
+                } catch (Exception e) { Log.w(TAG, "weather collect failed", e); }
+
+                try {
+                    if (locationCollector != null && locationCollector.isAvailable()) {
+                        JSONObject data = locationCollector.collectData();
+                        if (data != null) snapshot.put("location", data);
+                    }
+                } catch (Exception e) { Log.w(TAG, "location collect failed", e); }
+
+                try {
+                    if (wifiCollector != null && wifiCollector.isAvailable()) {
+                        JSONObject data = wifiCollector.collectData();
+                        if (data != null) snapshot.put("wifi_info", data);
+                    }
+                } catch (Exception e) { Log.w(TAG, "wifi collect failed", e); }
+
+                try {
+                    if (bluetoothCollector != null && bluetoothCollector.isAvailable()) {
+                        JSONObject data = bluetoothCollector.collectData();
+                        if (data != null) snapshot.put("bluetooth_devices", data);
+                    }
+                } catch (Exception e) { Log.w(TAG, "bluetooth collect failed", e); }
+
+                int score = llmScoringEngine.assess(snapshot);
+                mainHandler.post(() -> updateMoodFromLLMScore(score));
 
             } catch (Exception e) {
-                Log.e(TAG, "Error refreshing UUT", e);
+                Log.e(TAG, "Error in LLM scoring refresh", e);
             }
         }).start();
     }
@@ -598,21 +639,21 @@ public class FloatingOverlayService extends Service {
         return pm.isInteractive();
     }
 
-    private void updateMoodFromUUT(int uut) {
-        // 多维度评分引擎：综合全天时长、娱乐占比、会话强度、目标达成度
-        float stress = moodScoreEngine.computeStress(uut, screenUsageCollector);
+    private void updateMoodFromLLMScore(int score) {
+        // LLM score (0-100) → stress (0.0-1.0) for MoodFaceView
+        float stress = score / 100f;
         if (moodFace != null) {
             moodFace.setStress(stress);
         }
         Log.d(TAG, "Mood updated: stress=" + String.format("%.3f", stress)
-                + " (UUT=" + uut + ")");
+                + " (LLM score=" + score + ")");
     }
 
     /**
-     * 获取 MoodScoreEngine 实例（供外部调试面板读取各维度分数）。
+     * 获取 LLMScoringEngine 实例（供外部调试面板读取分数和理由）。
      */
-    public MoodScoreEngine getMoodScoreEngine() {
-        return moodScoreEngine;
+    public LLMScoringEngine getLLMScoringEngine() {
+        return llmScoringEngine;
     }
 
     @Override

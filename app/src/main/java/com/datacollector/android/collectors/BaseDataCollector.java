@@ -15,6 +15,11 @@ import org.json.JSONObject;
  * @param <T> 收集的数据类型
  */
 public abstract class BaseDataCollector<T> implements DataCollector<T> {
+
+    /**
+     * 采集权重分级：LIGHT 轻量（高频）、HEAVY 重量（低频）。
+     */
+    public enum CollectionWeight { LIGHT, HEAVY }
     
     protected final String TAG;
     protected final Context context;
@@ -199,4 +204,12 @@ public abstract class BaseDataCollector<T> implements DataCollector<T> {
     public boolean isCollecting() {
         return isCollecting;
     }
-} 
+
+    /**
+     * 返回采集权重。子类可重写以声明为 LIGHT（轻量高频采集）。
+     * 默认 HEAVY（重量低频采集）。
+     */
+    public CollectionWeight getWeight() {
+        return CollectionWeight.HEAVY;
+    }
+}

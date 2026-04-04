@@ -50,6 +50,9 @@ public class ActivityRecognitionCollector extends BaseDataCollector<JSONObject> 
     }
 
     @Override
+    public CollectionWeight getWeight() { return CollectionWeight.LIGHT; }
+
+    @Override
     public boolean isAvailable() {
         if (!isEnabled()) {
             return false;
