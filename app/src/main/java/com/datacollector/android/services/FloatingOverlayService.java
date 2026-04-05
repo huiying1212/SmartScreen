@@ -40,6 +40,7 @@ import com.datacollector.android.processing.ContextSnapshotCollector;
 import com.datacollector.android.utils.AppForegroundTracker;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.processing.LLMScoringEngine;
+import com.datacollector.android.utils.UserInteractionLogger;
 import com.datacollector.android.views.MoodFaceView;
 import com.datacollector.android.views.SpeechBubbleDrawable;
 
@@ -72,6 +73,7 @@ public class FloatingOverlayService extends Service {
 
     private Handler mainHandler;
     private CollectionConfig config;
+    private UserInteractionLogger logger;
 
     // ── 中层处理组件 ──
     private ContextSnapshotCollector snapshotCollector;
@@ -117,6 +119,7 @@ public class FloatingOverlayService extends Service {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         mainHandler = new Handler(Looper.getMainLooper());
         config = CollectionConfig.getInstance(this);
+        logger = UserInteractionLogger.get(this);
 
         // 初始化采集器实例（底层）
         ScreenUsageCollector screenUsageCollector = new ScreenUsageCollector(this);
@@ -265,6 +268,7 @@ public class FloatingOverlayService extends Service {
     private void onOverlayClicked() {
         if (isBubbleShowing || isGeneratingBubble) return;
         isGeneratingBubble = true;
+        logger.log("overlay_click");
 
         showBubble("思考中...", false);
 
@@ -284,6 +288,8 @@ public class FloatingOverlayService extends Service {
                 final String displayText = (text != null && !text.isEmpty()) ? text : "注意休息一下吧";
                 mainHandler.post(() -> {
                     updateBubbleText(displayText);
+                    logger.log("bubble_show", "score", uutValue,
+                            "text_length", displayText.length());
                 });
 
                 // Notify MainActivity to sync the reminder text
@@ -503,6 +509,7 @@ public class FloatingOverlayService extends Service {
         if (moodFace != null) {
             moodFace.setStress(stress);
         }
+        logger.log("llm_score_update", "score", score, "stress", stress);
         Log.d(TAG, "Mood updated: stress=" + String.format("%.3f", stress)
                 + " (LLM score=" + score + ")");
     }

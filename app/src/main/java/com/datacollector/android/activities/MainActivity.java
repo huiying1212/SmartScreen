@@ -1,6 +1,7 @@
 package com.datacollector.android.activities;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -14,6 +15,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
 
@@ -28,6 +30,8 @@ import com.datacollector.android.processing.ContextSnapshotCollector;
 import com.datacollector.android.services.DataCollectionService;
 import com.datacollector.android.services.FloatingOverlayService;
 import com.datacollector.android.utils.CollectionConfig;
+import com.datacollector.android.utils.ExperimentDataUploader;
+import com.datacollector.android.utils.UserInteractionLogger;
 import com.datacollector.android.processing.LLMScoringEngine;
 
 import org.json.JSONArray;
@@ -44,6 +48,7 @@ public class MainActivity extends Activity {
     private DeepSeekApiClient deepSeekClient;
     private LLMScoringEngine llmScoringEngine;
     private Handler uiHandler;
+    private UserInteractionLogger logger;
 
     // ── 中层处理组件 ──
     private ContextSnapshotCollector snapshotCollector;
@@ -93,6 +98,15 @@ public class MainActivity extends Activity {
         deepSeekClient = new DeepSeekApiClient(getApplicationContext());
         llmScoringEngine = new LLMScoringEngine(getApplicationContext(), deepSeekClient);
         uiHandler = new Handler(Looper.getMainLooper());
+        logger = UserInteractionLogger.get(this);
+
+        logger.log("app_open");
+
+        // 首次启动时弹出参与者 ID 输入框
+        ensureParticipantId();
+
+        // 启动实验数据上报器
+        ExperimentDataUploader.get(this).start();
 
         // 初始化采集器和中层快照构建器
         ScreenUsageCollector screenUsageCollector = new ScreenUsageCollector(getApplicationContext());
@@ -124,16 +138,20 @@ public class MainActivity extends Activity {
     private void setupModule1() {
         switchOverlay.setOnCheckedChangeListener((btn, checked) -> {
             config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, checked);
+            logger.log("toggle_overlay", "enabled", checked);
             if (checked) startOverlayService(); else stopOverlayService();
         });
 
-        switchWallpaper.setOnCheckedChangeListener((btn, checked) ->
-                config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, checked));
+        switchWallpaper.setOnCheckedChangeListener((btn, checked) -> {
+                config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, checked);
+                logger.log("toggle_wallpaper", "enabled", checked);
+        });
     }
 
     private void autoGenerateReminder() {
         tvReminderStatus.setText("生成中...");
         tvReminderResult.setText("");
+        logger.log("reminder_generate_start");
 
         new Thread(() -> {
             try {
@@ -146,12 +164,15 @@ public class MainActivity extends Activity {
                 uiHandler.post(() -> {
                     tvReminderStatus.setVisibility(android.view.View.GONE);
                     tvReminderResult.setText(text != null ? text : "");
+                    logger.log("reminder_generate_done", "score", score,
+                            "text_length", text != null ? text.length() : 0);
                 });
             } catch (Exception e) {
                 uiHandler.post(() -> {
                     tvReminderStatus.setText("生成失败");
                     tvReminderResult.setText(e.getMessage());
                     tvReminderResult.setTextColor(0xFFFF5252);
+                    logger.log("reminder_generate_error", "error", e.getMessage());
                 });
             }
         }).start();
@@ -197,11 +218,15 @@ public class MainActivity extends Activity {
     // ══════ Navigation ══════
 
     private void setupNavigation() {
-        findViewById(R.id.nav_personal_settings).setOnClickListener(v ->
-                startActivity(new Intent(this, PersonalSettingsActivity.class)));
+        findViewById(R.id.nav_personal_settings).setOnClickListener(v -> {
+                logger.log("nav_personal_settings");
+                startActivity(new Intent(this, PersonalSettingsActivity.class));
+        });
 
-        findViewById(R.id.nav_system_settings).setOnClickListener(v ->
-                startActivity(new Intent(this, SystemSettingsActivity.class)));
+        findViewById(R.id.nav_system_settings).setOnClickListener(v -> {
+                logger.log("nav_system_settings");
+                startActivity(new Intent(this, SystemSettingsActivity.class));
+        });
     }
 
     // ── Load saved state ────────────────────────────────────────
@@ -243,6 +268,35 @@ public class MainActivity extends Activity {
     private void bindDataCollectionService() {
         Intent intent = new Intent(this, DataCollectionService.class);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    // ── 参与者 ID ────────────────────────────────────────────────
+
+    private void ensureParticipantId() {
+        String pid = config.getString(CollectionConfig.KEY_PARTICIPANT_ID, "");
+        if (!pid.isEmpty()) return; // 已设置过
+
+        EditText input = new EditText(this);
+        input.setHint("例如: P01");
+        input.setSingleLine(true);
+
+        new AlertDialog.Builder(this)
+                .setTitle("欢迎参与 RI4SU 用户实验")
+                .setMessage("请输入研究人员分配给你的参与者编号：")
+                .setView(input)
+                .setCancelable(false)
+                .setPositiveButton("确认", (dialog, which) -> {
+                    String id = input.getText().toString().trim();
+                    if (id.isEmpty()) {
+                        // 自动生成一个随机 ID
+                        id = "U" + System.currentTimeMillis() % 100000;
+                    }
+                    config.setString(CollectionConfig.KEY_PARTICIPANT_ID, id);
+                    logger.log("participant_registered", "participant_id", id);
+                    // 注册后立即触发一次上传
+                    ExperimentDataUploader.get(this).uploadNow();
+                })
+                .show();
     }
 
     // ── Lifecycle ───────────────────────────────────────────────

@@ -31,6 +31,7 @@ import com.datacollector.android.collectors.ScreenUsageCollector;
 import com.datacollector.android.managers.WallpaperGenerationManager;
 import com.datacollector.android.services.DataCollectionService;
 import com.datacollector.android.utils.CollectionConfig;
+import com.datacollector.android.utils.UserInteractionLogger;
 import com.datacollector.android.processing.LLMScoringEngine;
 
 import org.json.JSONObject;
@@ -52,6 +53,7 @@ public class SystemSettingsActivity extends Activity {
     private static final int REQUEST_USAGE_STATS = 1002;
 
     private CollectionConfig config;
+    private UserInteractionLogger logger;
     private WallpaperGenerationManager wallpaperManager;
     private ScreenUsageCollector screenUsageCollector;
     private DeepSeekApiClient deepSeekClient;
@@ -94,6 +96,8 @@ public class SystemSettingsActivity extends Activity {
         setContentView(R.layout.activity_system_settings);
 
         config = CollectionConfig.getInstance(this);
+        logger = UserInteractionLogger.get(this);
+        logger.log("system_settings_open");
         wallpaperManager = new WallpaperGenerationManager(getApplicationContext());
         screenUsageCollector = new ScreenUsageCollector(getApplicationContext());
         deepSeekClient = new DeepSeekApiClient(getApplicationContext());

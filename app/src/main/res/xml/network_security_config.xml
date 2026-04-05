@@ -11,4 +11,9 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+
+    <!-- 实验数据服务器：允许 HTTP 明文 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">47.95.200.45</domain>
+    </domain-config>
 </network-security-config>
