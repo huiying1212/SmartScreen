@@ -25,3 +25,9 @@ figures/
 
 # Claude Code
 .claude/worktrees/
+
+# Draw.io temp files
+*.dtmp
+
+# Build logs
+build_output.txt

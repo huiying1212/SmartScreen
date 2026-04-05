@@ -501,10 +501,12 @@ public class DataAggregator {
             byte[] decrypted = dataEncryptor.decryptBytes(encryptedBytes);
             if (decrypted == null) return null;
 
-            boolean compressionEnabled = config.getBoolean(
-                    CollectionConfig.KEY_DATA_COMPRESSION, true);
-            if (compressionEnabled) {
+            // 尝试 gzip 解压；如果数据不是 gzip 格式则直接当作明文使用。
+            // 这样无论写入时压缩开关是什么状态，读取都能正确处理。
+            try {
                 decrypted = decompressGzip(decrypted);
+            } catch (IOException ignored) {
+                // 非 gzip 格式，使用原始解密数据
             }
             return new String(decrypted, "UTF-8");
         } catch (Exception e) {

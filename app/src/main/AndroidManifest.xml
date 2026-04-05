@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.datacollector.android">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 网络 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- 存储 -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- 存储（Android 13+ 使用 Scoped Storage，不再需要） -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
     <!-- 前台服务 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -54,9 +53,6 @@
     <!-- 壁纸 -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
-    <!-- 开机启动 -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -89,14 +85,6 @@
             android:exported="false"
             android:label="系统设置"
             android:parentActivityName=".activities.MainActivity" />
-
-        <!-- 表情导出（论文插图用，已完成，注释掉）
-        <activity
-            android:name=".activities.FaceExportActivity"
-            android:exported="true"
-            android:label="表情等级导出"
-            android:theme="@style/Theme.MaterialComponents.Light.NoActionBar" />
-        -->
 
         <!-- 数据收集服务 -->
         <service

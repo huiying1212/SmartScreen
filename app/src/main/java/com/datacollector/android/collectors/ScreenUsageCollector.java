@@ -58,7 +58,7 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
             configuration.put("top_apps_count", DEFAULT_TOP_APPS);
             configuration.put("include_system_apps", false);
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, "Failed to build configuration", e);
         }
     }
 
@@ -218,7 +218,7 @@ public class ScreenUsageCollector extends BaseDataCollector<JSONObject> {
                 out.put(app);
                 count++;
             } catch (JSONException e) {
-                e.printStackTrace();
+                Log.w(TAG, "Failed to build app usage entry", e);
             }
         }
         return out;

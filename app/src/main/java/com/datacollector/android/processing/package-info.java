@@ -14,7 +14,6 @@
  *   │  LocationContextInferrer — 位置场景推断               │
  *   │  DataPersistenceManager  — 数据持久化                 │
  *   │  LLMScoringEngine        — LLM 评分引擎              │
- *   │  MoodScoreEngine         — 多维度心情评分             │
  *   │  DataAggregator          — 时间窗口数据聚合           │
  *   │  DataSanitizer           — PII 脱敏                  │
  *   ├─────────────────────────────────────────────────────┤

@@ -32,9 +32,6 @@
     <dimen name="input_radius">14dp</dimen>
     <dimen name="input_padding">16dp</dimen>
 
-    <!-- Chip -->
-    <dimen name="chip_radius">20dp</dimen>
-
     <!-- Section indicator -->
     <dimen name="section_indicator_width">3dp</dimen>
     <dimen name="section_indicator_height">18dp</dimen>
@@ -42,8 +39,4 @@
 
     <!-- Time slot -->
     <dimen name="time_slot_radius">14dp</dimen>
-
-    <!-- Score bar -->
-    <dimen name="score_bar_height">8dp</dimen>
-    <dimen name="score_bar_radius">4dp</dimen>
 </resources>

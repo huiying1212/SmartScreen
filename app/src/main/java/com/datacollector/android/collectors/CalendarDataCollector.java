@@ -49,7 +49,7 @@ public class CalendarDataCollector extends BaseDataCollector<JSONObject> {
             configuration.put("max_events", DEFAULT_MAX_EVENTS);
             configuration.put("include_attendees", false);
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(COLLECTOR_ID, "Failed to build configuration", e);
         }
     }
 
@@ -130,7 +130,7 @@ public class CalendarDataCollector extends BaseDataCollector<JSONObject> {
                             + " visible=" + (cursor.getInt(5) == 1));
                     out.put(cal);
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    Log.w(TAG, "Failed to parse calendar entry", e);
                 }
             }
         } catch (SecurityException e) {
@@ -272,11 +272,11 @@ public class CalendarDataCollector extends BaseDataCollector<JSONObject> {
                     attendee.put("status", decodeAttendeeStatus(cursor.getInt(2)));
                     attendees.put(attendee);
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    Log.w(TAG, "Failed to parse attendee", e);
                 }
             }
         } catch (SecurityException e) {
-            e.printStackTrace();
+            Log.e(TAG, "collectAttendees SecurityException", e);
         }
         return attendees;
     }

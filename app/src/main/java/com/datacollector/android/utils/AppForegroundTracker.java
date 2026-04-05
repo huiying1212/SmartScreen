@@ -14,9 +14,7 @@ import android.util.Log;
  *   - FloatingOverlayService 每 30 秒轮询一次 ScreenUsageCollector，
  *     把结果写入本 Tracker（update）；
  *   - ScreenUsageCollector 在 doCollectData 时优先读本 Tracker 的缓存，
- *     得不到再 fallback 到 UsageEvents 扫描；
- *   - UnconsciousUsageTracker 也从本 Tracker 取 currentPackage，
- *     不再自己维护一份副本。
+ *     得不到再 fallback 到 UsageEvents 扫描。
  *
  * 时间精度：与 FloatingOverlayService 轮询间隔（默认 30 秒）相同。
  */

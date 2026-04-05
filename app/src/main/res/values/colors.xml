@@ -6,14 +6,8 @@
     <color name="white">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
 
-    <!-- 主题色 -->
-    <color name="theme_accent">#FFC3C2F2</color>
-    <color name="theme_accent_tint">#20C3C2F2</color>
-
     <!-- 全局背景色 - 浅薰衣草色系 -->
     <color name="launcher_background">#FFF3F2FB</color>
-    <color name="launcher_top_bar">#FFF3F2FB</color>
-    <color name="launcher_bottom_bar">#FFFFFFFF</color>
 
     <!-- 文字颜色 -->
     <color name="launcher_text_primary">#FF2E2C50</color>
@@ -22,20 +16,6 @@
     <!-- 卡片颜色 -->
     <color name="launcher_button_bg">#FFFFFFFF</color>
     <color name="launcher_button_pressed">#FFECEAF7</color>
-    <color name="app_item_bg">#00000000</color>
-    <color name="app_item_pressed">#1AC3C2F2</color>
-
-    <!-- 退出按钮 -->
-    <color name="launcher_exit_bg">#FFDC6B6B</color>
-    <color name="launcher_exit_pressed">#FFE88888</color>
-    <color name="launcher_exit_text">#FFFFFFFF</color>
-
-    <!-- 卡片与控件 -->
-    <color name="launcher_deepseek_bg">#FFEAE9F6</color>
-    <color name="launcher_widgets_bg">#FFECEAF7</color>
-    <color name="launcher_widget_item_bg">#FFFFFFFF</color>
-    <color name="launcher_small_button_bg">#FFECEAF7</color>
-    <color name="launcher_small_exit_bg">#FFDC6B6B</color>
 
     <!-- 分割线 -->
     <color name="divider">#FFE8E7F2</color>
@@ -53,17 +33,6 @@
     <color name="input_stroke">#FFE4E3F0</color>
     <color name="input_hint">#FFA8A6C8</color>
 
-    <!-- 卡片阴影 -->
-    <color name="card_shadow">#0D9594C4</color>
-
     <!-- 时间卡片 -->
     <color name="time_slot_bg">#FFF0EFFA</color>
-
-    <!-- 成功/警告 -->
-    <color name="score_good">#FF66BB6A</color>
-    <color name="score_warn">#FFFFA726</color>
-    <color name="score_bad">#FFEF5350</color>
-
-    <!-- 标签 -->
-    <color name="tag_bg">#14C3C2F2</color>
 </resources>

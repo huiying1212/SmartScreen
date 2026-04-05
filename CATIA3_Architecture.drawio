@@ -1,0 +1,186 @@
+<mxfile host="app.diagrams.net" modified="2026-04-05" agent="draw.io" version="24.0.0" type="device">
+  <diagram id="catia3-arch" name="系统架构图">
+    <mxGraphModel dx="1322" dy="860" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="880" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ========== 标题 ========== -->
+        <mxCell id="title" value="基于上下文感知的手机使用行为反思干预系统架构" style="text;html=1;fontSize=18;fontStyle=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Microsoft YaHei;" vertex="1" parent="1">
+          <mxGeometry x="150" y="15" width="900" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ========== 第三层：应用交互层 (顶部) ========== -->
+        <mxCell id="layer3_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;arcSize=6;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="60" y="70" width="1080" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="layer3_label" value="应用交互层" style="text;html=1;fontSize=14;fontStyle=1;align=left;verticalAlign=top;fontFamily=Microsoft YaHei;fontColor=#1a3a6b;" vertex="1" parent="1">
+          <mxGeometry x="80" y="78" width="110" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- 实时性反思 分组 -->
+        <mxCell id="realtime_group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;strokeWidth=1.5;arcSize=8;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="112" width="500" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="realtime_title" value="实时性反思" style="text;html=1;fontSize=13;fontStyle=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontColor=#1a3a6b;" vertex="1" parent="1">
+          <mxGeometry x="270" y="116" width="110" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="overlay_svc" value="悬浮窗服务&#xa;FloatingOverlayService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4a86c8;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="100" y="148" width="150" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="mood_face" value="情绪面部动画&#xa;MoodFaceView" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4a86c8;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="268" y="148" width="140" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="bubble" value="气泡反思提示&#xa;SpeechBubbleDrawable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4a86c8;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="425" y="148" width="140" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="realtime_desc" value="~30s 周期采集上下文，本地压力评分驱动面部动画，LLM 生成反思文本" style="text;html=1;fontSize=9;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontColor=#555555;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="100" y="205" width="460" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- 阶段性反思 分组 -->
+        <mxCell id="periodic_group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;strokeWidth=1.5;arcSize=8;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="610" y="112" width="510" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="periodic_title" value="阶段性反思" style="text;html=1;fontSize=13;fontStyle=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontColor=#1a3a6b;" vertex="1" parent="1">
+          <mxGeometry x="810" y="116" width="110" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="wallpaper_mgr" value="壁纸生成管理&#xa;WallpaperGenerationManager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4a86c8;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="625" y="148" width="170" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="deepseek_kw" value="LLM 关键词提取&#xa;DeepSeek API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4a86c8;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="810" y="148" width="140" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="qwen_img" value="文生图&#xa;Qwen Image API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4a86c8;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="965" y="148" width="140" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="periodic_desc" value="每日定时聚合数据，LLM 提取关键词，生成反思壁纸自动设为手机壁纸" style="text;html=1;fontSize=9;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontColor=#555555;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="625" y="205" width="480" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- 交互层内部箭头 -->
+        <mxCell id="e_ov_mf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#6c8ebf;" edge="1" source="overlay_svc" target="mood_face" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_mf_bb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#6c8ebf;" edge="1" source="mood_face" target="bubble" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_wm_dk" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#6c8ebf;" edge="1" source="wallpaper_mgr" target="deepseek_kw" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dk_qw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#6c8ebf;" edge="1" source="deepseek_kw" target="qwen_img" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ========== 第二层：数据处理层 (中间) ========== -->
+        <mxCell id="layer2_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;arcSize=6;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="60" y="330" width="1080" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="layer2_label" value="数据处理层" style="text;html=1;fontSize=14;fontStyle=1;align=left;verticalAlign=top;fontFamily=Microsoft YaHei;fontColor=#2d6b2d;" vertex="1" parent="1">
+          <mxGeometry x="80" y="338" width="110" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="snapshot" value="上下文快照构建&#xa;ContextSnapshotCollector" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#5ba85b;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="380" width="175" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="mood_engine" value="本地压力评分&#xa;MoodScoreEngine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#5ba85b;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="275" y="380" width="155" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="llm_score" value="LLM 增量评分&#xa;LLMScoringEngine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#5ba85b;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="450" y="380" width="155" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="loc_infer" value="位置语境推断&#xa;LocationContextInferrer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#5ba85b;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="625" y="380" width="165" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="uut" value="无意识使用追踪&#xa;UnconsciousUsageTracker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#5ba85b;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="810" y="380" width="170" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="aggregator" value="数据聚合与持久化&#xa;DataAggregator / Persistence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#5ba85b;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="380" width="125" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- 层间连接箭头 (处理层 → 交互层) -->
+        <mxCell id="e_up_rt" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#82b366;strokeWidth=2;endArrow=blockThin;endFill=1;exitX=0.3;exitY=0;exitDx=0;exitDy=0;entryX=0.3;entryY=1;entryDx=0;entryDy=0;" edge="1" source="layer2_bg" target="layer3_bg" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_up_rt_label" value="压力值 / 反思文本" style="edgeLabel;html=1;fontSize=10;fontFamily=Microsoft YaHei;fontColor=#555555;" vertex="1" connectable="0" parent="e_up_rt">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="-80" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e_up_pd" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#82b366;strokeWidth=2;endArrow=blockThin;endFill=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;" edge="1" source="layer2_bg" target="layer3_bg" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_up_pd_label" value="聚合数据 / 关键词" style="edgeLabel;html=1;fontSize=10;fontFamily=Microsoft YaHei;fontColor=#555555;" vertex="1" connectable="0" parent="e_up_pd">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="80" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ========== 第一层：数据采集层 (底部) ========== -->
+        <mxCell id="layer1_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;arcSize=6;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="60" y="530" width="1080" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="layer1_label" value="数据采集层" style="text;html=1;fontSize=14;fontStyle=1;align=left;verticalAlign=top;fontFamily=Microsoft YaHei;fontColor=#8c6d1f;" vertex="1" parent="1">
+          <mxGeometry x="80" y="538" width="110" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- 7 个采集器 — 紧凑排列，无详细说明 -->
+        <mxCell id="c_screen" value="📱 屏幕使用采集" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6a817;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="580" width="130" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="c_location" value="📍 位置数据采集" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6a817;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="225" y="580" width="130" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="c_activity" value="🏃 体力活动识别" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6a817;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="370" y="580" width="130" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="c_calendar" value="📅 日历事件采集" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6a817;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="515" y="580" width="130" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="c_weather" value="🌤️ 天气数据采集" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6a817;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="660" y="580" width="130" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="c_wifi" value="📶 WiFi 信息采集" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6a817;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="805" y="580" width="130" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="c_bt" value="🔵 蓝牙设备采集" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6a817;fontColor=#ffffff;strokeColor=none;fontSize=11;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="950" y="580" width="130" height="42" as="geometry" />
+        </mxCell>
+
+        <!-- 采集层 → 处理层 箭头 -->
+        <mxCell id="e_up_l1l2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#d6b656;strokeWidth=2;endArrow=blockThin;endFill=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" source="layer1_bg" target="layer2_bg" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_up_l1l2_label" value="原始上下文数据" style="edgeLabel;html=1;fontSize=10;fontFamily=Microsoft YaHei;fontColor=#555555;" vertex="1" connectable="0" parent="e_up_l1l2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="80" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 右侧外部服务 -->
+        <mxCell id="ext_api_box" value="外部服务" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;arcSize=10;fontSize=12;fontStyle=1;fontFamily=Microsoft YaHei;fontColor=#b85450;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="150" width="120" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_deepseek" value="DeepSeek&#xa;Chat API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e07060;fontColor=#ffffff;strokeColor=none;fontSize=10;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="185" width="100" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_qwen" value="Qwen&#xa;Image API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e07060;fontColor=#ffffff;strokeColor=none;fontSize=10;fontFamily=Microsoft YaHei;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="245" width="100" height="42" as="geometry" />
+        </mxCell>
+
+        <!-- 外部服务连接线 -->
+        <mxCell id="e_ext_ds" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#b85450;strokeWidth=1;dashed=1;endArrow=blockThin;endFill=1;" edge="1" source="deepseek_kw" target="ext_deepseek" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ext_qw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#b85450;strokeWidth=1;dashed=1;endArrow=blockThin;endFill=1;" edge="1" source="qwen_img" target="ext_qwen" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

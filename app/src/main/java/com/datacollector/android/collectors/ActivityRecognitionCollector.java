@@ -5,6 +5,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.util.Log;
 
 import com.datacollector.android.recognition.ActivityRecognizer;
 import com.datacollector.android.utils.CollectionConfig;
@@ -45,7 +46,7 @@ public class ActivityRecognitionCollector extends BaseDataCollector<JSONObject> 
             configuration.put("use_accelerometer", true);
             configuration.put("classifier", "decision_tree");
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, "Failed to build configuration", e);
         }
     }
 
@@ -104,7 +105,7 @@ public class ActivityRecognitionCollector extends BaseDataCollector<JSONObject> 
                 sensorStatus.put("accelerometer_available", accelerometer != null);
                 activityInfo.put("sensor_status", sensorStatus);
             } catch (JSONException e) {
-                e.printStackTrace();
+                Log.w(TAG, "Failed to build sensor status", e);
             }
         }
 

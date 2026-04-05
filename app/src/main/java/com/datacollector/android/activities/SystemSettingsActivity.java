@@ -94,10 +94,10 @@ public class SystemSettingsActivity extends Activity {
         setContentView(R.layout.activity_system_settings);
 
         config = CollectionConfig.getInstance(this);
-        wallpaperManager = new WallpaperGenerationManager(this);
-        screenUsageCollector = new ScreenUsageCollector(this);
-        deepSeekClient = new DeepSeekApiClient(this);
-        llmScoringEngine = new LLMScoringEngine(this, deepSeekClient);
+        wallpaperManager = new WallpaperGenerationManager(getApplicationContext());
+        screenUsageCollector = new ScreenUsageCollector(getApplicationContext());
+        deepSeekClient = new DeepSeekApiClient(getApplicationContext());
+        llmScoringEngine = new LLMScoringEngine(getApplicationContext(), deepSeekClient);
         uiHandler = new Handler(Looper.getMainLooper());
 
         initViews();
@@ -255,7 +255,9 @@ public class SystemSettingsActivity extends Activity {
                         snapshot.put("foreground_app_package",
                                 screenData.optString("foreground_app_package", "unknown"));
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    Log.w("SystemSettings", "Screen usage collection failed", e);
+                }
 
                 // 1) LLM 评分
                 int oldScore = llmScoringEngine.getScore();

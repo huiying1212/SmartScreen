@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 
@@ -78,7 +79,7 @@ public class BluetoothDataCollector extends BaseDataCollector<JSONObject> {
                         }
                     }
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    Log.w(TAG, "Failed to parse BT device", e);
                 }
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 // 扫描结束，不再自动重启，等下一个采集周期的 doStartCollection
@@ -190,7 +191,7 @@ public class BluetoothDataCollector extends BaseDataCollector<JSONObject> {
             return result;
 
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, "Failed to build BT data", e);
             return null;
         }
     }

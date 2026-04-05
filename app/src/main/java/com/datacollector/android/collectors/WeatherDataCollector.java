@@ -74,7 +74,7 @@ public class WeatherDataCollector extends BaseDataCollector<JSONObject> {
             configuration.put("cache_duration_ms",
                     config.getLong(CollectionConfig.KEY_WEATHER_CACHE_DURATION_MS, 30 * 60_000L));
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w("WeatherCollector", "Failed to build configuration", e);
         }
     }
 

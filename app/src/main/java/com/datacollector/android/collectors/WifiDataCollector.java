@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 
@@ -82,7 +83,7 @@ public class WifiDataCollector extends BaseDataCollector<JSONObject> {
             return result;
 
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w("WifiCollector", "Failed to build WiFi data", e);
             return null;
         }
     }

@@ -58,7 +58,7 @@ public class LocationDataCollector extends BaseDataCollector<JSONObject> impleme
                     config.getFloat(CollectionConfig.KEY_LOCATION_MIN_DISTANCE, 10f));
             configuration.put("provider", LocationManager.GPS_PROVIDER);
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, "Failed to build configuration", e);
         }
     }
     
@@ -103,7 +103,7 @@ public class LocationDataCollector extends BaseDataCollector<JSONObject> impleme
                 locationManager.requestLocationUpdates(altProvider, updateInterval, minDistance, this);
             }
         } catch (SecurityException e) {
-            e.printStackTrace();
+            Log.e(TAG, "SecurityException requesting location updates", e);
         }
     }
     
@@ -123,7 +123,7 @@ public class LocationDataCollector extends BaseDataCollector<JSONObject> impleme
             try {
                 locationManager.removeUpdates(this);
             } catch (SecurityException e) {
-                e.printStackTrace();
+                Log.e(TAG, "SecurityException removing location updates", e);
             }
         }
     }
@@ -165,7 +165,7 @@ public class LocationDataCollector extends BaseDataCollector<JSONObject> impleme
 
             return locationData;
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.w(TAG, "Failed to build location data", e);
             return null;
         }
     }

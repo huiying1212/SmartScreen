@@ -22,7 +22,7 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
-        multiDexEnabled true
+        multiDexEnabled false
 
         // Inject API keys via BuildConfig - keys live in local.properties, not source code
         buildConfigField "String", "DEEPSEEK_API_KEY", "\"${localProperties.getProperty('DEEPSEEK_API_KEY', '')}\""
@@ -51,9 +51,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.8.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.core:core:1.12.0'
-    implementation 'org.json:json:20230227'
     
-    // 添加网络请求相关依赖
+    // 网络请求
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
     

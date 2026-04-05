@@ -117,10 +117,6 @@ public class DataCollectionService extends Service implements DataCollectorManag
     public int onStartCommand(Intent intent, int flags, int startId) {
         startForegroundService();
 
-        if (wakeLock == null || !wakeLock.isHeld()) {
-            acquireWakeLock();
-        }
-
         if (intent != null && intent.hasExtra("action")) {
             String action = intent.getStringExtra("action");
             if ("trigger_collection".equals(action)) {
@@ -385,7 +381,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         if (pm != null) {
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RI4SU::DataCollectionWakeLock");
-            wakeLock.acquire(10 * 60 * 1000L);
+            wakeLock.acquire(); // 前台 Service 生命周期内持有，onDestroy 中释放
         }
     }
 

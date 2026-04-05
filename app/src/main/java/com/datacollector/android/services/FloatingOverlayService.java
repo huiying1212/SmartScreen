@@ -79,7 +79,7 @@ public class FloatingOverlayService extends Service {
     private DeepSeekApiClient deepSeekClient;
 
     private boolean isBubbleShowing = false;
-    private boolean isGeneratingBubble = false;
+    private volatile boolean isGeneratingBubble = false;
     private Runnable periodicUpdateRunnable = null;
 
     private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {

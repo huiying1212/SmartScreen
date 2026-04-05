@@ -1,11 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RI4SU</string>
-    <string name="permission_required">需要权限</string>
-    <string name="location_permission">位置权限用于推断使用场景</string>
-    <string name="calendar_permission">日历权限用于提供反思上下文</string>
-    <string name="storage_permission">存储权限用于保存反思数据</string>
-    <string name="accessibility_service_description">屏幕内容感知服务</string>
-    <string name="data_collection_started">RI4SU 监测已启动</string>
-    <string name="data_collection_stopped">RI4SU 监测已停止</string>
 </resources> 

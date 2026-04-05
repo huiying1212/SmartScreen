@@ -90,15 +90,15 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main_setup);
 
         config = CollectionConfig.getInstance(this);
-        deepSeekClient = new DeepSeekApiClient(this);
-        llmScoringEngine = new LLMScoringEngine(this, deepSeekClient);
+        deepSeekClient = new DeepSeekApiClient(getApplicationContext());
+        llmScoringEngine = new LLMScoringEngine(getApplicationContext(), deepSeekClient);
         uiHandler = new Handler(Looper.getMainLooper());
 
         // 初始化采集器和中层快照构建器
-        ScreenUsageCollector screenUsageCollector = new ScreenUsageCollector(this);
-        CalendarDataCollector calendarCollector = new CalendarDataCollector(this);
-        WeatherDataCollector weatherCollector = new WeatherDataCollector(this);
-        snapshotCollector = new ContextSnapshotCollector(this,
+        ScreenUsageCollector screenUsageCollector = new ScreenUsageCollector(getApplicationContext());
+        CalendarDataCollector calendarCollector = new CalendarDataCollector(getApplicationContext());
+        WeatherDataCollector weatherCollector = new WeatherDataCollector(getApplicationContext());
+        snapshotCollector = new ContextSnapshotCollector(getApplicationContext(),
                 screenUsageCollector, calendarCollector, weatherCollector,
                 null, null, null, null);
 

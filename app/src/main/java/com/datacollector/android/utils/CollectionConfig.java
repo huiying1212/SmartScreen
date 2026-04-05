@@ -62,7 +62,6 @@ public class CollectionConfig {
 
     // ── 个人设置 ──────────────────────────────────────────────
     public static final String KEY_WALLPAPER_STYLE = "wallpaper_style";
-    public static final String KEY_SELECTED_ICON_INDEX = "selected_icon_index"; // deprecated
     public static final String KEY_FACE_STYLE = "face_style";
     public static final String KEY_USER_PERSONAL_GOAL = "user_personal_goal";
     public static final String KEY_STRUCTURED_GOALS = "structured_goals";
