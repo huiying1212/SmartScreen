@@ -5,7 +5,7 @@ import android.util.Log;
 
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.CollectionStats;
-import com.datacollector.android.utils.DataSanitizer;
+import com.datacollector.android.processing.DataSanitizer;
 import com.datacollector.android.utils.RetryHelper;
 
 import okhttp3.MediaType;

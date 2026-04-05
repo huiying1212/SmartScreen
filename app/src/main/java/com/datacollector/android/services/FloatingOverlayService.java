@@ -4,7 +4,6 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
-import android.app.usage.UsageStatsManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -24,7 +23,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
-import android.view.animation.Animation;
 import android.widget.TextView;
 
 import androidx.core.app.NotificationCompat;
@@ -38,9 +36,10 @@ import com.datacollector.android.collectors.LocationDataCollector;
 import com.datacollector.android.collectors.ScreenUsageCollector;
 import com.datacollector.android.collectors.WeatherDataCollector;
 import com.datacollector.android.collectors.WifiDataCollector;
+import com.datacollector.android.processing.ContextSnapshotCollector;
 import com.datacollector.android.utils.AppForegroundTracker;
 import com.datacollector.android.utils.CollectionConfig;
-import com.datacollector.android.utils.LLMScoringEngine;
+import com.datacollector.android.processing.LLMScoringEngine;
 import com.datacollector.android.views.MoodFaceView;
 import com.datacollector.android.views.SpeechBubbleDrawable;
 
@@ -49,11 +48,8 @@ import org.json.JSONObject;
 /**
  * 悬浮窗引擎（实时反思 - Real-time Reflection）。
  *
- * 核心功能：
- * 1. 全局悬浮窗展示拟人表情，表情由 UUT 算法驱动
- * 2. 点击后由 LLM 生成提醒气泡（独立悬浮窗，带小尾巴指向图标），8 秒后消失
- * 3. 气泡自动避免遮挡图标和超出屏幕
- * 4. 支持拖动定位
+ * 职责：纯展示层 — 管理悬浮窗 UI、拖动、气泡动画。
+ * 数据采集和 LLM 评分通过 ContextSnapshotCollector + LLMScoringEngine 完成。
  */
 public class FloatingOverlayService extends Service {
 
@@ -75,16 +71,12 @@ public class FloatingOverlayService extends Service {
     private boolean bubbleAdded = false;
 
     private Handler mainHandler;
-    private LLMScoringEngine llmScoringEngine;
-    private ScreenUsageCollector screenUsageCollector;
-    private DeepSeekApiClient deepSeekClient;
-    private CalendarDataCollector calendarCollector;
-    private WeatherDataCollector weatherCollector;
-    private LocationDataCollector locationCollector;
-    private ActivityRecognitionCollector activityCollector;
-    private WifiDataCollector wifiCollector;
-    private BluetoothDataCollector bluetoothCollector;
     private CollectionConfig config;
+
+    // ── 中层处理组件 ──
+    private ContextSnapshotCollector snapshotCollector;
+    private LLMScoringEngine llmScoringEngine;
+    private DeepSeekApiClient deepSeekClient;
 
     private boolean isBubbleShowing = false;
     private boolean isGeneratingBubble = false;
@@ -126,15 +118,21 @@ public class FloatingOverlayService extends Service {
         mainHandler = new Handler(Looper.getMainLooper());
         config = CollectionConfig.getInstance(this);
 
-        screenUsageCollector = new ScreenUsageCollector(this);
+        // 初始化采集器实例（底层）
+        ScreenUsageCollector screenUsageCollector = new ScreenUsageCollector(this);
+        CalendarDataCollector calendarCollector = new CalendarDataCollector(this);
+        WeatherDataCollector weatherCollector = new WeatherDataCollector(this);
+        LocationDataCollector locationCollector = new LocationDataCollector(this);
+        ActivityRecognitionCollector activityCollector = new ActivityRecognitionCollector(this);
+        WifiDataCollector wifiCollector = new WifiDataCollector(this);
+        BluetoothDataCollector bluetoothCollector = new BluetoothDataCollector(this);
+
+        // 初始化中层处理组件
+        snapshotCollector = new ContextSnapshotCollector(this,
+                screenUsageCollector, calendarCollector, weatherCollector,
+                locationCollector, activityCollector, wifiCollector, bluetoothCollector);
         deepSeekClient = new DeepSeekApiClient(this);
         llmScoringEngine = new LLMScoringEngine(this, deepSeekClient);
-        calendarCollector = new CalendarDataCollector(this);
-        weatherCollector = new WeatherDataCollector(this);
-        locationCollector = new LocationDataCollector(this);
-        activityCollector = new ActivityRecognitionCollector(this);
-        wifiCollector = new WifiDataCollector(this);
-        bluetoothCollector = new BluetoothDataCollector(this);
 
         if (Settings.canDrawOverlays(this)) {
             createOverlay();
@@ -272,91 +270,8 @@ public class FloatingOverlayService extends Service {
 
         new Thread(() -> {
             try {
-                // Build a full context snapshot from all available collectors
-                JSONObject snapshot = new JSONObject();
-
-                // Screen usage (authoritative source for foreground app + usage time)
-                try {
-                    JSONObject screenData = screenUsageCollector.collectData();
-                    if (screenData != null) {
-                        snapshot.put("screen_usage", screenData);
-                        // Also put foreground app at top level for easy access
-                        snapshot.put("foreground_app_package",
-                                screenData.optString("foreground_app_package", "unknown"));
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to collect screen usage", e);
-                }
-
-                // Fallback foreground app from UUT tracker
-                if (!snapshot.has("foreground_app_package")
-                        || "unknown".equals(snapshot.optString("foreground_app_package"))) {
-                    String pkg = AppForegroundTracker.getInstance(
-                            FloatingOverlayService.this).getCurrentPackage();
-                    if (pkg != null && !pkg.isEmpty()) {
-                        snapshot.put("foreground_app_package", pkg);
-                    }
-                }
-
-                // Activity recognition
-                try {
-                    if (activityCollector != null && activityCollector.isAvailable()) {
-                        JSONObject data = activityCollector.collectData();
-                        if (data != null) snapshot.put("user_activity", data);
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to collect activity", e);
-                }
-
-                // Calendar
-                try {
-                    if (calendarCollector != null && calendarCollector.isAvailable()) {
-                        JSONObject data = calendarCollector.collectData();
-                        if (data != null) snapshot.put("calendar", data);
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to collect calendar", e);
-                }
-
-                // Weather
-                try {
-                    if (weatherCollector != null && weatherCollector.isAvailable()) {
-                        JSONObject data = weatherCollector.collectData();
-                        if (data != null) snapshot.put("weather", data);
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to collect weather", e);
-                }
-
-                // Location
-                try {
-                    if (locationCollector != null && locationCollector.isAvailable()) {
-                        JSONObject data = locationCollector.collectData();
-                        if (data != null) snapshot.put("location", data);
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to collect location", e);
-                }
-
-                // WiFi
-                try {
-                    if (wifiCollector != null && wifiCollector.isAvailable()) {
-                        JSONObject data = wifiCollector.collectData();
-                        if (data != null) snapshot.put("wifi_info", data);
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to collect wifi", e);
-                }
-
-                // Bluetooth
-                try {
-                    if (bluetoothCollector != null && bluetoothCollector.isAvailable()) {
-                        JSONObject data = bluetoothCollector.collectData();
-                        if (data != null) snapshot.put("bluetooth_devices", data);
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to collect bluetooth", e);
-                }
+                // 通过中层统一快照构建器采集完整上下文
+                JSONObject snapshot = snapshotCollector.collectFullSnapshot();
 
                 int uutValue = llmScoringEngine.getScore();
                 Log.i(TAG, "onOverlayClicked: snapshot keys=" + snapshot.length()
@@ -472,10 +387,6 @@ public class FloatingOverlayService extends Service {
 
     /**
      * Position the bubble window so it appears to "speak" from the icon.
-     * - Prefers placing the bubble above the icon.
-     * - If not enough room above, places it below.
-     * - Horizontally centers on the icon, clamped to screen edges.
-     * - Adjusts the tail position on the SpeechBubbleDrawable to point at the icon center.
      */
     private void positionBubble() {
         if (bubbleView == null || overlayView == null) return;
@@ -568,64 +479,8 @@ public class FloatingOverlayService extends Service {
 
         new Thread(() -> {
             try {
-                boolean screenOn = true;
-                AppForegroundTracker fgTracker = AppForegroundTracker.getInstance(
-                        FloatingOverlayService.this);
-
-                JSONObject snapshot = new JSONObject();
-                snapshot.put("screen_on", screenOn);
-                snapshot.put("timestamp", System.currentTimeMillis());
-
-                if (screenUsageCollector.isAvailable()) {
-                    JSONObject data = screenUsageCollector.collectData();
-                    if (data != null) {
-                        snapshot.put("screen_usage", data);
-                        String pkg = data.optString("foreground_app_package", null);
-                        fgTracker.update(pkg);
-                    }
-                }
-
-                try {
-                    if (activityCollector != null && activityCollector.isAvailable()) {
-                        JSONObject data = activityCollector.collectData();
-                        if (data != null) snapshot.put("user_activity", data);
-                    }
-                } catch (Exception e) { Log.w(TAG, "activity collect failed", e); }
-
-                try {
-                    if (calendarCollector != null && calendarCollector.isAvailable()) {
-                        JSONObject data = calendarCollector.collectData();
-                        if (data != null) snapshot.put("calendar", data);
-                    }
-                } catch (Exception e) { Log.w(TAG, "calendar collect failed", e); }
-
-                try {
-                    if (weatherCollector != null && weatherCollector.isAvailable()) {
-                        JSONObject data = weatherCollector.collectData();
-                        if (data != null) snapshot.put("weather", data);
-                    }
-                } catch (Exception e) { Log.w(TAG, "weather collect failed", e); }
-
-                try {
-                    if (locationCollector != null && locationCollector.isAvailable()) {
-                        JSONObject data = locationCollector.collectData();
-                        if (data != null) snapshot.put("location", data);
-                    }
-                } catch (Exception e) { Log.w(TAG, "location collect failed", e); }
-
-                try {
-                    if (wifiCollector != null && wifiCollector.isAvailable()) {
-                        JSONObject data = wifiCollector.collectData();
-                        if (data != null) snapshot.put("wifi_info", data);
-                    }
-                } catch (Exception e) { Log.w(TAG, "wifi collect failed", e); }
-
-                try {
-                    if (bluetoothCollector != null && bluetoothCollector.isAvailable()) {
-                        JSONObject data = bluetoothCollector.collectData();
-                        if (data != null) snapshot.put("bluetooth_devices", data);
-                    }
-                } catch (Exception e) { Log.w(TAG, "bluetooth collect failed", e); }
+                // 通过中层统一快照构建器采集
+                JSONObject snapshot = snapshotCollector.collectLightSnapshot();
 
                 int score = llmScoringEngine.assess(snapshot);
                 mainHandler.post(() -> updateMoodFromLLMScore(score));

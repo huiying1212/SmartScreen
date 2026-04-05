@@ -31,7 +31,7 @@ import com.datacollector.android.collectors.ScreenUsageCollector;
 import com.datacollector.android.managers.WallpaperGenerationManager;
 import com.datacollector.android.services.DataCollectionService;
 import com.datacollector.android.utils.CollectionConfig;
-import com.datacollector.android.utils.LLMScoringEngine;
+import com.datacollector.android.processing.LLMScoringEngine;
 
 import org.json.JSONObject;
 

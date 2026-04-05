@@ -1,10 +1,11 @@
-package com.datacollector.android.utils;
+package com.datacollector.android.processing;
 
 import android.content.Context;
 import android.os.Build;
 import android.util.Log;
 
 import com.datacollector.android.collectors.ScreenUsageCollector;
+import com.datacollector.android.utils.CollectionConfig;
 
 import org.json.JSONArray;
 import org.json.JSONObject;

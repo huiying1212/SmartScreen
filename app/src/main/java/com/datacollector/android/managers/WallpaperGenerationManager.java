@@ -9,7 +9,7 @@ import android.util.Log;
 import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.api.QwenImageApiClient;
 import com.datacollector.android.utils.CollectionConfig;
-import com.datacollector.android.utils.DataAggregator;
+import com.datacollector.android.processing.DataAggregator;
 
 import org.json.JSONObject;
 

@@ -29,26 +29,19 @@ import com.datacollector.android.collectors.WeatherDataCollector;
 import com.datacollector.android.collectors.WifiDataCollector;
 import com.datacollector.android.managers.DataCollectorManager;
 import com.datacollector.android.managers.WallpaperGenerationManager;
-import com.datacollector.android.utils.AppCategoryClassifier;
+import com.datacollector.android.processing.DataPersistenceManager;
+import com.datacollector.android.processing.LocationContextInferrer;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.CollectionStats;
 import com.datacollector.android.utils.DataCleanupManager;
-import com.datacollector.android.utils.DataEncryptor;
 import com.datacollector.android.utils.ErrorCollector;
-import com.datacollector.android.utils.WifiFingerprint;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.zip.GZIPOutputStream;
 
 /**
  * 数据收集服务 —— 分级定期采集：
@@ -56,6 +49,8 @@ import java.util.zip.GZIPOutputStream;
  *   重量（location / weather / wifi / bluetooth）：每 10 分钟全量采集并落盘
  *
  * 采集完成后触发壁纸引擎检查。
+ *
+ * 职责：底层采集调度 + 通过中层组件完成持久化和位置推断。
  */
 public class DataCollectionService extends Service implements DataCollectorManager.DataCollectionCallback {
 
@@ -63,13 +58,19 @@ public class DataCollectionService extends Service implements DataCollectorManag
     private static final String CHANNEL_ID = "DataCollectionChannel";
     private static final int NOTIFICATION_ID = 1001;
 
+    // ── 底层：采集器管理 ──
     private DataCollectorManager collectorManager;
+
+    // ── 中层：处理组件 ──
+    private DataPersistenceManager persistenceManager;
+    private LocationContextInferrer locationInferrer;
+    private WallpaperGenerationManager wallpaperGenerationManager;
     private DeepSeekApiClient deepSeekApiClient;
+
+    // ── 工具 ──
     private DataCleanupManager dataCleanupManager;
-    private DataEncryptor dataEncryptor;
     private CollectionConfig collectionConfig;
     private CollectionStats collectionStats;
-    private WallpaperGenerationManager wallpaperGenerationManager;
 
     private JSONObject currentContextData;
     private Handler collectionHandler;
@@ -102,8 +103,11 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
         collectionConfig = CollectionConfig.getInstance(this);
         collectionStats = CollectionStats.getInstance(this);
-        dataEncryptor = new DataEncryptor(this);
         collectionHandler = new Handler(Looper.getMainLooper());
+
+        // 初始化中层处理组件
+        persistenceManager = new DataPersistenceManager(this);
+        locationInferrer = new LocationContextInferrer(this);
 
         initializeCollectors();
         startPeriodicCollection();
@@ -202,8 +206,6 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
     /**
      * 轻量采集：仅运行 LIGHT 权重的采集器，结果缓存到内存并落盘。
-     * 落盘格式与全量采集一致（context_data_*.json/enc/gz），
-     * DataAggregator 无需修改即可读取。
      */
     private void collectLightData() {
         try {
@@ -212,14 +214,16 @@ public class DataCollectionService extends Service implements DataCollectorManag
             if (lightData.length() > 0) {
                 latestLightData = lightData;
 
-                // 构造与全量落盘相同结构的 contextData，便于 DataAggregator 统一读取
+                // 构造与全量落盘相同结构的 contextData
                 JSONObject contextData = new JSONObject();
                 contextData.put("timestamp", System.currentTimeMillis());
                 contextData.put("date_time", getCurrentDateTime());
                 contextData.put("day_of_week", getCurrentDayOfWeek());
                 contextData.put("trigger_reason", "light");
                 mergeCollectorData(contextData, lightData);
-                saveContextData(contextData);
+
+                // 通过中层持久化管理器保存
+                persistenceManager.save(contextData);
 
                 Log.d(TAG, "Light collection done & saved (" + lightData.length() + " collectors)");
             }
@@ -244,8 +248,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
             JSONObject heavyData = collectorManager.collectByWeight(
                     BaseDataCollector.CollectionWeight.HEAVY);
 
-            // 轻量采集器：使用最新缓存（刚在 2 分钟内更新过），
-            // 同时也做一次实时采集以保证落盘数据最新
+            // 轻量采集器：同时也做一次实时采集以保证落盘数据最新
             JSONObject freshLightData = collectorManager.collectByWeight(
                     BaseDataCollector.CollectionWeight.LIGHT);
             if (freshLightData.length() > 0) {
@@ -265,9 +268,9 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
             mergeCollectorData(contextData, collectorData);
 
-            // WiFi 指纹学习 & 推断位置上下文（写入 location 对象内部）
-            recordWifiFingerprint(contextData);
-            String locCtx = inferLocationContext(contextData);
+            // 通过中层位置推断器处理 WiFi 指纹和位置上下文
+            locationInferrer.recordWifiFingerprint(contextData);
+            String locCtx = locationInferrer.infer(contextData);
             if (locCtx != null) {
                 JSONObject loc = contextData.optJSONObject("location");
                 if (loc != null) {
@@ -282,8 +285,15 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 Log.w(TAG, errors.getSummary());
             }
 
-            saveContextData(contextData);
+            // 通过中层持久化管理器保存
+            JSONObject outputData = persistenceManager.save(contextData);
+            if (outputData != null) {
+                this.currentContextData = outputData;
+            }
             collectionStats.recordCollectionAttempt(true);
+
+            // 壁纸引擎检查
+            triggerWallpaperGenerationIfNeeded();
 
         } catch (JSONException e) {
             Log.e(TAG, "Error collecting context data", e);
@@ -317,196 +327,6 @@ public class DataCollectionService extends Service implements DataCollectorManag
         ctx.put("collectors_status", collectorManager.getCollectorsStatus());
     }
 
-    /**
-     * 从 contextData 中提取当前 WiFi BSSID，记录到指纹学习器。
-     */
-    private void recordWifiFingerprint(JSONObject contextData) {
-        String bssid = extractBssid(contextData);
-        if (bssid != null) {
-            WifiFingerprint.getInstance(this).recordObservation(bssid);
-        }
-    }
-
-    private String extractBssid(JSONObject contextData) {
-        JSONObject wifi = contextData.optJSONObject("wifi_info");
-        if (wifi == null) return null;
-        JSONObject ap = wifi.optJSONObject("connected_ap");
-        if (ap == null) return null;
-        String bssid = ap.optString("bssid", "");
-        return bssid.isEmpty() ? null : bssid;
-    }
-
-    /**
-     * 多信号加权评分推断位置上下文。
-     *
-     * 对于"家"和"公司/学校"，优先使用 WiFi BSSID 指纹（自动学习）；
-     * 指纹未知时仅判断通勤/户外/室内三类，不猜测家或公司。
-     * 如果连基本场景都无法判定，返回 null（不写入数据）。
-     */
-    private String inferLocationContext(JSONObject contextData) {
-        try {
-            double sCommute = 0;
-            double sOutdoor = 0;
-            double sIndoor  = 0;
-
-            // ── 提取原始数据 ──
-            JSONObject activity = contextData.optJSONObject("user_activity");
-            String actType = activity != null ? activity.optString("activity_type", "unknown") : "unknown";
-            int actConf = activity != null ? activity.optInt("confidence", 50) : 0;
-            double confWeight = actConf / 100.0;
-
-            JSONObject location = contextData.optJSONObject("location");
-            double accuracy = 999;
-            float speed = 0;
-            boolean hasGps = false;
-            boolean isStale = false;
-            if (location != null && location.has("latitude")) {
-                accuracy = location.optDouble("accuracy", 999);
-                speed = (float) location.optDouble("speed", 0);
-                isStale = location.optBoolean("is_stale", false);
-                hasGps = true;
-            }
-
-            JSONObject wifi = contextData.optJSONObject("wifi_info");
-            JSONObject ap = wifi != null ? wifi.optJSONObject("connected_ap") : null;
-            boolean connectedToWifi = ap != null
-                    && !ap.optString("ssid", "").isEmpty();
-            String bssid = ap != null ? ap.optString("bssid", "") : "";
-
-            JSONObject bt = contextData.optJSONObject("bluetooth_devices");
-            int btCount = bt != null ? bt.optInt("device_count", 0) : 0;
-
-            // ── WiFi 指纹优先判定家/公司 ──
-            if (connectedToWifi && !bssid.isEmpty()) {
-                String place = WifiFingerprint.getInstance(this).classify(bssid);
-                if (place != null) {
-                    return place; // 指纹已学会，直接返回
-                }
-            }
-
-            // ── 指纹未知，回退到通勤/户外/室内三分类 ──
-
-            // 信号 1: 活动识别
-            if ("driving".equals(actType) || "cycling".equals(actType)) {
-                sCommute += 5.0 * confWeight;
-            } else if ("running".equals(actType)) {
-                sOutdoor += 4.0 * confWeight;
-            } else if ("walking".equals(actType)) {
-                sOutdoor += 2.5 * confWeight;
-                sCommute += 0.5 * confWeight;
-            } else if ("still".equals(actType)) {
-                sIndoor += 1.5 * confWeight;
-            }
-
-            // 信号 2: GPS 速度
-            if (hasGps && !isStale) {
-                if (speed > 5.0f)      sCommute += 4.0;
-                else if (speed > 3.0f) sCommute += 2.5;
-                else if (speed > 1.2f) sOutdoor += 1.5;
-                else                   sIndoor  += 0.5;
-            }
-
-            // 信号 3: GPS 精度
-            if (hasGps && !isStale) {
-                if (accuracy < 15)       sOutdoor += 3.0;
-                else if (accuracy < 30)  sOutdoor += 1.5;
-                else if (accuracy < 60)  { /* 模糊地带 */ }
-                else if (accuracy < 150) sIndoor  += 2.0;
-                else                     sIndoor  += 3.0;
-            }
-
-            // 信号 4: WiFi 连接
-            if (connectedToWifi) {
-                sIndoor += 2.5;
-            } else {
-                sOutdoor += 0.8;
-                sCommute += 0.5;
-            }
-
-            // 信号 5: 蓝牙设备数
-            if (btCount >= 5) {
-                sIndoor += 1.5;
-            } else if (btCount >= 2) {
-                sIndoor += 0.5;
-            }
-
-            // ── 选出得分最高的标签（仅三类）──
-            double bestScore = 1.0; // 最低门槛
-            String best = null;
-
-            if (sCommute > bestScore) { best = "通勤中"; bestScore = sCommute; }
-            if (sOutdoor > bestScore) { best = "户外";   bestScore = sOutdoor; }
-            if (sIndoor  > bestScore) { best = "室内";   bestScore = sIndoor;  }
-
-            return best; // null 表示判断不出来，不写入
-
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    // ── 数据保存 ─────────────────────────────────────────────
-
-    private void saveContextData(JSONObject contextData) {
-        try {
-            JSONObject outputData = new JSONObject();
-            outputData.put("context_data", contextData);
-            outputData.put("collection_time", System.currentTimeMillis());
-
-            File dataDir = new File(getExternalFilesDir(null), "data");
-            if (!dataDir.exists()) dataDir.mkdirs();
-
-            String jsonString = outputData.toString(4);
-            boolean encryptionEnabled = collectionConfig.getBoolean(
-                    CollectionConfig.KEY_DATA_ENCRYPTION, true);
-            boolean compressionEnabled = collectionConfig.getBoolean(
-                    CollectionConfig.KEY_DATA_COMPRESSION, true);
-
-            String fileName = "context_data_" + System.currentTimeMillis();
-            File dataFile;
-
-            if (encryptionEnabled) {
-                byte[] data = jsonString.getBytes("UTF-8");
-                if (compressionEnabled) data = compressGzip(data);
-                byte[] encrypted = dataEncryptor.encryptBytes(data);
-                if (encrypted != null) {
-                    dataFile = new File(dataDir, fileName + ".enc");
-                    try (FileOutputStream fos = new FileOutputStream(dataFile)) {
-                        fos.write(encrypted);
-                    }
-                } else {
-                    dataFile = new File(dataDir, fileName + ".json");
-                    try (FileWriter fw = new FileWriter(dataFile)) { fw.write(jsonString); }
-                }
-            } else if (compressionEnabled) {
-                dataFile = new File(dataDir, fileName + ".json.gz");
-                try (FileOutputStream fos = new FileOutputStream(dataFile);
-                     GZIPOutputStream gzos = new GZIPOutputStream(fos)) {
-                    gzos.write(jsonString.getBytes("UTF-8"));
-                }
-            } else {
-                dataFile = new File(dataDir, fileName + ".json");
-                try (FileWriter fw = new FileWriter(dataFile)) { fw.write(jsonString); }
-            }
-
-            this.currentContextData = outputData;
-            collectionStats.recordFileSaved(dataFile.length());
-            Log.d(TAG, "Saved: " + dataFile.getName());
-
-            // 仅在未加密时才写明文副本（加密模式下不再泄漏明文）
-            if (!encryptionEnabled) {
-                File plainFile = new File(dataDir, "context_data_latest.json");
-                try (FileWriter fw = new FileWriter(plainFile)) { fw.write(jsonString); }
-            }
-
-            // 壁纸引擎检查
-            triggerWallpaperGenerationIfNeeded();
-
-        } catch (IOException | JSONException e) {
-            Log.e(TAG, "Error saving context data", e);
-        }
-    }
-
     private void triggerWallpaperGenerationIfNeeded() {
         if (wallpaperGenerationManager == null || !wallpaperGenerationManager.shouldGenerate()) return;
 
@@ -520,12 +340,6 @@ public class DataCollectionService extends Service implements DataCollectorManag
     }
 
     // ── 工具方法 ─────────────────────────────────────────────
-
-    private byte[] compressGzip(byte[] data) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        try (GZIPOutputStream gzos = new GZIPOutputStream(bos)) { gzos.write(data); }
-        return bos.toByteArray();
-    }
 
     private String getCurrentDateTime() {
         return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());

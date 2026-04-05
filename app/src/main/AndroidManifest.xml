@@ -80,13 +80,23 @@
         <activity
             android:name=".activities.PersonalSettingsActivity"
             android:exported="false"
-            android:label="个人设置" />
+            android:label="个人设置"
+            android:parentActivityName=".activities.MainActivity" />
 
         <!-- 系统设置 -->
         <activity
             android:name=".activities.SystemSettingsActivity"
             android:exported="false"
-            android:label="系统设置" />
+            android:label="系统设置"
+            android:parentActivityName=".activities.MainActivity" />
+
+        <!-- 表情导出（论文插图用，已完成，注释掉）
+        <activity
+            android:name=".activities.FaceExportActivity"
+            android:exported="true"
+            android:label="表情等级导出"
+            android:theme="@style/Theme.MaterialComponents.Light.NoActionBar" />
+        -->
 
         <!-- 数据收集服务 -->
         <service

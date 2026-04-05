@@ -1,7 +1,10 @@
-package com.datacollector.android.utils;
+package com.datacollector.android.processing;
 
 import android.content.Context;
 import android.util.Log;
+
+import com.datacollector.android.utils.CollectionConfig;
+import com.datacollector.android.utils.DataEncryptor;
 
 import org.json.JSONArray;
 import org.json.JSONException;

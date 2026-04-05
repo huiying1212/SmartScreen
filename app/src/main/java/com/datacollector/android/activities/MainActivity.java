@@ -24,10 +24,11 @@ import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.collectors.CalendarDataCollector;
 import com.datacollector.android.collectors.ScreenUsageCollector;
 import com.datacollector.android.collectors.WeatherDataCollector;
+import com.datacollector.android.processing.ContextSnapshotCollector;
 import com.datacollector.android.services.DataCollectionService;
 import com.datacollector.android.services.FloatingOverlayService;
 import com.datacollector.android.utils.CollectionConfig;
-import com.datacollector.android.utils.LLMScoringEngine;
+import com.datacollector.android.processing.LLMScoringEngine;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -40,12 +41,12 @@ public class MainActivity extends Activity {
     public static final String EXTRA_BUBBLE_TEXT = "bubble_text";
 
     private CollectionConfig config;
-    private ScreenUsageCollector screenUsageCollector;
-    private CalendarDataCollector calendarCollector;
-    private WeatherDataCollector weatherCollector;
     private DeepSeekApiClient deepSeekClient;
     private LLMScoringEngine llmScoringEngine;
     private Handler uiHandler;
+
+    // ── 中层处理组件 ──
+    private ContextSnapshotCollector snapshotCollector;
 
     // Module 1: Basic Info
     private TextView tvReminderStatus, tvReminderResult;
@@ -89,12 +90,17 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main_setup);
 
         config = CollectionConfig.getInstance(this);
-        screenUsageCollector = new ScreenUsageCollector(this);
-        calendarCollector = new CalendarDataCollector(this);
-        weatherCollector = new WeatherDataCollector(this);
         deepSeekClient = new DeepSeekApiClient(this);
         llmScoringEngine = new LLMScoringEngine(this, deepSeekClient);
         uiHandler = new Handler(Looper.getMainLooper());
+
+        // 初始化采集器和中层快照构建器
+        ScreenUsageCollector screenUsageCollector = new ScreenUsageCollector(this);
+        CalendarDataCollector calendarCollector = new CalendarDataCollector(this);
+        WeatherDataCollector weatherCollector = new WeatherDataCollector(this);
+        snapshotCollector = new ContextSnapshotCollector(this,
+                screenUsageCollector, calendarCollector, weatherCollector,
+                null, null, null, null);
 
         initViews();
         setupModule1();
@@ -131,34 +137,8 @@ public class MainActivity extends Activity {
 
         new Thread(() -> {
             try {
-                // Build full snapshot like FloatingOverlayService
-                JSONObject snapshot = new JSONObject();
-                snapshot.put("timestamp", System.currentTimeMillis());
-
-                try {
-                    JSONObject screenData = screenUsageCollector.collectData();
-                    if (screenData != null) {
-                        snapshot.put("screen_usage", screenData);
-                        snapshot.put("foreground_app_package",
-                                screenData.optString("foreground_app_package", "unknown"));
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to get screen usage data", e);
-                }
-
-                try {
-                    if (calendarCollector != null && calendarCollector.isAvailable()) {
-                        JSONObject data = calendarCollector.collectData();
-                        if (data != null) snapshot.put("calendar", data);
-                    }
-                } catch (Exception ignored) {}
-
-                try {
-                    if (weatherCollector != null && weatherCollector.isAvailable()) {
-                        JSONObject data = weatherCollector.collectData();
-                        if (data != null) snapshot.put("weather", data);
-                    }
-                } catch (Exception ignored) {}
+                // 通过中层统一快照构建器采集上下文
+                JSONObject snapshot = snapshotCollector.collectFullSnapshot();
 
                 int score = llmScoringEngine.getScore();
                 final String text = deepSeekClient.generateBubbleText(snapshot, score);
@@ -179,9 +159,10 @@ public class MainActivity extends Activity {
 
     private String getCalendarContext() {
         try {
-            if (calendarCollector == null || !calendarCollector.isAvailable()) return null;
-            JSONObject calData = calendarCollector.collectData();
-            if (calData == null) return null;
+            // 从快照中获取日历数据
+            JSONObject snapshot = snapshotCollector.collectFullSnapshot();
+            JSONObject calData = snapshot.optJSONObject("calendar");
+            if (calData == null) return "空闲时间";
 
             JSONArray events = calData.optJSONArray("events");
             if (events == null || events.length() == 0) return "空闲时间";
