@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5FA"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- 标题 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📋 快速反馈"
+            android:textSize="22sp"
+            android:textColor="#2D2B55"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="花 30 秒告诉我们你的感受"
+            android:textSize="14sp"
+            android:textColor="#8B89B8"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Q1: 提醒有帮助吗 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/input_bg_rounded"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="最近一次反思提醒对你有帮助吗？"
+                android:textSize="15sp"
+                android:textColor="#2D2B55"
+                android:layout_marginBottom="12dp" />
+
+            <RadioGroup
+                android:id="@+id/rg_q1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <RadioButton android:id="@+id/q1_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="1" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+                <RadioButton android:id="@+id/q1_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="2" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+                <RadioButton android:id="@+id/q1_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="3" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+                <RadioButton android:id="@+id/q1_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="4" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+                <RadioButton android:id="@+id/q1_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="5" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+            </RadioGroup>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="4dp">
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="完全没用" android:textSize="11sp" android:textColor="#8B89B8" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="非常有用" android:textSize="11sp" android:textColor="#8B89B8" android:gravity="end" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Q2: 使用状态 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/input_bg_rounded"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="你现在的手机使用状态是？"
+                android:textSize="15sp"
+                android:textColor="#2D2B55"
+                android:layout_marginBottom="12dp" />
+
+            <RadioGroup
+                android:id="@+id/rg_q2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <RadioButton android:id="@+id/q2_purposeful" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="有目的地使用" android:textSize="14sp" android:padding="8dp" />
+                <RadioButton android:id="@+id/q2_unconscious" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="无意识地刷手机" android:textSize="14sp" android:padding="8dp" />
+                <RadioButton android:id="@+id/q2_unsure" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="不确定" android:textSize="14sp" android:padding="8dp" />
+            </RadioGroup>
+        </LinearLayout>
+
+        <!-- Q3: 表情准确吗 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/input_bg_rounded"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="浮窗表情是否反映了你的真实感受？"
+                android:textSize="15sp"
+                android:textColor="#2D2B55"
+                android:layout_marginBottom="12dp" />
+
+            <RadioGroup
+                android:id="@+id/rg_q3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <RadioButton android:id="@+id/q3_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="1" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+                <RadioButton android:id="@+id/q3_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="2" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+                <RadioButton android:id="@+id/q3_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="3" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+                <RadioButton android:id="@+id/q3_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="4" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+                <RadioButton android:id="@+id/q3_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="5" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+            </RadioGroup>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="4dp">
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="完全不符" android:textSize="11sp" android:textColor="#8B89B8" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="非常准确" android:textSize="11sp" android:textColor="#8B89B8" android:gravity="end" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 按钮 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <Button
+                android:id="@+id/btn_esm_skip"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="跳过"
+                android:textColor="#8B89B8"
+                android:background="@drawable/button_secondary_bg"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_esm_submit"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="2"
+                android:text="提交"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/button_primary_bg" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

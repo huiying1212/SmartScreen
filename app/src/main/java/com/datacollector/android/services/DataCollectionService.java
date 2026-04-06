@@ -34,6 +34,7 @@ import com.datacollector.android.processing.LocationContextInferrer;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.CollectionStats;
 import com.datacollector.android.utils.DataCleanupManager;
+import com.datacollector.android.utils.ESMScheduler;
 import com.datacollector.android.utils.ErrorCollector;
 
 import org.json.JSONException;
@@ -111,6 +112,9 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
         initializeCollectors();
         startPeriodicCollection();
+
+        // 每天安排 ESM 问卷
+        ESMScheduler.scheduleToday(this);
     }
 
     @Override

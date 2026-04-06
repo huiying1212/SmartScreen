@@ -182,6 +182,38 @@ def export_logs():
         headers={"Content-Disposition": "attachment; filename=interaction_logs.csv"},
     )
 
+@app.route("/api/export/esm")
+@require_api_key
+def export_esm():
+    """导出 ESM 问卷数据为 CSV（从交互日志中提取 esm_submit 事件）。"""
+    db = get_db()
+    rows = db.execute(
+        "SELECT participant_id, ts, event_time, params, received_at "
+        "FROM interaction_logs WHERE event IN ('esm_submit','esm_skip','esm_shown') ORDER BY ts"
+    ).fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["participant_id", "ts", "event_time", "event_type",
+                      "q1_reminder_helpful", "q2_usage_state", "q3_face_accurate", "received_at"])
+    for r in rows:
+        params = json.loads(r["params"]) if r["params"] else {}
+        # 从 params 中判断事件类型
+        event_type = "submit" if params.get("q1_reminder_helpful") else ("skip" if not params else "shown")
+        writer.writerow([
+            r["participant_id"], r["ts"], r["event_time"], event_type,
+            params.get("q1_reminder_helpful", ""),
+            params.get("q2_usage_state", ""),
+            params.get("q3_face_accurate", ""),
+            r["received_at"],
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=esm_responses.csv"},
+    )
+
 @app.route("/api/export/context")
 @require_api_key
 def export_context():
