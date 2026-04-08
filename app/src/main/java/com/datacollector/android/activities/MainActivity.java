@@ -1,7 +1,7 @@
 package com.datacollector.android.activities;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import java.util.UUID;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -15,7 +15,6 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
 
@@ -276,27 +275,12 @@ public class MainActivity extends Activity {
         String pid = config.getString(CollectionConfig.KEY_PARTICIPANT_ID, "");
         if (!pid.isEmpty()) return; // 已设置过
 
-        EditText input = new EditText(this);
-        input.setHint("例如: P01");
-        input.setSingleLine(true);
-
-        new AlertDialog.Builder(this)
-                .setTitle("欢迎参与 RI4SU 用户实验")
-                .setMessage("请输入研究人员分配给你的参与者编号：")
-                .setView(input)
-                .setCancelable(false)
-                .setPositiveButton("确认", (dialog, which) -> {
-                    String id = input.getText().toString().trim();
-                    if (id.isEmpty()) {
-                        // 自动生成一个随机 ID
-                        id = "U" + System.currentTimeMillis() % 100000;
-                    }
-                    config.setString(CollectionConfig.KEY_PARTICIPANT_ID, id);
-                    logger.log("participant_registered", "participant_id", id);
-                    // 注册后立即触发一次上传
-                    ExperimentDataUploader.get(this).uploadNow();
-                })
-                .show();
+        // 自动生成唯一参与者 ID，无需用户手动输入
+        String id = "U-" + UUID.randomUUID().toString().substring(0, 8);
+        config.setString(CollectionConfig.KEY_PARTICIPANT_ID, id);
+        logger.log("participant_registered", "participant_id", id);
+        // 注册后立即触发一次上传
+        ExperimentDataUploader.get(this).uploadNow();
     }
 
     // ── Lifecycle ───────────────────────────────────────────────
