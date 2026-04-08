@@ -219,7 +219,8 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:minHeight="48dp">
+                android:minHeight="48dp"
+                android:layout_marginBottom="@dimen/spacing_md">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -243,6 +244,128 @@
                 </LinearLayout>
                 <Switch
                     android:id="@+id/switch_calendar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider"
+                android:layout_marginBottom="@dimen/spacing_md" />
+
+            <!-- WiFi 信息 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:layout_marginBottom="@dimen/spacing_md">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="@dimen/spacing_md">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="WiFi 信息"
+                        android:textColor="@color/launcher_text_primary"
+                        android:textSize="@dimen/text_body" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="已连接 WiFi 的 SSID 和信号强度"
+                        android:textColor="@color/launcher_text_secondary"
+                        android:textSize="@dimen/text_small"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+                <Switch
+                    android:id="@+id/switch_wifi"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider"
+                android:layout_marginBottom="@dimen/spacing_md" />
+
+            <!-- 蓝牙设备 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:layout_marginBottom="@dimen/spacing_md">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="@dimen/spacing_md">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="蓝牙设备"
+                        android:textColor="@color/launcher_text_primary"
+                        android:textSize="@dimen/text_body" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="已连接蓝牙设备的名称和类型"
+                        android:textColor="@color/launcher_text_secondary"
+                        android:textSize="@dimen/text_small"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+                <Switch
+                    android:id="@+id/switch_bluetooth"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider"
+                android:layout_marginBottom="@dimen/spacing_md" />
+
+            <!-- 天气信息 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:minHeight="48dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="@dimen/spacing_md">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="天气信息"
+                        android:textColor="@color/launcher_text_primary"
+                        android:textSize="@dimen/text_body" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="当前温度和天气状况（30分钟缓存）"
+                        android:textColor="@color/launcher_text_secondary"
+                        android:textSize="@dimen/text_small"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+                <Switch
+                    android:id="@+id/switch_weather"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content" />
             </LinearLayout>

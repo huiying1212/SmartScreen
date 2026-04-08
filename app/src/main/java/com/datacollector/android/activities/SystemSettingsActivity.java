@@ -60,7 +60,8 @@ public class SystemSettingsActivity extends Activity {
     private LLMScoringEngine llmScoringEngine;
     private Handler uiHandler;
 
-    private Switch switchLocation, switchActivity, switchScreenUsage, switchCalendar;
+    private Switch switchLocation, switchActivity, switchScreenUsage, switchCalendar,
+            switchWifi, switchBluetooth, switchWeather;
     private Button btnPermOverlay, btnPermUsage, btnStartCollection;
     private LinearLayout historyContainer;
     private Button btnTestData, btnTestAi, btnTestWallpaper, btnTestBubblePrompt, btnTestWallpaperPrompt;
@@ -120,6 +121,9 @@ public class SystemSettingsActivity extends Activity {
         switchActivity = findViewById(R.id.switch_activity);
         switchScreenUsage = findViewById(R.id.switch_screen_usage);
         switchCalendar = findViewById(R.id.switch_calendar);
+        switchWifi = findViewById(R.id.switch_wifi);
+        switchBluetooth = findViewById(R.id.switch_bluetooth);
+        switchWeather = findViewById(R.id.switch_weather);
 
         btnPermOverlay = findViewById(R.id.btn_perm_overlay);
         btnPermUsage = findViewById(R.id.btn_perm_usage);
@@ -144,6 +148,12 @@ public class SystemSettingsActivity extends Activity {
                 config.setBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, checked));
         switchCalendar.setOnCheckedChangeListener((btn, checked) ->
                 config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, checked));
+        switchWifi.setOnCheckedChangeListener((btn, checked) ->
+                config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, checked));
+        switchBluetooth.setOnCheckedChangeListener((btn, checked) ->
+                config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, checked));
+        switchWeather.setOnCheckedChangeListener((btn, checked) ->
+                config.setBoolean(CollectionConfig.KEY_WEATHER_ENABLED, checked));
     }
 
     private void setupPermissionButtons() {
@@ -179,6 +189,9 @@ public class SystemSettingsActivity extends Activity {
         switchActivity.setChecked(config.getBoolean(CollectionConfig.KEY_ACTIVITY_ENABLED, true));
         switchScreenUsage.setChecked(config.getBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, true));
         switchCalendar.setChecked(config.getBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, true));
+        switchWifi.setChecked(config.getBoolean(CollectionConfig.KEY_WIFI_ENABLED, true));
+        switchBluetooth.setChecked(config.getBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, true));
+        switchWeather.setChecked(config.getBoolean(CollectionConfig.KEY_WEATHER_ENABLED, true));
 
         updatePermissionButtons();
         loadUsageHistory();
