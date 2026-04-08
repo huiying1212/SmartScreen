@@ -64,7 +64,6 @@ public class CollectionConfig {
     public static final String KEY_WALLPAPER_STYLE = "wallpaper_style";
     public static final String KEY_FACE_STYLE = "face_style";
     public static final String KEY_USER_PERSONAL_GOAL = "user_personal_goal";
-    public static final String KEY_STRUCTURED_GOALS = "structured_goals";
 
     // ── 用户实验 ──────────────────────────────────────────────
     public static final String KEY_PARTICIPANT_ID = "participant_id";
@@ -134,7 +133,6 @@ public class CollectionConfig {
         putIfAbsent(editor, KEY_WALLPAPER_STYLE, "唯美艺术");
         putIfAbsent(editor, KEY_FACE_STYLE, "CLASSIC");
         putIfAbsent(editor, KEY_USER_PERSONAL_GOAL, "");
-        putIfAbsent(editor, KEY_STRUCTURED_GOALS, "[]");
 
         // 用户实验
         putIfAbsent(editor, KEY_EXPERIMENT_SERVER_URL, "http://47.95.200.45:5000");

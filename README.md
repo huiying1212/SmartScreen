@@ -13,7 +13,7 @@ Android 智能屏幕使用反思干预系统。通过前台 Service 周期性采
 | 悬浮拟人表情 | `MoodFaceView` 根据 LLM 评分连续插值渲染表情，支持多种视觉风格 |
 | AI 反思提醒 | 点击悬浮图标触发 LLM 生成个性化反思文案，通过气泡展示 |
 | AI 隐喻壁纸 | 聚合数据 → LLM 提取关键词 → 通义千问生成壁纸，定时自动更换 |
-| 个人目标设定 | 用户可设定每日屏幕时长上限、娱乐占比上限、免打扰时段等 |
+| 个人目标设定 | 用户可输入自由文本形式的个人目标，作为 LLM 反思提醒的上下文 |
 
 ---
 
@@ -291,11 +291,11 @@ DataCollectionService.collectCurrentContextData()
 - 壁纸风格选择
 - 壁纸生成时间设定
 - 图标风格选择（经典、暖阳、清凉、森林、星空、像素）
-- 个人目标设定（每日屏幕时长上限、娱乐占比上限等）
+- 个人目标设定（自由文本，作为 LLM 上下文）
 
 ### 系统设置（`SystemSettingsActivity`）
 
-- 数据收集参数配置
+- 数据采集开关（位置、活动识别、屏幕使用、日历、WiFi、蓝牙、天气）
 - 系统权限管理
 - 壁纸历史查看
 - 开发者测试工具
@@ -340,6 +340,7 @@ DataCollectionService.collectCurrentContextData()
 | `calendar_max_events` | 20 | 最多返回事件数 |
 | `wifi_enabled` | `true` | Wi-Fi 采集开关 |
 | `bluetooth_enabled` | `true` | 蓝牙采集开关 |
+| `weather_enabled` | `true` | 天气采集开关 |
 | `aggregation_window_hours` | 6 | LLM 数据聚合时间窗口 |
 
 ---

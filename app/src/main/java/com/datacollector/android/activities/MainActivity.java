@@ -33,7 +33,6 @@ import com.datacollector.android.utils.ExperimentDataUploader;
 import com.datacollector.android.utils.UserInteractionLogger;
 import com.datacollector.android.processing.LLMScoringEngine;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class MainActivity extends Activity {
@@ -175,43 +174,6 @@ public class MainActivity extends Activity {
                 });
             }
         }).start();
-    }
-
-    private String getCalendarContext() {
-        try {
-            // 从快照中获取日历数据
-            JSONObject snapshot = snapshotCollector.collectFullSnapshot();
-            JSONObject calData = snapshot.optJSONObject("calendar");
-            if (calData == null) return "空闲时间";
-
-            JSONArray events = calData.optJSONArray("events");
-            if (events == null || events.length() == 0) return "空闲时间";
-
-            long now = System.currentTimeMillis();
-
-            for (int i = 0; i < events.length(); i++) {
-                JSONObject ev = events.optJSONObject(i);
-                if (ev == null) continue;
-                long start = ev.optLong("begin_timestamp", 0);
-                long end = ev.optLong("end_timestamp", 0);
-                if (now >= start && now <= end) {
-                    return "计划: " + ev.optString("title", "日程中");
-                }
-            }
-
-            for (int i = 0; i < events.length(); i++) {
-                JSONObject ev = events.optJSONObject(i);
-                if (ev == null) continue;
-                long start = ev.optLong("begin_timestamp", 0);
-                if (start > now && start - now < 3600_000L) {
-                    return "即将: " + ev.optString("title", "有安排");
-                }
-            }
-
-            return "空闲时间";
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     // ══════ Navigation ══════
