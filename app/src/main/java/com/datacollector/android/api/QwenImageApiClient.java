@@ -95,7 +95,8 @@ public class QwenImageApiClient {
                     .build();
 
             try (Response response = httpClient.newCall(request).execute()) {
-                String responseBody = response.body() != null ? response.body().string() : "";
+                okhttp3.ResponseBody rb = response.body();
+                String responseBody = rb != null ? rb.string() : "";
 
                 if (!response.isSuccessful()) {
                     callback.onError("API错误 " + response.code() + ": " + responseBody);

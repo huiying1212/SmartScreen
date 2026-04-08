@@ -484,7 +484,8 @@ public class DeepSeekApiClient {
 
             Log.d(TAG, "callChatSync: sending request to " + ApiConfig.DEEPSEEK_API_URL);
             try (Response response = httpClient.newCall(request).execute()) {
-                String respBody = response.body() != null ? response.body().string() : "";
+                okhttp3.ResponseBody rb = response.body();
+                String respBody = rb != null ? rb.string() : "";
                 Log.d(TAG, "callChatSync: HTTP " + response.code()
                         + " body_len=" + respBody.length());
 

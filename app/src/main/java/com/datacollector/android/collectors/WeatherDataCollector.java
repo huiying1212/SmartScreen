@@ -134,7 +134,8 @@ public class WeatherDataCollector extends BaseDataCollector<JSONObject> {
                     return cachedWeatherData;
                 }
 
-                String body = response.body() != null ? response.body().string() : "";
+                okhttp3.ResponseBody rb = response.body();
+                String body = rb != null ? rb.string() : "";
                 JSONObject rawData = new JSONObject(body);
                 JSONObject weatherData = parseOpenMeteoResponse(rawData);
 
