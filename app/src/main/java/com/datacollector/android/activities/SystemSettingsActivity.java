@@ -61,7 +61,7 @@ public class SystemSettingsActivity extends Activity {
     private Handler uiHandler;
 
     private Switch switchLocation, switchActivity, switchScreenUsage, switchCalendar,
-            switchWifi, switchBluetooth, switchWeather;
+            switchWifi, switchBluetooth;
     private Button btnPermOverlay, btnPermUsage, btnStartCollection;
     private LinearLayout historyContainer;
     private Button btnTestData, btnTestAi, btnTestWallpaper, btnTestBubblePrompt, btnTestWallpaperPrompt;
@@ -123,7 +123,6 @@ public class SystemSettingsActivity extends Activity {
         switchCalendar = findViewById(R.id.switch_calendar);
         switchWifi = findViewById(R.id.switch_wifi);
         switchBluetooth = findViewById(R.id.switch_bluetooth);
-        switchWeather = findViewById(R.id.switch_weather);
 
         btnPermOverlay = findViewById(R.id.btn_perm_overlay);
         btnPermUsage = findViewById(R.id.btn_perm_usage);
@@ -152,8 +151,6 @@ public class SystemSettingsActivity extends Activity {
                 config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, checked));
         switchBluetooth.setOnCheckedChangeListener((btn, checked) ->
                 config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, checked));
-        switchWeather.setOnCheckedChangeListener((btn, checked) ->
-                config.setBoolean(CollectionConfig.KEY_WEATHER_ENABLED, checked));
     }
 
     private void setupPermissionButtons() {
@@ -191,7 +188,6 @@ public class SystemSettingsActivity extends Activity {
         switchCalendar.setChecked(config.getBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, true));
         switchWifi.setChecked(config.getBoolean(CollectionConfig.KEY_WIFI_ENABLED, true));
         switchBluetooth.setChecked(config.getBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, true));
-        switchWeather.setChecked(config.getBoolean(CollectionConfig.KEY_WEATHER_ENABLED, true));
 
         updatePermissionButtons();
         loadUsageHistory();

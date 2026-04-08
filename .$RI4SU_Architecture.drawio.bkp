@@ -1,0 +1,224 @@
+<mxfile host="app.diagrams.net" agent="Claude" version="26.0.0">
+  <diagram name="System Architecture" id="ri4su-arch">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ========== 背景层框 ========== -->
+
+        <!-- 应用交互层 (顶层) -->
+        <mxCell id="layer3_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;strokeWidth=1.5;dashed=0;arcSize=4;" vertex="1" parent="1">
+          <mxGeometry x="60" y="30" width="1050" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="layer3_label" value="Application &amp; Interaction Layer" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=14;fontStyle=1;fontColor=#424242;fontFamily=Times New Roman;" vertex="1" parent="1">
+          <mxGeometry x="80" y="38" width="300" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- 数据处理层 (中层) -->
+        <mxCell id="layer2_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;strokeWidth=1.5;dashed=0;arcSize=4;" vertex="1" parent="1">
+          <mxGeometry x="60" y="320" width="1050" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="layer2_label" value="Data Processing Layer" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=14;fontStyle=1;fontColor=#424242;fontFamily=Times New Roman;" vertex="1" parent="1">
+          <mxGeometry x="80" y="328" width="250" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- 数据采集层 (底层) -->
+        <mxCell id="layer1_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;strokeWidth=1.5;dashed=0;arcSize=4;" vertex="1" parent="1">
+          <mxGeometry x="60" y="550" width="1050" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="layer1_label" value="Data Collection Layer" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=14;fontStyle=1;fontColor=#424242;fontFamily=Times New Roman;" vertex="1" parent="1">
+          <mxGeometry x="80" y="558" width="250" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- ========== 数据采集层 节点 ========== -->
+
+        <mxCell id="c_screen" value="Screen Usage&#xa;Collector" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="100" y="610" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c_location" value="Location&#xa;Collector" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="240" y="610" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c_activity" value="Activity&#xa;Recognizer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="610" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c_calendar" value="Calendar&#xa;Collector" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="520" y="610" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c_wifi" value="Wi-Fi / BT&#xa;Collector" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="660" y="610" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c_weather" value="Weather&#xa;Collector" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="800" y="610" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c_esm" value="ESM Survey&#xa;Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="940" y="610" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ========== 数据处理层 节点 ========== -->
+
+        <mxCell id="p_snapshot" value="Context Snapshot&#xa;Aggregation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="120" y="380" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p_sanitize" value="Data Sanitization&#xa;&amp; Encryption" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="300" y="380" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p_persist" value="Local Persistent&#xa;Storage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="300" y="445" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p_llm" value="LLM Scoring&#xa;Engine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8E8E8;strokeColor=#424242;strokeWidth=1.5;fontSize=12;fontStyle=1;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="520" y="390" width="160" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="p_deepseek" value="DeepSeek&#xa;Chat API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9E9E9E;strokeWidth=1;strokeDasharray=4;fontSize=11;fontFamily=Times New Roman;fontColor=#616161;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="730" y="390" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p_qwen" value="Qwen&#xa;Image API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9E9E9E;strokeWidth=1;strokeDasharray=4;fontSize=11;fontFamily=Times New Roman;fontColor=#616161;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="890" y="390" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ========== 应用交互层 节点 ========== -->
+
+        <!-- 实时性反思 子区域 -->
+        <mxCell id="rt_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAFAFA;strokeColor=#9E9E9E;strokeWidth=1;dashed=1;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="80" y="75" width="470" height="195" as="geometry" />
+        </mxCell>
+        <mxCell id="rt_label" value="Real-time Reflection" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=12;fontStyle=3;fontColor=#616161;fontFamily=Times New Roman;" vertex="1" parent="1">
+          <mxGeometry x="95" y="80" width="180" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_mood" value="Ambient Mood&#xa;Face Display" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="110" y="120" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="a_score" value="Incremental&#xa;Score Update" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="280" y="120" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="a_nudge" value="Reflective&#xa;Nudge Generation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="110" y="195" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="a_theme" value="Visual Theme&#xa;Adaptation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="280" y="195" width="140" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- 阶段性反思 子区域 -->
+        <mxCell id="pr_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAFAFA;strokeColor=#9E9E9E;strokeWidth=1;dashed=1;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="580" y="75" width="510" height="195" as="geometry" />
+        </mxCell>
+        <mxCell id="pr_label" value="Periodic Reflection" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=12;fontStyle=3;fontColor=#616161;fontFamily=Times New Roman;" vertex="1" parent="1">
+          <mxGeometry x="595" y="80" width="180" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_wallpaper" value="Metaphorical&#xa;Wallpaper Generation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="610" y="120" width="155" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="a_aggregate" value="Daily Usage&#xa;Summarization" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="795" y="120" width="155" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="a_esm_survey" value="ESM&#xa;Questionnaire" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="610" y="195" width="155" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="a_settings" value="Personal&#xa;Settings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;strokeWidth=1.2;fontSize=11;fontFamily=Times New Roman;fontColor=#212121;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="795" y="195" width="155" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- ========== 连接线 ========== -->
+
+        <!-- 采集层 → 处理层 (汇聚到 Context Snapshot) -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.15;entryY=1;entryDx=0;entryDy=0;" edge="1" source="c_screen" target="p_snapshot" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.35;entryY=1;entryDx=0;entryDy=0;" edge="1" source="c_location" target="p_snapshot" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.55;entryY=1;entryDx=0;entryDy=0;" edge="1" source="c_activity" target="p_snapshot" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;" edge="1" source="c_calendar" target="p_snapshot" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.85;entryY=1;entryDx=0;entryDy=0;" edge="1" source="c_wifi" target="p_snapshot" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.95;entryY=1;entryDx=0;entryDy=0;" edge="1" source="c_weather" target="p_snapshot" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Snapshot → Sanitize -->
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;" edge="1" source="p_snapshot" target="p_sanitize" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Sanitize → Persist -->
+        <mxCell id="e7b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;" edge="1" source="p_sanitize" target="p_persist" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Sanitize → LLM Scoring -->
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;" edge="1" source="p_sanitize" target="p_llm" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LLM ↔ DeepSeek API -->
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9E9E9E;strokeWidth=1;dashed=1;endArrow=block;endFill=1;startArrow=block;startFill=1;" edge="1" source="p_llm" target="p_deepseek" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LLM → Qwen API (for wallpaper keywords) -->
+        <mxCell id="e9b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9E9E9E;strokeWidth=1;dashed=1;endArrow=block;endFill=1;" edge="1" source="p_deepseek" target="p_qwen" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 处理层 → 应用层 -->
+
+        <!-- LLM → Score Update -->
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;" edge="1" source="p_llm" target="a_score" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Score → Mood Face -->
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;" edge="1" source="a_score" target="a_mood" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Score → Nudge -->
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="a_score" target="a_nudge" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Score → Theme -->
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;" edge="1" source="a_score" target="a_theme" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Qwen → Wallpaper -->
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;" edge="1" source="p_qwen" target="a_wallpaper" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Persist → Daily Summary -->
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;" edge="1" source="p_persist" target="a_aggregate" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="370" y="480" />
+              <mxPoint x="560" y="480" />
+              <mxPoint x="560" y="70" />
+              <mxPoint x="873" y="70" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ESM Collector → ESM Survey -->
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=1.2;endArrow=block;endFill=1;" edge="1" source="c_esm" target="a_esm_survey" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1000" y="590" />
+              <mxPoint x="1100" y="590" />
+              <mxPoint x="1100" y="70" />
+              <mxPoint x="688" y="70" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

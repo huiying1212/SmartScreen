@@ -68,7 +68,8 @@ x = np.arange(N)
 
 # Colour palette: grey for non-ablated configs, accent for full system
 BASE_COLOR    = '#6baed6'   # blue-grey  — smooth only
-PENALTY_COLOR = '#fd8d3c'   # orange     — penalty involved
+PENALTY_COLOR = '#fd8d3c'   # orange     — penalty only
+SMOOTH3P_COLOR= '#e31a1c'   # red        — smooth-3 + penalty
 BASELINE_COLOR= '#bdbdbd'   # grey       — no smoothing
 FULL_COLOR    = '#2166ac'   # dark blue  — our full system
 
@@ -271,67 +272,78 @@ plt.close(fig)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Figure 5: Accuracy–Stability trade-off scatter plot
-# A and B share the same (acc, flicker) values — drawn as a split marker to show both.
+# Figure 5: 精度–稳定性权衡散点图（中文版）
+# A 和 B 的 (acc, flicker) 值完全相同，水平微移以便区分。
 # ═══════════════════════════════════════════════════════════════════════════════
 
-fig, ax = plt.subplots(figsize=(6.0, 4.2))
+# 使用支持中文的字体（SimHei / Microsoft YaHei / STSong 按优先级回退）
+import matplotlib.font_manager as fm
+_zh_candidates = ['Microsoft YaHei', 'SimHei', 'STSong', 'WenQuanYi Micro Hei', 'Arial Unicode MS']
+_zh_font = next((f for f in _zh_candidates
+                 if any(f.lower() in fp.name.lower() for fp in fm.fontManager.ttflist)), None)
+_zh_props = {'family': _zh_font} if _zh_font else {}
 
-# Config metadata: (label for annotation, color, marker, jitter_x, jitter_y)
-# A and B overlap exactly; offset them slightly so both are visible.
-configs_scatter = [
-    ('Baseline\n(no smooth, no penalty)', BASELINE_COLOR, 'o',  0.10,  0.00),  # A — nudge right
-    ('Penalty only',                      PENALTY_COLOR,  's', -0.10,  0.00),  # B — nudge left
-    ('Smooth-3, no penalty',              BASE_COLOR,     'o',  0.00,  0.00),  # C
-    ('Smooth-3 + Penalty',                PENALTY_COLOR,  's',  0.00,  0.00),  # D
-    ('Smooth-5, no penalty',              BASE_COLOR,     'D',  0.00,  0.00),  # E — diamond to distinguish from C
-    ('Smooth-5 + Penalty\n(Full system)', FULL_COLOR,     '*',  0.00,  0.00),  # F
-]
-SIZES2  = [80, 80, 80, 80, 80, 160]
+with plt.rc_context({'font.family': _zh_font or 'sans-serif',
+                     'axes.unicode_minus': False}):
 
-for i, (desc, col, mk, jx, jy) in enumerate(configs_scatter):
-    ax.scatter(FLICKER[i] + jx, ACCURACY[i] + jy,
-               color=col, s=SIZES2[i], marker=mk, zorder=4,
-               edgecolors='#333333' if i == N-1 else 'white',
-               linewidths=1.2 if i == N-1 else 0.5)
+    fig, ax = plt.subplots(figsize=(6.5, 4.5))
 
-# Annotation offsets (x, y) relative to actual data point (not jittered)
-anno_offsets = [
-    ( 0.22, -0.10),   # Baseline        → right
-    (-0.50,  0.08),   # Penalty only    → upper-left
-    (-0.55, -0.13),   # Smooth-3 no penalty → lower-left
-    ( 0.28, -0.10),   # Smooth-3 + Penalty  → right
-    ( 0.00,  0.16),   # Smooth-5 no penalty → above
-    ( 0.52,  0.02),   # Full system         → far right
-]
+    # Config metadata: (标注文字, 颜色, 标记形状, x偏移, y偏移)
+    configs_scatter = [
+        ('基线\n（无平滑，无惩罚）',      BASELINE_COLOR, 'o',  0.10,  0.00),  # A — 右移
+        ('仅惩罚',                        PENALTY_COLOR,  's', -0.10,  0.00),  # B — 左移
+        ('平滑(K=3)，无惩罚',             BASE_COLOR,     'o',  0.00,  0.00),  # C
+        ('平滑(K=3) + 惩罚',              SMOOTH3P_COLOR, 's',  0.00,  0.00),  # D — 红色区分B
+        ('平滑(K=5)，无惩罚',             BASE_COLOR,     'D',  0.00,  0.00),  # E — 菱形区分C
+        ('平滑(K=5) + 惩罚\n（完整系统）', FULL_COLOR,    '*',  0.00,  0.00),  # F
+    ]
+    SIZES2 = [80, 80, 80, 80, 80, 160]
 
-ax.set_xlabel('Flicker Rate (transitions / min)  ←  lower is better')
-ax.set_ylabel('Classification Accuracy (%)  ↑  higher is better')
-ax.set_title('Accuracy–Stability Trade-off across Ablation Configurations')
-ax.set_xlim(0.6, 4.5)
-ax.set_ylim(92.9, 94.65)
-ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
-ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
+    for i, (desc, col, mk, jx, jy) in enumerate(configs_scatter):
+        ax.scatter(FLICKER[i] + jx, ACCURACY[i] + jy,
+                   color=col, s=SIZES2[i], marker=mk, zorder=4,
+                   edgecolors='#333333' if i == N-1 else 'white',
+                   linewidths=1.2 if i == N-1 else 0.5)
 
-# Legend — describes each marker shape and colour directly
-legend_elements = [
-    plt.scatter([], [], marker='o', color=BASELINE_COLOR, s=65,
-                label='Baseline: no smooth, no penalty'),
-    plt.scatter([], [], marker='s', color=PENALTY_COLOR,  s=65,
-                label='Penalty only / Smooth + Penalty'),
-    plt.scatter([], [], marker='o', color=BASE_COLOR,     s=65,
-                label='Smooth-3, no penalty'),
-    plt.scatter([], [], marker='D', color=BASE_COLOR,     s=55,
-                label='Smooth-5, no penalty'),
-    plt.scatter([], [], marker='*', color=FULL_COLOR,     s=160,
-                label='Full system — Smooth-5 + Penalty (Ours)'),
-]
-ax.legend(handles=legend_elements, loc='lower left', fontsize=7, framealpha=0.88,
-          handletextpad=0.4)
+    # 标注偏移（相对于实际数据点，非抖动后位置）
+    anno_offsets = [
+        ( 0.22, -0.10),   # 基线          → 右
+        (-0.50,  0.08),   # 仅惩罚        → 左上
+        (-0.55, -0.13),   # 平滑K=3无惩罚 → 左下
+        ( 0.28, -0.10),   # 平滑K=3+惩罚  → 右
+        ( 0.00,  0.16),   # 平滑K=5无惩罚 → 上方
+        ( 0.52,  0.02),   # 完整系统      → 右侧
+    ]
 
-fig.savefig('figures/ablation_tradeoff.pdf')
-fig.savefig('figures/ablation_tradeoff.png')
-print("Saved: figures/ablation_tradeoff.pdf/.png")
-plt.close(fig)
+    ax.set_xlabel('抖动率（切换次数 / 分钟）')
+    ax.set_ylabel('分类准确率（%）')
+    ax.set_title('各配置的准确率–抖动率')
+    ax.set_xlim(0.6, 4.5)
+    ax.set_ylim(92.9, 94.65)
+    ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
+    ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
+
+    # 图例 — 每个标记形状和颜色单独列出（含 Smooth-3+Penalty）
+    legend_elements = [
+        plt.scatter([], [], marker='o', color=BASELINE_COLOR, s=65,
+                    label='基线：无平滑，无惩罚'),
+        plt.scatter([], [], marker='s', color=PENALTY_COLOR,  s=65,
+                    label='仅惩罚'),
+        plt.scatter([], [], marker='o', color=BASE_COLOR,     s=65,
+                    label='平滑(K=3)，无惩罚'),
+        plt.scatter([], [], marker='s', color=SMOOTH3P_COLOR, s=65,
+                    label='平滑(K=3) + 惩罚'),
+        plt.scatter([], [], marker='D', color=BASE_COLOR,     s=55,
+                    label='平滑(K=5)，无惩罚'),
+        plt.scatter([], [], marker='*', color=FULL_COLOR,     s=160,
+                    label='完整系统 — 平滑(K=5) + 惩罚（本文方法）'),
+    ]
+    ax.legend(handles=legend_elements, loc='lower left', fontsize=7.5, framealpha=0.88,
+              handletextpad=0.4)
+
+    fig.savefig('figures/ablation_tradeoff.pdf')
+    fig.savefig('figures/ablation_tradeoff.png')
+    print("Saved: figures/ablation_tradeoff.pdf/.png")
+    plt.close(fig)
 
 print("\nAll figures saved to figures/")

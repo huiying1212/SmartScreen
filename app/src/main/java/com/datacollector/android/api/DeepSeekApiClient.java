@@ -342,9 +342,10 @@ public class DeepSeekApiClient {
             }
 
             Log.i(TAG, "generateBubbleText: raw LLM response: " + response);
+            // Only remove wrapping quotes (and surrounding whitespace). Keep sentence-ending punctuation.
             response = response.trim()
-                    .replaceAll("^[\"'\u201c\u201d]+", "")
-                    .replaceAll("[\"'\u201c\u201d\u3002\uff01!.]+$", "");
+                    .replaceAll("^[\\s\"'\u201c\u201d]+", "")
+                    .replaceAll("[\\s\"'\u201c\u201d]+$", "");
             if (response.length() > 80) response = response.substring(0, 80);
             return response;
 
