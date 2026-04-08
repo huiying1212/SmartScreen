@@ -95,6 +95,17 @@ public class WeatherDataCollector extends BaseDataCollector<JSONObject> {
 
     @Override
     protected JSONObject doCollectData() {
+        // 如果用户在系统设置中撤销了位置权限，应立即停止并清空缓存，
+        // 避免在权限关闭后仍显示旧天气数据造成误解。
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            cachedWeatherData = null;
+            cachedTimestamp = 0;
+            return null;
+        }
+
         // 检查缓存是否仍然有效
         long cacheDuration = configuration.optLong("cache_duration_ms", 30 * 60_000L);
         if (cachedWeatherData != null
@@ -108,7 +119,7 @@ public class WeatherDataCollector extends BaseDataCollector<JSONObject> {
         Location location = getLastKnownLocation();
         if (location == null) {
             Log.w(TAG, "No location available, skipping weather collection");
-            return cachedWeatherData; // 返回旧缓存（可能为 null）
+            return null;
         }
 
         // 请求天气 API

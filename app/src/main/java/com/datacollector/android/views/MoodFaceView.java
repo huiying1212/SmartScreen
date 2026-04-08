@@ -92,6 +92,12 @@ public class MoodFaceView extends View {
     /** Overall opacity of the face [0..255]. 255 = fully opaque, default = semi-transparent. */
     private int globalAlpha = 220;  // ~86% opacity — clearer icon while still slightly translucent
 
+    /**
+     * If true, only draw facial features (eyebrows/eyes/nose/mouth).
+     * Used for placeholder wallpapers that want the "face" without the filled head circle.
+     */
+    private boolean featuresOnly = false;
+
     private FaceStyle style = FaceStyle.CLASSIC;
     private float currentStress = 0f;
     private float targetStress = 0f;
@@ -202,6 +208,15 @@ public class MoodFaceView extends View {
         return globalAlpha;
     }
 
+    public void setFeaturesOnly(boolean featuresOnly) {
+        this.featuresOnly = featuresOnly;
+        invalidate();
+    }
+
+    public boolean isFeaturesOnly() {
+        return featuresOnly;
+    }
+
     /**
      * Smoothly animate to a new stress level.
      *
@@ -264,15 +279,19 @@ public class MoodFaceView extends View {
             canvas.saveLayerAlpha(0, 0, w, h, globalAlpha);
         }
 
-        drawFace(canvas, cx, cy, r, s);
+        if (!featuresOnly) {
+            drawFace(canvas, cx, cy, r, s);
+        }
         drawEyebrows(canvas, cx, cy, r, s);
         drawEyes(canvas, cx, cy, r, s);
         drawNose(canvas, cx, cy, r, s);
         drawMouth(canvas, cx, cy, r, s);
-        drawDarkCircles(canvas, cx, cy, r, s);
-        drawBlush(canvas, cx, cy, r, s);
-        drawSweatDrop(canvas, cx, cy, r, s);
-        drawSpiral(canvas, cx, cy, r, s);
+        if (!featuresOnly) {
+            drawDarkCircles(canvas, cx, cy, r, s);
+            drawBlush(canvas, cx, cy, r, s);
+            drawSweatDrop(canvas, cx, cy, r, s);
+            drawSpiral(canvas, cx, cy, r, s);
+        }
 
         if (globalAlpha < 255) {
             canvas.restore();
@@ -454,14 +473,16 @@ public class MoodFaceView extends View {
             canvas.drawPath(mouthPath, mouthPaint);
 
             // Subtle tongue/mouth fill for big smile
-            float openness = (1f - s / 0.25f) * 0.5f;
-            if (openness > 0.1f) {
-                mouthFillPaint.setColor(withAlpha(darken(style.lineColor, 0.5f), (int)(openness * 80)));
-                Path fillPath = new Path();
-                fillPath.moveTo(cx - mouthHalfW * 0.8f, mouthY + r * 0.02f);
-                fillPath.quadTo(cx, mouthY + curveOffset * 0.7f, cx + mouthHalfW * 0.8f, mouthY + r * 0.02f);
-                fillPath.close();
-                canvas.drawPath(fillPath, mouthFillPaint);
+            if (!featuresOnly) {
+                float openness = (1f - s / 0.25f) * 0.5f;
+                if (openness > 0.1f) {
+                    mouthFillPaint.setColor(withAlpha(darken(style.lineColor, 0.5f), (int) (openness * 80)));
+                    Path fillPath = new Path();
+                    fillPath.moveTo(cx - mouthHalfW * 0.8f, mouthY + r * 0.02f);
+                    fillPath.quadTo(cx, mouthY + curveOffset * 0.7f, cx + mouthHalfW * 0.8f, mouthY + r * 0.02f);
+                    fillPath.close();
+                    canvas.drawPath(fillPath, mouthFillPaint);
+                }
             }
         } else {
             // Normal mouth

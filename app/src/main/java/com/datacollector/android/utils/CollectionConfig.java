@@ -49,6 +49,10 @@ public class CollectionConfig {
     public static final String KEY_API_READ_TIMEOUT = "api_read_timeout_s";
     public static final String KEY_AGGREGATION_WINDOW_HOURS = "aggregation_window_hours";
 
+    // ── 全局总开关 ────────────────────────────────────────────
+    /** true = RI4SU 允许运行后台服务与悬浮窗；false = 全局关闭（直到用户手动开启） */
+    public static final String KEY_RI4SU_ENABLED = "ri4su_enabled";
+
     // ── 悬浮窗引擎 ───────────────────────────────────────────
     public static final String KEY_OVERLAY_ENABLED = "overlay_enabled";
     public static final String KEY_OVERLAY_UPDATE_INTERVAL_MS = "overlay_update_interval_ms";
@@ -59,6 +63,7 @@ public class CollectionConfig {
     public static final String KEY_WALLPAPER_SCHEDULE_SLOT_1 = "wallpaper_schedule_slot_1";
     public static final String KEY_WALLPAPER_SCHEDULE_SLOT_2 = "wallpaper_schedule_slot_2";
     public static final String KEY_WALLPAPER_SCHEDULE_SLOT_3 = "wallpaper_schedule_slot_3";
+    public static final String KEY_ORIGINAL_WALLPAPER_BACKED_UP = "original_wallpaper_backed_up";
 
     // ── 个人设置 ──────────────────────────────────────────────
     public static final String KEY_WALLPAPER_STYLE = "wallpaper_style";
@@ -118,6 +123,9 @@ public class CollectionConfig {
         putIfAbsent(editor, KEY_API_READ_TIMEOUT, 60);
         putIfAbsent(editor, KEY_AGGREGATION_WINDOW_HOURS, 6);
 
+        // 全局开关（默认开启）
+        putIfAbsent(editor, KEY_RI4SU_ENABLED, true);
+
         // 悬浮窗
         putIfAbsent(editor, KEY_OVERLAY_ENABLED, true);
         putIfAbsent(editor, KEY_OVERLAY_UPDATE_INTERVAL_MS, 30_000L); // 30s
@@ -128,6 +136,7 @@ public class CollectionConfig {
         putIfAbsent(editor, KEY_WALLPAPER_SCHEDULE_SLOT_1, 8 * 60);  // 08:00
         putIfAbsent(editor, KEY_WALLPAPER_SCHEDULE_SLOT_2, 12 * 60); // 12:00
         putIfAbsent(editor, KEY_WALLPAPER_SCHEDULE_SLOT_3, 20 * 60); // 20:00
+        putIfAbsent(editor, KEY_ORIGINAL_WALLPAPER_BACKED_UP, false);
 
         // 个人设置
         putIfAbsent(editor, KEY_WALLPAPER_STYLE, "唯美艺术");

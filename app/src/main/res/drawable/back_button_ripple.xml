@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#409594C4">
+    android:color="@color/launcher_icon_ripple">
     <item android:id="@android:id/mask">
         <shape android:shape="oval">
             <solid android:color="@android:color/white" />
@@ -8,7 +8,7 @@
     </item>
     <item>
         <shape android:shape="oval">
-            <solid android:color="#14938FC4" />
+            <solid android:color="@color/launcher_icon_button_fill" />
         </shape>
     </item>
 </ripple>

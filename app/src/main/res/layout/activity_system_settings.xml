@@ -15,15 +15,18 @@
 
         <ImageButton
             android:id="@+id/btn_back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:src="@drawable/ic_arrow_back"
             android:background="@drawable/back_button_ripple"
             android:contentDescription="返回"
-            android:scaleType="centerInside"
-            android:padding="6dp" />
+            android:scaleType="center"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -332,7 +335,7 @@
 
         </LinearLayout>
 
-        <!-- ══════ 系统权限 ══════ -->
+        <!-- ══════ 服务控制 ══════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -358,33 +361,11 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="系统权限"
+                    android:text="服务控制"
                     android:textColor="@color/launcher_text_primary"
                     android:textSize="@dimen/text_section_title"
                     android:textStyle="bold" />
             </LinearLayout>
-
-            <Button
-                android:id="@+id/btn_perm_overlay"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/button_height"
-                android:text="授权悬浮窗权限"
-                android:textSize="13sp"
-                android:textColor="@color/button_secondary_text"
-                android:background="@drawable/button_secondary_bg"
-                android:stateListAnimator="@null"
-                android:layout_marginBottom="@dimen/spacing_sm" />
-
-            <Button
-                android:id="@+id/btn_perm_usage"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/button_height"
-                android:text="授权使用情况访问"
-                android:textSize="13sp"
-                android:textColor="@color/button_secondary_text"
-                android:background="@drawable/button_secondary_bg"
-                android:stateListAnimator="@null"
-                android:layout_marginBottom="@dimen/spacing_sm" />
 
             <Button
                 android:id="@+id/btn_start_collection"
@@ -513,6 +494,17 @@
                 android:layout_width="match_parent"
                 android:layout_height="42dp"
                 android:text="测试反思壁纸生成"
+                android:textSize="13sp"
+                android:textColor="@color/button_secondary_text"
+                android:background="@drawable/button_secondary_bg"
+                android:stateListAnimator="@null"
+                android:layout_marginBottom="@dimen/spacing_xs" />
+
+            <Button
+                android:id="@+id/btn_preview_initial_wallpaper"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:text="预览初始占位壁纸"
                 android:textSize="13sp"
                 android:textColor="@color/button_secondary_text"
                 android:background="@drawable/button_secondary_bg"

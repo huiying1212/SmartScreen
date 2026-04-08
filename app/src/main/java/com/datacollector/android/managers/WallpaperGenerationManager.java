@@ -3,6 +3,9 @@ package com.datacollector.android.managers;
 import android.app.WallpaperManager;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.util.Log;
 
@@ -10,6 +13,7 @@ import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.api.QwenImageApiClient;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.processing.DataAggregator;
+import com.datacollector.android.views.MoodFaceView;
 
 import org.json.JSONObject;
 
@@ -46,6 +50,8 @@ public class WallpaperGenerationManager {
     private final DataAggregator aggregator;
     private final CollectionConfig config;
     private volatile boolean isGenerating = false;
+    private static final String ORIGINAL_WALLPAPER_FILE = "original_wallpaper.png";
+    private static final Object WALLPAPER_LOCK = new Object();
 
     public WallpaperGenerationManager(Context context) {
         this.context = context.getApplicationContext();
@@ -173,7 +179,10 @@ public class WallpaperGenerationManager {
 
                 // Step 4: 设置壁纸
                 callback.onProgress("正在设置壁纸和锁屏...");
-                setWallpaper(resultBitmap[0]);
+                backupOriginalWallpaperIfNeeded();
+                synchronized (WALLPAPER_LOCK) {
+                    setWallpaper(resultBitmap[0]);
+                }
                 saveBitmapLocally(resultBitmap[0]);
 
                 config.setLong(CollectionConfig.KEY_LAST_WALLPAPER_GENERATION_TIME,
@@ -225,6 +234,178 @@ public class WallpaperGenerationManager {
             wm.setBitmap(bitmap);
         }
         Log.i(TAG, "Wallpaper set (home + lock)");
+    }
+
+    /**
+     * Called when the user toggles "反思壁纸" ON.
+     * - Backup current wallpaper (once)
+     * - If a generated wallpaper exists in the last 6 hours, apply the newest one
+     * - Otherwise apply a themed placeholder wallpaper (brand color + face + "hi")
+     */
+    public void applyRecentOrPlaceholderWallpaperOnEnable() {
+        try {
+            backupOriginalWallpaperIfNeeded();
+            Bitmap recent = loadLatestGeneratedWallpaperWithinMs(6L * 60 * 60 * 1000);
+            if (recent != null) {
+                synchronized (WALLPAPER_LOCK) {
+                    setWallpaper(recent);
+                }
+                Log.i(TAG, "Applied latest generated wallpaper from last 6h");
+                return;
+            }
+            Bitmap placeholder = buildPlaceholderWallpaper();
+            synchronized (WALLPAPER_LOCK) {
+                setWallpaper(placeholder);
+            }
+            Log.i(TAG, "Applied placeholder wallpaper (no recent generation)");
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to apply recent/placeholder wallpaper", e);
+        }
+    }
+
+    private Bitmap loadLatestGeneratedWallpaperWithinMs(long windowMs) {
+        try {
+            File dir = new File(context.getExternalFilesDir(null), "wallpapers");
+            if (!dir.exists() || !dir.isDirectory()) return null;
+            File[] files = dir.listFiles((d, name) -> name.startsWith("wallpaper_") && name.endsWith(".png"));
+            if (files == null || files.length == 0) return null;
+
+            long now = System.currentTimeMillis();
+            File best = null;
+            long bestTs = -1;
+            for (File f : files) {
+                long ts = f.lastModified();
+                if (now - ts > windowMs) continue;
+                if (ts > bestTs) {
+                    bestTs = ts;
+                    best = f;
+                }
+            }
+            if (best == null) return null;
+            return android.graphics.BitmapFactory.decodeFile(best.getAbsolutePath());
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to load recent wallpaper", e);
+            return null;
+        }
+    }
+
+    private Bitmap buildPlaceholderWallpaper() {
+        // Match system's desired wallpaper dimensions to avoid extra scaling blur.
+        int w = 1080;
+        int h = 1920;
+        try {
+            WallpaperManager wm = WallpaperManager.getInstance(context);
+            int dw = wm.getDesiredMinimumWidth();
+            int dh = wm.getDesiredMinimumHeight();
+            if (dw > 0) w = dw;
+            if (dh > 0) h = dh;
+        } catch (Exception ignored) {}
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+
+        int bg = 0xFFC3C2F2; // app theme accent
+        canvas.drawColor(bg);
+
+        // Render MoodFaceView into the bitmap
+        MoodFaceView face = new MoodFaceView(context);
+        String styleName = config.getString(CollectionConfig.KEY_FACE_STYLE, "CLASSIC");
+        face.setFaceStyle(MoodFaceView.FaceStyle.fromName(styleName));
+        face.setStressImmediate(0f);
+        face.setGlobalAlpha(255);
+        face.setFeaturesOnly(true);
+
+        int faceSize = dpToPx(220);
+        int spec = android.view.View.MeasureSpec.makeMeasureSpec(faceSize, android.view.View.MeasureSpec.EXACTLY);
+        face.measure(spec, spec);
+        face.layout(0, 0, faceSize, faceSize);
+
+        int cx = w / 2;
+        int cy = (int) (h * 0.42f);
+        canvas.save();
+        canvas.translate(cx - faceSize / 2f, cy - faceSize / 2f);
+        face.draw(canvas);
+        canvas.restore();
+
+        // Add "hi"
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(Color.WHITE);
+        paint.setTextAlign(android.graphics.Paint.Align.CENTER);
+        paint.setTextSize(dpToPx(44));
+        // Avoid shadow blur on some launchers' wallpaper scaling paths.
+        canvas.drawText("hi", cx, cy + faceSize / 2f + dpToPx(56), paint);
+
+        return bmp;
+    }
+
+    /** Apply the themed placeholder wallpaper immediately (for preview/debug). */
+    public void applyPlaceholderWallpaperNow() {
+        try {
+            backupOriginalWallpaperIfNeeded();
+            Bitmap placeholder = buildPlaceholderWallpaper();
+            synchronized (WALLPAPER_LOCK) {
+                setWallpaper(placeholder);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to apply placeholder wallpaper", e);
+        }
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * context.getResources().getDisplayMetrics().density);
+    }
+
+    /**
+     * 备份用户原本的系统壁纸（只备份一次，保存在应用私有目录）。
+     * 用于在“反思系统/反思壁纸关闭”时恢复。
+     */
+    public void backupOriginalWallpaperIfNeeded() {
+        try {
+            if (config.getBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false)) return;
+            WallpaperManager wm = WallpaperManager.getInstance(context);
+            Drawable d = wm.getDrawable();
+            if (d == null) return;
+
+            int w = Math.max(1, d.getIntrinsicWidth() > 0 ? d.getIntrinsicWidth() : 1080);
+            int h = Math.max(1, d.getIntrinsicHeight() > 0 ? d.getIntrinsicHeight() : 1920);
+            Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bmp);
+            d.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            d.draw(canvas);
+
+            File out = new File(context.getFilesDir(), ORIGINAL_WALLPAPER_FILE);
+            try (FileOutputStream fos = new FileOutputStream(out)) {
+                bmp.compress(Bitmap.CompressFormat.PNG, 95, fos);
+            }
+            config.setBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, true);
+            Log.i(TAG, "Original wallpaper backed up to " + out.getAbsolutePath());
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to backup original wallpaper", e);
+        }
+    }
+
+    /**
+     * 恢复备份的原壁纸；如果没有备份则不做任何事。
+     */
+    public void restoreOriginalWallpaperIfExists() {
+        try {
+            // If the reflection wallpaper feature is currently enabled, do NOT restore.
+            // This avoids races where an async restore overrides a newly generated wallpaper.
+            if (config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)
+                    && config.getBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, true)) {
+                return;
+            }
+            if (!config.getBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false)) return;
+            File f = new File(context.getFilesDir(), ORIGINAL_WALLPAPER_FILE);
+            if (!f.exists()) return;
+            android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeFile(f.getAbsolutePath());
+            if (bmp == null) return;
+            synchronized (WALLPAPER_LOCK) {
+                setWallpaper(bmp);
+            }
+            Log.i(TAG, "Original wallpaper restored");
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to restore original wallpaper", e);
+        }
     }
 
     private void saveBitmapLocally(Bitmap bitmap) {

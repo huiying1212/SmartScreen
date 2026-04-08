@@ -119,6 +119,11 @@ public class FloatingOverlayService extends Service {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         mainHandler = new Handler(Looper.getMainLooper());
         config = CollectionConfig.getInstance(this);
+        if (!config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) {
+            Log.i(TAG, "RI4SU disabled — stopping FloatingOverlayService");
+            stopSelf();
+            return;
+        }
         logger = UserInteractionLogger.get(this);
 
         // 初始化采集器实例（底层）

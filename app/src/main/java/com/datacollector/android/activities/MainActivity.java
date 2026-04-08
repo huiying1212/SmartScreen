@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -28,6 +29,7 @@ import com.datacollector.android.collectors.WeatherDataCollector;
 import com.datacollector.android.processing.ContextSnapshotCollector;
 import com.datacollector.android.services.DataCollectionService;
 import com.datacollector.android.services.FloatingOverlayService;
+import com.datacollector.android.managers.WallpaperGenerationManager;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.ExperimentDataUploader;
 import com.datacollector.android.utils.UserInteractionLogger;
@@ -120,8 +122,10 @@ public class MainActivity extends Activity {
         loadSavedState();
         autoGenerateReminder();
 
-        startDataCollectionService();
-        bindDataCollectionService();
+        if (config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) {
+            startDataCollectionService();
+            bindDataCollectionService();
+        }
     }
 
     private void initViews() {
@@ -143,6 +147,13 @@ public class MainActivity extends Activity {
         switchWallpaper.setOnCheckedChangeListener((btn, checked) -> {
                 config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, checked);
                 logger.log("toggle_wallpaper", "enabled", checked);
+                if (checked) {
+                    new Thread(() -> new WallpaperGenerationManager(getApplicationContext())
+                            .applyRecentOrPlaceholderWallpaperOnEnable()).start();
+                } else {
+                    new Thread(() -> new WallpaperGenerationManager(getApplicationContext())
+                            .restoreOriginalWallpaperIfExists()).start();
+                }
         });
     }
 
@@ -196,13 +207,39 @@ public class MainActivity extends Activity {
         switchOverlay.setChecked(config.getBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, true));
         switchWallpaper.setChecked(config.getBoolean(
                 CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, true));
+        applyGlobalEnabledState();
+    }
+
+    private void applyGlobalEnabledState() {
+        boolean globalEnabled = config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true);
+        // When globally disabled, keep toggles off and non-interactive.
+        if (!globalEnabled) {
+            config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, false);
+            config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, false);
+            switchOverlay.setChecked(false);
+            switchWallpaper.setChecked(false);
+            new Thread(() -> new WallpaperGenerationManager(getApplicationContext())
+                    .restoreOriginalWallpaperIfExists()).start();
+        }
+        switchOverlay.setEnabled(globalEnabled);
+        switchWallpaper.setEnabled(globalEnabled);
     }
 
     // ── Service Management ──────────────────────────────────────
 
     private void startOverlayService() {
-        if (!Settings.canDrawOverlays(this)) {
+        if (!config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) {
             switchOverlay.setChecked(false);
+            config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, false);
+            return;
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            // Jump to system settings to grant overlay permission.
+            switchOverlay.setChecked(false);
+            config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, false);
+            Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivity(i);
             return;
         }
         Intent intent = new Intent(this, FloatingOverlayService.class);
@@ -251,9 +288,19 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         registerReceiver(bubbleTextReceiver, new IntentFilter(ACTION_BUBBLE_TEXT_UPDATED));
-        if (config.getBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, true)
-                && Settings.canDrawOverlays(this)) {
+        applyGlobalEnabledState();
+        if (!config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) {
+            stopService(new Intent(this, FloatingOverlayService.class));
+            return;
+        }
+        boolean overlayEnabled = config.getBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, true);
+        boolean overlayGranted = Settings.canDrawOverlays(this);
+        if (overlayEnabled && overlayGranted) {
             startOverlayService();
+        } else if (overlayEnabled && !overlayGranted) {
+            // Keep UI + config consistent with system permission.
+            config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, false);
+            switchOverlay.setChecked(false);
         }
     }
 

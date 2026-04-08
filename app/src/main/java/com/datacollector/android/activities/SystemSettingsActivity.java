@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.Manifest;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -25,11 +26,15 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.datacollector.android.R;
 import com.datacollector.android.api.DeepSeekApiClient;
 import com.datacollector.android.collectors.ScreenUsageCollector;
 import com.datacollector.android.managers.WallpaperGenerationManager;
 import com.datacollector.android.services.DataCollectionService;
+import com.datacollector.android.services.FloatingOverlayService;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.UserInteractionLogger;
 import com.datacollector.android.processing.LLMScoringEngine;
@@ -49,8 +54,8 @@ import java.util.Map;
 public class SystemSettingsActivity extends Activity {
 
     private static final String TAG = "SystemSettingsActivity";
-    private static final int REQUEST_OVERLAY_PERMISSION = 1001;
     private static final int REQUEST_USAGE_STATS = 1002;
+    private static final int REQUEST_RUNTIME_PERMISSIONS = 1003;
 
     private CollectionConfig config;
     private UserInteractionLogger logger;
@@ -62,10 +67,22 @@ public class SystemSettingsActivity extends Activity {
 
     private Switch switchLocation, switchActivity, switchScreenUsage, switchCalendar,
             switchWifi, switchBluetooth;
-    private Button btnPermOverlay, btnPermUsage, btnStartCollection;
+    private Button btnStartCollection;
     private LinearLayout historyContainer;
     private Button btnTestData, btnTestAi, btnTestWallpaper, btnTestBubblePrompt, btnTestWallpaperPrompt;
+    private Button btnPreviewInitialWallpaper;
     private TextView tvGenerationStatus, tvTestOutput;
+
+    private boolean isUpdatingToggleUi = false;
+    private PendingPermissionRequest pendingPermissionRequest = null;
+
+    private enum PendingPermissionRequest {
+        LOCATION,
+        CALENDAR,
+        WIFI,
+        BLUETOOTH,
+        SCREEN_USAGE
+    }
 
     private DataCollectionService dataCollectionService;
     private boolean serviceBound = false;
@@ -124,14 +141,13 @@ public class SystemSettingsActivity extends Activity {
         switchWifi = findViewById(R.id.switch_wifi);
         switchBluetooth = findViewById(R.id.switch_bluetooth);
 
-        btnPermOverlay = findViewById(R.id.btn_perm_overlay);
-        btnPermUsage = findViewById(R.id.btn_perm_usage);
         btnStartCollection = findViewById(R.id.btn_start_collection);
         historyContainer = findViewById(R.id.history_container);
 
         btnTestData = findViewById(R.id.btn_test_data);
         btnTestAi = findViewById(R.id.btn_test_ai);
         btnTestWallpaper = findViewById(R.id.btn_test_wallpaper);
+        btnPreviewInitialWallpaper = findViewById(R.id.btn_preview_initial_wallpaper);
         btnTestBubblePrompt = findViewById(R.id.btn_test_bubble_prompt);
         btnTestWallpaperPrompt = findViewById(R.id.btn_test_wallpaper_prompt);
         tvGenerationStatus = findViewById(R.id.tv_generation_status);
@@ -139,36 +155,186 @@ public class SystemSettingsActivity extends Activity {
     }
 
     private void setupDataCollectionToggles() {
-        switchLocation.setOnCheckedChangeListener((btn, checked) ->
-                config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, checked));
-        switchActivity.setOnCheckedChangeListener((btn, checked) ->
-                config.setBoolean(CollectionConfig.KEY_ACTIVITY_ENABLED, checked));
-        switchScreenUsage.setOnCheckedChangeListener((btn, checked) ->
-                config.setBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, checked));
-        switchCalendar.setOnCheckedChangeListener((btn, checked) ->
-                config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, checked));
-        switchWifi.setOnCheckedChangeListener((btn, checked) ->
-                config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, checked));
-        switchBluetooth.setOnCheckedChangeListener((btn, checked) ->
-                config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, checked));
+        switchLocation.setOnCheckedChangeListener((btn, checked) -> {
+            if (isUpdatingToggleUi) return;
+            if (checked) {
+                if (ensureLocationPermission()) {
+                    config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, true);
+                } else {
+                    // Permission flow started; keep config off until granted
+                    config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, false);
+                    setToggleCheckedSafely(switchLocation, false);
+                }
+            } else {
+                config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, false);
+            }
+        });
+
+        // Activity recognition collector uses sensors and doesn't rely on a runtime permission.
+        switchActivity.setOnCheckedChangeListener((btn, checked) -> {
+            if (isUpdatingToggleUi) return;
+            config.setBoolean(CollectionConfig.KEY_ACTIVITY_ENABLED, checked);
+        });
+
+        switchScreenUsage.setOnCheckedChangeListener((btn, checked) -> {
+            if (isUpdatingToggleUi) return;
+            if (checked) {
+                if (hasUsageStatsPermission()) {
+                    config.setBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, true);
+                } else {
+                    // Launch system settings; only enable after user grants it
+                    pendingPermissionRequest = PendingPermissionRequest.SCREEN_USAGE;
+                    startActivityForResult(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS), REQUEST_USAGE_STATS);
+                    config.setBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, false);
+                    setToggleCheckedSafely(switchScreenUsage, false);
+                    Toast.makeText(this, "请在系统设置中授予“使用情况访问”权限", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                config.setBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, false);
+            }
+        });
+
+        switchCalendar.setOnCheckedChangeListener((btn, checked) -> {
+            if (isUpdatingToggleUi) return;
+            if (checked) {
+                if (ensureCalendarPermission()) {
+                    config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, true);
+                } else {
+                    config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, false);
+                    setToggleCheckedSafely(switchCalendar, false);
+                }
+            } else {
+                config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, false);
+            }
+        });
+
+        switchWifi.setOnCheckedChangeListener((btn, checked) -> {
+            if (isUpdatingToggleUi) return;
+            if (checked) {
+                if (ensureWifiPermission()) {
+                    config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, true);
+                } else {
+                    config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, false);
+                    setToggleCheckedSafely(switchWifi, false);
+                }
+            } else {
+                config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, false);
+            }
+        });
+
+        switchBluetooth.setOnCheckedChangeListener((btn, checked) -> {
+            if (isUpdatingToggleUi) return;
+            if (checked) {
+                if (ensureBluetoothPermission()) {
+                    config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, true);
+                } else {
+                    config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, false);
+                    setToggleCheckedSafely(switchBluetooth, false);
+                }
+            } else {
+                config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, false);
+            }
+        });
+    }
+
+    private void setToggleCheckedSafely(Switch s, boolean checked) {
+        isUpdatingToggleUi = true;
+        try {
+            s.setChecked(checked);
+        } finally {
+            isUpdatingToggleUi = false;
+        }
+    }
+
+    private boolean ensureLocationPermission() {
+        boolean fineGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        boolean coarseGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        if (fineGranted || coarseGranted) return true;
+
+        pendingPermissionRequest = PendingPermissionRequest.LOCATION;
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                REQUEST_RUNTIME_PERMISSIONS);
+        return false;
+    }
+
+    private boolean ensureCalendarPermission() {
+        boolean granted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        if (granted) return true;
+        pendingPermissionRequest = PendingPermissionRequest.CALENDAR;
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.READ_CALENDAR},
+                REQUEST_RUNTIME_PERMISSIONS);
+        return false;
+    }
+
+    /**
+     * WiFi SSID requires location permission on Android 8.1+ in many cases.
+     * We reuse the location permission gate here to make the toggle behavior intuitive.
+     */
+    private boolean ensureWifiPermission() {
+        boolean fineGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        if (fineGranted) return true;
+        pendingPermissionRequest = PendingPermissionRequest.WIFI;
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                REQUEST_RUNTIME_PERMISSIONS);
+        return false;
+    }
+
+    private boolean ensureBluetoothPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            boolean connectGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            boolean scanGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            if (connectGranted && scanGranted) return true;
+            pendingPermissionRequest = PendingPermissionRequest.BLUETOOTH;
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN},
+                    REQUEST_RUNTIME_PERMISSIONS);
+            return false;
+        } else {
+            // Pre-Android 12: fine location is commonly required for scanning/identifying devices.
+            boolean fineGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            if (fineGranted) return true;
+            pendingPermissionRequest = PendingPermissionRequest.BLUETOOTH;
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    REQUEST_RUNTIME_PERMISSIONS);
+            return false;
+        }
     }
 
     private void setupPermissionButtons() {
-        btnPermOverlay.setOnClickListener(v -> requestOverlayPermission());
-        btnPermUsage.setOnClickListener(v -> requestUsageStatsPermission());
         btnStartCollection.setOnClickListener(v -> {
-            if (serviceRunning) {
+            boolean enabled = config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true);
+            if (enabled) {
+                config.setBoolean(CollectionConfig.KEY_RI4SU_ENABLED, false);
                 stopDataCollectionService();
+                stopService(new Intent(this, FloatingOverlayService.class));
                 Toast.makeText(this, "RI4SU 服务已关闭", Toast.LENGTH_SHORT).show();
             } else {
-                if (!Settings.canDrawOverlays(this) || !hasUsageStatsPermission()) {
-                    Toast.makeText(this, "请先授权所有必要权限", Toast.LENGTH_SHORT).show();
+                config.setBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true);
+                // Usage Stats is only required when "screen usage" collection is enabled.
+                boolean screenUsageEnabled = config.getBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, true);
+                if (screenUsageEnabled && !hasUsageStatsPermission()) {
+                    pendingPermissionRequest = PendingPermissionRequest.SCREEN_USAGE;
+                    startActivityForResult(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS), REQUEST_USAGE_STATS);
+                    Toast.makeText(this, "请先在系统设置中授予“使用情况访问”权限", Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startDataCollectionService();
                 bindDataCollectionService();
                 Toast.makeText(this, "RI4SU 服务已启动", Toast.LENGTH_SHORT).show();
             }
+            updateServiceButton();
+            applyGlobalEnabledState();
         });
         updateServiceButton();
     }
@@ -177,20 +343,69 @@ public class SystemSettingsActivity extends Activity {
         btnTestData.setOnClickListener(v -> testGetData());
         btnTestAi.setOnClickListener(v -> testAiReminder());
         btnTestWallpaper.setOnClickListener(v -> generateWallpaperNow());
+        btnPreviewInitialWallpaper.setOnClickListener(v -> previewInitialWallpaper());
         btnTestBubblePrompt.setOnClickListener(v -> showBubblePromptStructure());
         btnTestWallpaperPrompt.setOnClickListener(v -> showWallpaperPromptStructure());
     }
 
-    private void loadSavedState() {
-        switchLocation.setChecked(config.getBoolean(CollectionConfig.KEY_LOCATION_ENABLED, true));
-        switchActivity.setChecked(config.getBoolean(CollectionConfig.KEY_ACTIVITY_ENABLED, true));
-        switchScreenUsage.setChecked(config.getBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, true));
-        switchCalendar.setChecked(config.getBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, true));
-        switchWifi.setChecked(config.getBoolean(CollectionConfig.KEY_WIFI_ENABLED, true));
-        switchBluetooth.setChecked(config.getBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, true));
+    private void previewInitialWallpaper() {
+        tvGenerationStatus.setText("正在设置初始占位壁纸...");
+        tvGenerationStatus.setTextColor(0xFF8B89B8);
+        new Thread(() -> {
+            try {
+                new WallpaperGenerationManager(getApplicationContext()).applyPlaceholderWallpaperNow();
+                uiHandler.post(() -> {
+                    tvGenerationStatus.setText("已设置初始占位壁纸");
+                    tvGenerationStatus.setTextColor(0xFFC3C2F2);
+                });
+            } catch (Exception e) {
+                uiHandler.post(() -> {
+                    tvGenerationStatus.setText("设置失败: " + e.getMessage());
+                    tvGenerationStatus.setTextColor(0xFFFF5252);
+                });
+            }
+        }).start();
+    }
 
-        updatePermissionButtons();
+    private void loadSavedState() {
+        setToggleCheckedSafely(switchLocation, config.getBoolean(CollectionConfig.KEY_LOCATION_ENABLED, true));
+        setToggleCheckedSafely(switchActivity, config.getBoolean(CollectionConfig.KEY_ACTIVITY_ENABLED, true));
+        setToggleCheckedSafely(switchScreenUsage, config.getBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, true));
+        setToggleCheckedSafely(switchCalendar, config.getBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, true));
+        setToggleCheckedSafely(switchWifi, config.getBoolean(CollectionConfig.KEY_WIFI_ENABLED, true));
+        setToggleCheckedSafely(switchBluetooth, config.getBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, true));
+
+        applyGlobalEnabledState();
         loadUsageHistory();
+    }
+
+    private void applyGlobalEnabledState() {
+        boolean globalEnabled = config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true);
+        if (!globalEnabled) {
+            new Thread(() -> new WallpaperGenerationManager(getApplicationContext())
+                    .restoreOriginalWallpaperIfExists()).start();
+            // Force all collection toggles off when globally disabled.
+            config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, false);
+            config.setBoolean(CollectionConfig.KEY_ACTIVITY_ENABLED, false);
+            config.setBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, false);
+            config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, false);
+            config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, false);
+            config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, false);
+
+            setToggleCheckedSafely(switchLocation, false);
+            setToggleCheckedSafely(switchActivity, false);
+            setToggleCheckedSafely(switchScreenUsage, false);
+            setToggleCheckedSafely(switchCalendar, false);
+            setToggleCheckedSafely(switchWifi, false);
+            setToggleCheckedSafely(switchBluetooth, false);
+        }
+
+        if (switchLocation != null) switchLocation.setEnabled(globalEnabled);
+        if (switchActivity != null) switchActivity.setEnabled(globalEnabled);
+        if (switchScreenUsage != null) switchScreenUsage.setEnabled(globalEnabled);
+        if (switchCalendar != null) switchCalendar.setEnabled(globalEnabled);
+        if (switchWifi != null) switchWifi.setEnabled(globalEnabled);
+        if (switchBluetooth != null) switchBluetooth.setEnabled(globalEnabled);
     }
 
     private void generateWallpaperNow() {
@@ -523,29 +738,13 @@ public class SystemSettingsActivity extends Activity {
 
     private void updateServiceButton() {
         if (btnStartCollection == null) return;
-        btnStartCollection.setText(serviceRunning ? "关闭 RI4SU 服务" : "启动 RI4SU 服务");
+        boolean enabled = config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true);
+        btnStartCollection.setText(enabled ? "关闭 RI4SU 服务" : "启动 RI4SU 服务");
     }
 
     private void bindDataCollectionService() {
         Intent intent = new Intent(this, DataCollectionService.class);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
-    }
-
-    private void requestOverlayPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            startActivityForResult(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + getPackageName())), REQUEST_OVERLAY_PERMISSION);
-        } else {
-            Toast.makeText(this, "悬浮窗权限已授权", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void requestUsageStatsPermission() {
-        if (!hasUsageStatsPermission()) {
-            startActivityForResult(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS), REQUEST_USAGE_STATS);
-        } else {
-            Toast.makeText(this, "使用情况访问已授权", Toast.LENGTH_SHORT).show();
-        }
     }
 
     private boolean hasUsageStatsPermission() {
@@ -556,29 +755,175 @@ public class SystemSettingsActivity extends Activity {
         return mode == AppOpsManager.MODE_ALLOWED;
     }
 
-    private void updatePermissionButtons() {
-        boolean overlayOk = Settings.canDrawOverlays(this);
-        btnPermOverlay.setText(overlayOk ? "悬浮窗权限 ✓" : "授权悬浮窗权限");
-        btnPermOverlay.setEnabled(!overlayOk);
-
-        boolean usageOk = hasUsageStatsPermission();
-        btnPermUsage.setText(usageOk ? "使用情况访问 ✓" : "授权使用情况访问");
-        btnPermUsage.setEnabled(!usageOk);
-    }
-
     // ── Lifecycle ───────────────────────────────────────────────
 
     @Override
     protected void onResume() {
         super.onResume();
-        updatePermissionButtons();
+        ensureOverlayServiceRunning();
+        applyGlobalEnabledState();
+        syncTogglesWithSystemPermissions();
+        // Keep toggles consistent with system-granted permissions for flows that require Settings screens.
+        if (switchScreenUsage != null) {
+            boolean usageGranted = hasUsageStatsPermission();
+            boolean enabled = config.getBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, true);
+            if (usageGranted && pendingPermissionRequest == PendingPermissionRequest.SCREEN_USAGE) {
+                config.setBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, true);
+                enabled = true;
+            } else if (!usageGranted) {
+                // Can't function without permission; reflect that in UI + config
+                config.setBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, false);
+                enabled = false;
+            }
+            setToggleCheckedSafely(switchScreenUsage, enabled);
+        }
+        if (pendingPermissionRequest == PendingPermissionRequest.SCREEN_USAGE) {
+            pendingPermissionRequest = null;
+        }
+    }
+
+    /**
+     * If the user revokes a system permission in Android Settings,
+     * reflect it immediately in our in-app "collection enabled" toggles.
+     */
+    private void syncTogglesWithSystemPermissions() {
+        // Location
+        boolean locationGranted =
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        if (!locationGranted) {
+            config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, false);
+            if (switchLocation != null) setToggleCheckedSafely(switchLocation, false);
+        }
+
+        // Calendar
+        boolean calendarGranted =
+                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        if (!calendarGranted) {
+            config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, false);
+            if (switchCalendar != null) setToggleCheckedSafely(switchCalendar, false);
+        }
+
+        // WiFi (SSID access often depends on fine location)
+        boolean wifiGranted =
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        if (!wifiGranted) {
+            config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, false);
+            if (switchWifi != null) setToggleCheckedSafely(switchWifi, false);
+        }
+
+        // Bluetooth
+        boolean btGranted;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            btGranted =
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                            == android.content.pm.PackageManager.PERMISSION_GRANTED
+                            && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
+                            == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        } else {
+            // Pre-Android 12: fine location is commonly needed for scanning/identifying.
+            btGranted =
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                            == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        }
+        if (!btGranted) {
+            config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, false);
+            if (switchBluetooth != null) setToggleCheckedSafely(switchBluetooth, false);
+        }
+    }
+
+    private void ensureOverlayServiceRunning() {
+        if (!config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) return;
+        if (!config.getBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, true)) return;
+        if (!Settings.canDrawOverlays(this)) return;
+        Intent intent = new Intent(this, FloatingOverlayService.class);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent);
+            } else {
+                startService(intent);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to ensure overlay service running", e);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_RUNTIME_PERMISSIONS) return;
+
+        boolean anyGranted = false;
+        if (grantResults != null) {
+            for (int r : grantResults) {
+                if (r == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    anyGranted = true;
+                    break;
+                }
+            }
+        }
+
+        PendingPermissionRequest req = pendingPermissionRequest;
+        pendingPermissionRequest = null;
+
+        if (req == null) return;
+
+        switch (req) {
+            case LOCATION:
+                if (anyGranted) {
+                    config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, true);
+                    setToggleCheckedSafely(switchLocation, true);
+                } else {
+                    config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, false);
+                    setToggleCheckedSafely(switchLocation, false);
+                    Toast.makeText(this, "未授予位置权限，已关闭位置采集", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            case CALENDAR:
+                if (anyGranted) {
+                    config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, true);
+                    setToggleCheckedSafely(switchCalendar, true);
+                } else {
+                    config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, false);
+                    setToggleCheckedSafely(switchCalendar, false);
+                    Toast.makeText(this, "未授予日历权限，已关闭日程采集", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            case WIFI:
+                if (anyGranted) {
+                    config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, true);
+                    setToggleCheckedSafely(switchWifi, true);
+                } else {
+                    config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, false);
+                    setToggleCheckedSafely(switchWifi, false);
+                    Toast.makeText(this, "未授予所需权限，已关闭 WiFi 采集", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            case BLUETOOTH:
+                if (anyGranted) {
+                    config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, true);
+                    setToggleCheckedSafely(switchBluetooth, true);
+                } else {
+                    config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, false);
+                    setToggleCheckedSafely(switchBluetooth, false);
+                    Toast.makeText(this, "未授予蓝牙相关权限，已关闭蓝牙采集", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            case SCREEN_USAGE:
+                // handled via onActivityResult / onResume
+                break;
+        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_OVERLAY_PERMISSION || requestCode == REQUEST_USAGE_STATS) {
-            updatePermissionButtons();
+        if (requestCode == REQUEST_USAGE_STATS) {
+            // UI refresh handled in onResume() (toggle sync)
         }
     }
 

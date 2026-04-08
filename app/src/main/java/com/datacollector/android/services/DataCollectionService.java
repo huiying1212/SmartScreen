@@ -103,6 +103,11 @@ public class DataCollectionService extends Service implements DataCollectorManag
         acquireWakeLock();
 
         collectionConfig = CollectionConfig.getInstance(this);
+        if (!collectionConfig.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) {
+            Log.i(TAG, "RI4SU disabled — stopping DataCollectionService");
+            stopSelf();
+            return;
+        }
         collectionStats = CollectionStats.getInstance(this);
         collectionHandler = new Handler(Looper.getMainLooper());
 

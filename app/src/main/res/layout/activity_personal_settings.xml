@@ -15,15 +15,18 @@
 
         <ImageButton
             android:id="@+id/btn_back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:src="@drawable/ic_arrow_back"
             android:background="@drawable/back_button_ripple"
             android:contentDescription="返回"
-            android:scaleType="centerInside"
-            android:padding="6dp" />
+            android:scaleType="center"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
 
         <TextView
             android:layout_width="wrap_content"

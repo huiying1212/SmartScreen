@@ -12,6 +12,9 @@
     <!-- 文字颜色 -->
     <color name="launcher_text_primary">#FF2E2C50</color>
     <color name="launcher_text_secondary">#FF8B89B8</color>
+    <!-- 与主文字同色、不同透明度，用于顶栏图标涟漪/底 -->
+    <color name="launcher_icon_ripple">#402E2C50</color>
+    <color name="launcher_icon_button_fill">#142E2C50</color>
 
     <!-- 卡片颜色 -->
     <color name="launcher_button_bg">#FFFFFFFF</color>
