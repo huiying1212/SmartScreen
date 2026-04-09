@@ -101,9 +101,6 @@ public class ExperimentDataUploader {
 
         // 2. 上传交互日志
         uploadInteractionLogs(serverUrl, pid);
-
-        // 3. 上传上下文数据
-        uploadContextData(serverUrl, pid);
     }
 
     private void registerParticipant(String serverUrl, String pid) {
@@ -151,40 +148,6 @@ public class ExperimentDataUploader {
                 }
             } catch (Exception e) {
                 Log.w(TAG, "Failed to upload " + file.getName(), e);
-            }
-        }
-    }
-
-    private void uploadContextData(String serverUrl, String pid) {
-        File dataDir = new File(appContext.getExternalFilesDir(null), "data");
-        if (!dataDir.exists()) return;
-
-        // 只上传未加密的 JSON 文件（加密文件需要先解密，暂不处理）
-        File[] files = dataDir.listFiles((dir, name) ->
-                name.startsWith("context_data_") && name.endsWith(".json")
-                        && !name.contains("latest") && !name.contains(".synced"));
-        if (files == null || files.length == 0) return;
-
-        for (File file : files) {
-            try {
-                StringBuilder sb = new StringBuilder();
-                try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-                    String line;
-                    while ((line = br.readLine()) != null) sb.append(line);
-                }
-
-                JSONObject payload = new JSONObject(sb.toString());
-                payload.put("participant_id", pid);
-
-                String resp = postJson(serverUrl + "/api/context", payload);
-                if (resp != null) {
-                    File synced = new File(file.getParent(),
-                            file.getName().replace(".json", ".synced.json"));
-                    file.renameTo(synced);
-                    Log.i(TAG, "Uploaded context: " + file.getName());
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Failed to upload context " + file.getName(), e);
             }
         }
     }

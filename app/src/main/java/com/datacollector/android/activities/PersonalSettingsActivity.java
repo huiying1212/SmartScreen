@@ -14,7 +14,6 @@ import android.widget.Toast;
 import com.datacollector.android.R;
 import com.datacollector.android.services.FloatingOverlayService;
 import com.datacollector.android.utils.CollectionConfig;
-import com.datacollector.android.utils.UserInteractionLogger;
 import com.datacollector.android.views.MoodFaceView;
 
 import java.util.ArrayList;
@@ -24,7 +23,6 @@ import java.util.Locale;
 public class PersonalSettingsActivity extends Activity {
 
     private CollectionConfig config;
-    private UserInteractionLogger logger;
 
     private LinearLayout styleChipsContainer, iconGridContainer;
     private TextView tvTimeSlot1, tvTimeSlot2, tvTimeSlot3;
@@ -53,9 +51,6 @@ public class PersonalSettingsActivity extends Activity {
         setContentView(R.layout.activity_personal_settings);
 
         config = CollectionConfig.getInstance(this);
-        logger = UserInteractionLogger.get(this);
-        logger.log("personal_settings_open");
-
         initViews();
         setupStyleChips();
         setupTimeSlots();
@@ -110,7 +105,6 @@ public class PersonalSettingsActivity extends Activity {
     private void selectStyle(int index) {
         selectedStyleIndex = index;
         config.setString(CollectionConfig.KEY_WALLPAPER_STYLE, WALLPAPER_STYLES[index][0]);
-        logger.log("wallpaper_style_change", "style", WALLPAPER_STYLES[index][0]);
 
         for (int i = 0; i < styleChipViews.size(); i++) {
             TextView chip = styleChipViews.get(i);
@@ -152,7 +146,6 @@ public class PersonalSettingsActivity extends Activity {
             int minuteOfDay = h * 60 + m;
             config.setInt(configKey, minuteOfDay);
             display.setText(formatMinuteOfDay(minuteOfDay));
-            logger.log("time_slot_change", "slot", slotIndex, "time", formatMinuteOfDay(minuteOfDay));
         }, hour, minute, true).show();
     }
 
@@ -212,7 +205,6 @@ public class PersonalSettingsActivity extends Activity {
     private void selectFaceStyle(MoodFaceView.FaceStyle fs) {
         selectedFaceStyle = fs;
         config.setString(CollectionConfig.KEY_FACE_STYLE, fs.name());
-        logger.log("face_style_change", "style", fs.name());
 
         MoodFaceView.FaceStyle[] styles = MoodFaceView.FaceStyle.values();
         for (int i = 0; i < faceStyleItemViews.size(); i++) {
@@ -237,8 +229,6 @@ public class PersonalSettingsActivity extends Activity {
         btnSaveGoal.setOnClickListener(v -> {
             String goal = etPersonalGoal.getText().toString().trim();
             config.setString(CollectionConfig.KEY_USER_PERSONAL_GOAL, goal);
-            logger.log("personal_goal_save", "has_goal", !goal.isEmpty(),
-                    "goal_length", goal.length());
             Toast.makeText(this, goal.isEmpty() ? "目标已清除" : "目标已保存", Toast.LENGTH_SHORT).show();
         });
     }

@@ -21,7 +21,7 @@ import java.util.Random;
 /**
  * ESM（经验取样法）调度器。
  *
- * 每天在 9:00–21:00 之间随机安排 3 次问卷提醒。
+ * 每天在 9:00–21:00 之间随机安排 1 次问卷提醒。
  * 通过 AlarmManager 精确触发，弹出通知引导用户打开问卷。
  *
  * 使用方式：
@@ -61,7 +61,7 @@ public class ESMScheduler extends BroadcastReceiver {
         Random random = new Random();
         int windowMinutes = (WINDOW_END_HOUR - WINDOW_START_HOUR) * 60; // 720 min
 
-        // 生成 3 个不重叠的随机时间点
+        // 生成随机时间点
         int[] offsets = generateRandomOffsets(random, windowMinutes, ESM_COUNT_PER_DAY, MIN_GAP_MINUTES);
 
         for (int i = 0; i < ESM_COUNT_PER_DAY; i++) {

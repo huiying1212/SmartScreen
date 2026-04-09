@@ -163,13 +163,11 @@ public class MainActivity extends Activity {
     private void setupModule1() {
         switchOverlay.setOnCheckedChangeListener((btn, checked) -> {
             config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, checked);
-            logger.log("toggle_overlay", "enabled", checked);
             if (checked) startOverlayService(); else stopOverlayService();
         });
 
         switchWallpaper.setOnCheckedChangeListener((btn, checked) -> {
                 config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, checked);
-                logger.log("toggle_wallpaper", "enabled", checked);
                 if (checked) {
                     new Thread(() -> wallpaperManager
                             .applyRecentOrPlaceholderWallpaperOnEnable()).start();
@@ -183,7 +181,6 @@ public class MainActivity extends Activity {
     private void autoGenerateReminder() {
         tvReminderStatus.setText("生成中...");
         tvReminderResult.setText("");
-        logger.log("reminder_generate_start");
 
         new Thread(() -> {
             try {
@@ -196,15 +193,12 @@ public class MainActivity extends Activity {
                 uiHandler.post(() -> {
                     tvReminderStatus.setVisibility(android.view.View.GONE);
                     tvReminderResult.setText(text != null ? text : "");
-                    logger.log("reminder_generate_done", "score", score,
-                            "text_length", text != null ? text.length() : 0);
                 });
             } catch (Exception e) {
                 uiHandler.post(() -> {
                     tvReminderStatus.setText("生成失败");
                     tvReminderResult.setText(e.getMessage());
                     tvReminderResult.setTextColor(0xFFFF5252);
-                    logger.log("reminder_generate_error", "error", e.getMessage());
                 });
             }
         }).start();
@@ -214,12 +208,10 @@ public class MainActivity extends Activity {
 
     private void setupNavigation() {
         findViewById(R.id.nav_personal_settings).setOnClickListener(v -> {
-                logger.log("nav_personal_settings");
                 startActivity(new Intent(this, PersonalSettingsActivity.class));
         });
 
         findViewById(R.id.nav_system_settings).setOnClickListener(v -> {
-                logger.log("nav_system_settings");
                 startActivity(new Intent(this, SystemSettingsActivity.class));
         });
     }
