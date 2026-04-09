@@ -118,9 +118,10 @@ public class WallpaperGenerationManager {
 
                 // Step 2: LLM 根据使用数据提炼场景关键词
                 callback.onProgress("正在提取创意关键词...");
-                String llmInputSummary = deepSeekClient.summarizeForKeywords(aggregatedData);
                 String weightDesc = config.getUserPreferenceDescription();
-                String llmKeywords = deepSeekClient.extractKeywords(aggregatedData, weightDesc);
+                DeepSeekApiClient.KeywordsResult kw = deepSeekClient.extractKeywords(aggregatedData, weightDesc);
+                String llmInputSummary = kw != null ? kw.inputSummary : deepSeekClient.summarizeForKeywords(aggregatedData);
+                String llmKeywords = kw != null ? kw.keywords : null;
 
                 String keywordsSource;
                 String keywords;
@@ -184,6 +185,8 @@ public class WallpaperGenerationManager {
                     setWallpaper(resultBitmap[0]);
                 }
                 saveBitmapLocally(resultBitmap[0]);
+                resultBitmap[0].recycle();
+                resultBitmap[0] = null;
 
                 config.setLong(CollectionConfig.KEY_LAST_WALLPAPER_GENERATION_TIME,
                         System.currentTimeMillis());
@@ -247,15 +250,23 @@ public class WallpaperGenerationManager {
             backupOriginalWallpaperIfNeeded();
             Bitmap recent = loadLatestGeneratedWallpaperWithinMs(6L * 60 * 60 * 1000);
             if (recent != null) {
-                synchronized (WALLPAPER_LOCK) {
-                    setWallpaper(recent);
+                try {
+                    synchronized (WALLPAPER_LOCK) {
+                        setWallpaper(recent);
+                    }
+                } finally {
+                    recent.recycle();
                 }
                 Log.i(TAG, "Applied latest generated wallpaper from last 6h");
                 return;
             }
             Bitmap placeholder = buildPlaceholderWallpaper();
-            synchronized (WALLPAPER_LOCK) {
-                setWallpaper(placeholder);
+            try {
+                synchronized (WALLPAPER_LOCK) {
+                    setWallpaper(placeholder);
+                }
+            } finally {
+                placeholder.recycle();
             }
             Log.i(TAG, "Applied placeholder wallpaper (no recent generation)");
         } catch (Exception e) {
@@ -342,8 +353,12 @@ public class WallpaperGenerationManager {
         try {
             backupOriginalWallpaperIfNeeded();
             Bitmap placeholder = buildPlaceholderWallpaper();
-            synchronized (WALLPAPER_LOCK) {
-                setWallpaper(placeholder);
+            try {
+                synchronized (WALLPAPER_LOCK) {
+                    setWallpaper(placeholder);
+                }
+            } finally {
+                placeholder.recycle();
             }
         } catch (Exception e) {
             Log.w(TAG, "Failed to apply placeholder wallpaper", e);
@@ -375,16 +390,20 @@ public class WallpaperGenerationManager {
                 h = Math.round(h * scale);
             }
             Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(bmp);
-            d.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-            d.draw(canvas);
+            try {
+                Canvas canvas = new Canvas(bmp);
+                d.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+                d.draw(canvas);
 
-            File out = new File(context.getFilesDir(), ORIGINAL_WALLPAPER_FILE);
-            try (FileOutputStream fos = new FileOutputStream(out)) {
-                bmp.compress(Bitmap.CompressFormat.PNG, 95, fos);
+                File out = new File(context.getFilesDir(), ORIGINAL_WALLPAPER_FILE);
+                try (FileOutputStream fos = new FileOutputStream(out)) {
+                    bmp.compress(Bitmap.CompressFormat.PNG, 95, fos);
+                }
+                config.setBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, true);
+                Log.i(TAG, "Original wallpaper backed up to " + out.getAbsolutePath());
+            } finally {
+                bmp.recycle();
             }
-            config.setBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, true);
-            Log.i(TAG, "Original wallpaper backed up to " + out.getAbsolutePath());
         } catch (Exception e) {
             Log.w(TAG, "Failed to backup original wallpaper", e);
         }
@@ -404,12 +423,18 @@ public class WallpaperGenerationManager {
             if (!config.getBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false)) return;
             File f = new File(context.getFilesDir(), ORIGINAL_WALLPAPER_FILE);
             if (!f.exists()) return;
-            android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeFile(f.getAbsolutePath());
+            Bitmap bmp = android.graphics.BitmapFactory.decodeFile(f.getAbsolutePath());
             if (bmp == null) return;
-            synchronized (WALLPAPER_LOCK) {
-                setWallpaper(bmp);
+            try {
+                synchronized (WALLPAPER_LOCK) {
+                    setWallpaper(bmp);
+                }
+            } finally {
+                bmp.recycle();
             }
-            Log.i(TAG, "Original wallpaper restored");
+            // 清除备份标记，下次开启时重新备份当前壁纸
+            config.setBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false);
+            Log.i(TAG, "Original wallpaper restored, backup flag cleared");
         } catch (Exception e) {
             Log.w(TAG, "Failed to restore original wallpaper", e);
         }

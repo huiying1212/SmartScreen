@@ -91,14 +91,15 @@ public class DeepSeekApiClient {
                     + "5. 用中文顿号分隔，不要输出任何解释，只输出关键词\n\n"
                     + "偏好权重说明：\n" + weightDescription;
 
-            String userContent = "用户手机使用数据摘要：\n" + summarizeForKeywords(sanitizedData);
+            String inputSummary = summarizeForKeywords(sanitizedData);
+            String userContent = "用户手机使用数据摘要：\n" + inputSummary;
 
             String response = callChatSync(systemPrompt, userContent, 100, 0.8f);
             if (response != null) {
                 response = response.trim().replaceAll("[\"'\\s]+$", "").replaceAll("^[\"'\\s]+", "");
                 if (response.length() > 100) response = response.substring(0, 100);
             }
-            return response;
+            return new KeywordsResult(response, inputSummary);
 
         } catch (Exception e) {
             Log.e(TAG, "extractKeywords failed", e);
