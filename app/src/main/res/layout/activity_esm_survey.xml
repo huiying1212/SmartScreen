@@ -55,11 +55,41 @@
                 android:orientation="horizontal"
                 android:gravity="center">
 
-                <RadioButton android:id="@+id/q1_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="1" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
-                <RadioButton android:id="@+id/q1_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="2" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
-                <RadioButton android:id="@+id/q1_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="3" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
-                <RadioButton android:id="@+id/q1_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="4" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
-                <RadioButton android:id="@+id/q1_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="5" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+                <RadioButton
+                    android:id="@+id/q1_1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="1"
+                    android:textAlignment="center" />
+                <RadioButton
+                    android:id="@+id/q1_2"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="2"
+                    android:textAlignment="center" />
+                <RadioButton
+                    android:id="@+id/q1_3"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="3"
+                    android:textAlignment="center" />
+                <RadioButton
+                    android:id="@+id/q1_4"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="4"
+                    android:textAlignment="center" />
+                <RadioButton
+                    android:id="@+id/q1_5"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="5"
+                    android:textAlignment="center" />
             </RadioGroup>
 
             <LinearLayout
@@ -125,11 +155,41 @@
                 android:orientation="horizontal"
                 android:gravity="center">
 
-                <RadioButton android:id="@+id/q3_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="1" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
-                <RadioButton android:id="@+id/q3_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="2" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
-                <RadioButton android:id="@+id/q3_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="3" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
-                <RadioButton android:id="@+id/q3_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="4" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
-                <RadioButton android:id="@+id/q3_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="5" android:gravity="center" android:button="@null" android:textAlignment="center" android:background="@drawable/time_slot_bg" android:padding="8dp" android:layout_margin="2dp" />
+                <RadioButton
+                    android:id="@+id/q3_1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="1"
+                    android:textAlignment="center" />
+                <RadioButton
+                    android:id="@+id/q3_2"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="2"
+                    android:textAlignment="center" />
+                <RadioButton
+                    android:id="@+id/q3_3"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="3"
+                    android:textAlignment="center" />
+                <RadioButton
+                    android:id="@+id/q3_4"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="4"
+                    android:textAlignment="center" />
+                <RadioButton
+                    android:id="@+id/q3_5"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="5"
+                    android:textAlignment="center" />
             </RadioGroup>
 
             <LinearLayout

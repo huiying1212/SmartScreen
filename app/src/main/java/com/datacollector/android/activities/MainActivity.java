@@ -2,6 +2,7 @@ package com.datacollector.android.activities;
 
 import android.app.Activity;
 import java.util.UUID;
+import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -20,6 +21,9 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import android.util.Log;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.datacollector.android.R;
 import com.datacollector.android.api.DeepSeekApiClient;
@@ -40,6 +44,7 @@ import org.json.JSONObject;
 public class MainActivity extends Activity {
 
     private static final String TAG = "MainActivity";
+    private static final int REQUEST_NOTIFICATIONS = 1201;
     public static final String ACTION_BUBBLE_TEXT_UPDATED =
             "com.datacollector.android.BUBBLE_TEXT_UPDATED";
     public static final String EXTRA_BUBBLE_TEXT = "bubble_text";
@@ -103,6 +108,7 @@ public class MainActivity extends Activity {
         logger = UserInteractionLogger.get(this);
 
         logger.log("app_open");
+        ensureNotificationPermissionIfNeeded();
 
         // 首次启动时弹出参与者 ID 输入框
         ensureParticipantId();
@@ -132,6 +138,17 @@ public class MainActivity extends Activity {
             tvReminderStatus.setText("服务未开启");
             tvReminderResult.setText("");
         }
+    }
+
+    private void ensureNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                REQUEST_NOTIFICATIONS);
     }
 
     private void initViews() {

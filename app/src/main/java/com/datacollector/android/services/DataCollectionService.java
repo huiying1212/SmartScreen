@@ -42,6 +42,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
@@ -78,6 +79,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
     private Handler collectionHandler;
     private Runnable periodicCollectionRunnable;
     private Runnable lightCollectionRunnable;
+    private Runnable esmRescheduleRunnable;
     private PowerManager.WakeLock wakeLock;
 
     /** 轻量采集器最新数据缓存，每次全量落盘时合并 */
@@ -121,6 +123,49 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
         // 每天安排 ESM 问卷
         ESMScheduler.scheduleToday(this);
+        scheduleEsmDailyReschedule();
+    }
+
+    /**
+     * ESMScheduler 目前只会安排“今天”的 3 次提醒。
+     * 如果 Service 长期运行而不重启，第二天将不会再 schedule。
+     *
+     * 这里在 Service 内部用 Handler 每天凌晨自动重新安排一次。
+     */
+    private void scheduleEsmDailyReschedule() {
+        if (collectionHandler == null) return;
+        if (esmRescheduleRunnable != null) return;
+
+        esmRescheduleRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    ESMScheduler.scheduleToday(DataCollectionService.this);
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to reschedule ESM", e);
+                }
+                // Schedule next run again.
+                long delay = millisUntilNextDayAt(0, 5);
+                collectionHandler.postDelayed(this, delay);
+            }
+        };
+
+        long initialDelay = millisUntilNextDayAt(0, 5);
+        collectionHandler.postDelayed(esmRescheduleRunnable, initialDelay);
+        Log.i(TAG, "ESM daily reschedule set (in " + (initialDelay / 60000) + " min)");
+    }
+
+    private long millisUntilNextDayAt(int hour, int minute) {
+        Calendar now = Calendar.getInstance();
+        Calendar next = Calendar.getInstance();
+        next.set(Calendar.HOUR_OF_DAY, hour);
+        next.set(Calendar.MINUTE, minute);
+        next.set(Calendar.SECOND, 0);
+        next.set(Calendar.MILLISECOND, 0);
+        if (next.getTimeInMillis() <= now.getTimeInMillis()) {
+            next.add(Calendar.DAY_OF_YEAR, 1);
+        }
+        return Math.max(5_000L, next.getTimeInMillis() - now.getTimeInMillis());
     }
 
     @Override

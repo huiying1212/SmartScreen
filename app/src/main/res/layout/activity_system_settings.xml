@@ -582,6 +582,17 @@
                 android:layout_marginBottom="@dimen/spacing_xs" />
 
             <Button
+                android:id="@+id/btn_test_esm"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:text="立即弹出 ESM 问卷（测试）"
+                android:textSize="13sp"
+                android:textColor="@color/button_secondary_text"
+                android:background="@drawable/button_secondary_bg"
+                android:stateListAnimator="@null"
+                android:layout_marginBottom="@dimen/spacing_xs" />
+
+            <Button
                 android:id="@+id/btn_preview_initial_wallpaper"
                 android:layout_width="match_parent"
                 android:layout_height="42dp"

@@ -39,6 +39,7 @@ import com.datacollector.android.services.FloatingOverlayService;
 import com.datacollector.android.utils.CollectionConfig;
 import com.datacollector.android.utils.UserInteractionLogger;
 import com.datacollector.android.processing.LLMScoringEngine;
+import com.datacollector.android.activities.ESMSurveyActivity;
 
 import org.json.JSONObject;
 
@@ -72,6 +73,7 @@ public class SystemSettingsActivity extends Activity {
     private LinearLayout historyContainer;
     private Button btnTestData, btnTestAi, btnTestWallpaper, btnTestBubblePrompt, btnTestWallpaperPrompt, btnTestScorePrompt;
     private Button btnPreviewInitialWallpaper;
+    private Button btnTestEsm;
     private TextView tvGenerationStatus, tvTestOutput;
 
     // Developer test gating
@@ -160,6 +162,7 @@ public class SystemSettingsActivity extends Activity {
         btnTestData = findViewById(R.id.btn_test_data);
         btnTestAi = findViewById(R.id.btn_test_ai);
         btnTestWallpaper = findViewById(R.id.btn_test_wallpaper);
+        btnTestEsm = findViewById(R.id.btn_test_esm);
         btnPreviewInitialWallpaper = findViewById(R.id.btn_preview_initial_wallpaper);
         btnTestBubblePrompt = findViewById(R.id.btn_test_bubble_prompt);
         btnTestWallpaperPrompt = findViewById(R.id.btn_test_wallpaper_prompt);
@@ -380,6 +383,12 @@ public class SystemSettingsActivity extends Activity {
         btnTestData.setOnClickListener(v -> testGetData());
         btnTestAi.setOnClickListener(v -> testAiReminder());
         btnTestWallpaper.setOnClickListener(v -> generateWallpaperNow());
+        if (btnTestEsm != null) {
+            btnTestEsm.setOnClickListener(v -> {
+                logger.log("esm_test_open");
+                startActivity(new Intent(this, ESMSurveyActivity.class));
+            });
+        }
         btnPreviewInitialWallpaper.setOnClickListener(v -> previewInitialWallpaper());
         btnTestBubblePrompt.setOnClickListener(v -> showBubblePromptStructure());
         btnTestWallpaperPrompt.setOnClickListener(v -> showWallpaperPromptStructure());

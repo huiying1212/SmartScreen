@@ -34,7 +34,7 @@ public class ESMScheduler extends BroadcastReceiver {
     private static final String TAG = "ESMScheduler";
     private static final String CHANNEL_ID = "ESMChannel";
     private static final int NOTIFICATION_ID_BASE = 3000;
-    private static final int ESM_COUNT_PER_DAY = 3;
+    private static final int ESM_COUNT_PER_DAY = 1;
 
     // 问卷时间窗口：9:00 - 21:00
     private static final int WINDOW_START_HOUR = 9;
@@ -44,9 +44,10 @@ public class ESMScheduler extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.i(TAG, "ESM alarm triggered");
+        int slot = intent != null ? intent.getIntExtra("esm_slot", -1) : -1;
+        Log.i(TAG, "ESM alarm triggered (slot=" + slot + ")");
         createNotificationChannel(context);
-        showNotification(context);
+        showNotification(context, slot);
     }
 
     /**
@@ -127,10 +128,11 @@ public class ESMScheduler extends BroadcastReceiver {
         return offsets;
     }
 
-    private void showNotification(Context context) {
+    private void showNotification(Context context, int slot) {
         Intent intent = new Intent(context, ESMSurveyActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pi = PendingIntent.getActivity(context, NOTIFICATION_ID_BASE,
+        int requestCode = (slot >= 0 ? (NOTIFICATION_ID_BASE + slot) : NOTIFICATION_ID_BASE);
+        PendingIntent pi = PendingIntent.getActivity(context, requestCode,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
@@ -143,7 +145,7 @@ public class ESMScheduler extends BroadcastReceiver {
 
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) {
-            nm.notify(NOTIFICATION_ID_BASE, builder.build());
+            nm.notify(requestCode, builder.build());
         }
     }
 
