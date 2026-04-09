@@ -156,7 +156,7 @@ public class WallpaperGenerationManager {
                 final String[] resultError = {null};
 
                 qwenClient.generateImage(imagePrompt,
-                        "人物，人脸，人影，剪影，动物，低分辨率，低画质，画面过饱和，蜡像感，文字，水印，logo，畸形，魔幻，虚幻，卡通，动漫",
+                        "人物，人脸，人影，剪影，低分辨率，低画质，画面过饱和，蜡像感，文字，水印，logo，畸形，魔幻，虚幻，卡通，动漫",
                         "928*1664",
                         new QwenImageApiClient.ImageGenerationCallback() {
                             @Override
@@ -211,7 +211,7 @@ public class WallpaperGenerationManager {
         prompt.append("场景关键词：").append(keywords).append("\n");
         prompt.append("风格要求：").append(styleDesc).append("，注重光影的真实感和材质的写实细节\n");
         prompt.append("要求：画面中自然融入以上关键词所描绘的场景氛围，");
-        prompt.append("【绝对不要包含任何人物、人脸、剪影或动物】，");
+        prompt.append("【绝对不要包含任何人物、人脸或剪影】，");
         prompt.append("不包含文字和 UI 元素，适合作为手机壁纸的高质量纯景物竖屏构图。");
         return prompt.toString();
     }

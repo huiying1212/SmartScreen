@@ -684,9 +684,9 @@ public class SystemSettingsActivity extends Activity {
         sb.append("场景关键词：{提炼出的关键词}\n");
         sb.append("风格要求：").append(styleDesc).append("，注重光影的真实感和材质的写实细节\n");
         sb.append("要求：画面中自然融入以上关键词所描绘的场景氛围，");
-        sb.append("【绝对不要包含任何人物、人脸、剪影或动物】，");
+        sb.append("【绝对不要包含任何人物、人脸或剪影】，");
         sb.append("不包含文字和 UI 元素，适合作为手机壁纸的高质量纯景物竖屏构图。\n\n");
-        sb.append("Negative Prompt: 人物，人脸，人影，剪影，动物，低分辨率，低画质，画面过饱和，蜡像感，文字，水印，logo，畸形，魔幻，虚幻，卡通，动漫\n");
+        sb.append("Negative Prompt: 人物，人脸，人影，剪影，低分辨率，低画质，画面过饱和，蜡像感，文字，水印，logo，畸形，魔幻，虚幻，卡通，动漫\n");
         sb.append("图片尺寸: 928*1664");
 
         showTestOutput(sb.toString());
