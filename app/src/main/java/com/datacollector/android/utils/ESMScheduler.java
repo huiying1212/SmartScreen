@@ -83,7 +83,16 @@ public class ESMScheduler extends BroadcastReceiver {
                     NOTIFICATION_ID_BASE + i, intent,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // Android 12+: check SCHEDULE_EXACT_ALARM permission at runtime
+                if (am.canScheduleExactAlarms()) {
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
+                } else {
+                    // Fallback to inexact alarm if permission not granted
+                    Log.w(TAG, "SCHEDULE_EXACT_ALARM not granted, using inexact alarm for slot " + i);
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
             } else {
                 am.setExact(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);

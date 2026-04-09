@@ -285,9 +285,9 @@ public class DeepSeekApiClient {
      * 只走 LLM 路径，失败时返回错误原因字符串（不会返回 null）。
      *
      * @param contextSnapshot 各采集器最新一次采集的完整数据快照
-     * @param uutValue        当前无意识使用指数 (0-100)
+     * @param llmScore        当前 LLM 驱动的使用状态评分 (0-100)
      */
-    public String generateBubbleText(JSONObject contextSnapshot, int uutValue) {
+    public String generateBubbleText(JSONObject contextSnapshot, int llmScore) {
         if (!ApiConfig.isDeepSeekApiKeyConfigured()) {
             String err = "[API Key not set] check local.properties";
             Log.e(TAG, "generateBubbleText: " + err);
@@ -321,18 +321,19 @@ public class DeepSeekApiClient {
         }
         String systemPrompt = sb.toString();
 
-        // Build user content: sanitized context JSON + UUT
+        // Build user content: sanitized context JSON + LLM score
         JSONObject sanitizedSnapshot = DataSanitizer.sanitizeSnapshot(contextSnapshot);
         StringBuilder userContent = new StringBuilder();
         userContent.append("以下是用户手机的实时采集数据：\n");
         userContent.append(sanitizedSnapshot.toString()).append("\n\n");
-        userContent.append("无意识使用指数（UUT）：").append(uutValue).append("/100\n");
+        userContent.append("当前使用状态评分：").append(llmScore).append("/100\n");
+        userContent.append("（评分由 AI 根据使用行为持续评估，分数越高表示越可能处于无意识/过度使用状态）\n");
         userContent.append("请生成提醒。(t=")
                 .append(System.currentTimeMillis()).append(")");
 
         String currentApp = contextSnapshot.optString("foreground_app_package", "unknown");
         Log.i(TAG, "generateBubbleText: calling LLM, app=" + currentApp
-                + " uut=" + uutValue + " keys=" + contextSnapshot.length());
+                + " score=" + llmScore + " keys=" + contextSnapshot.length());
 
         try {
             String response = callChatSync(systemPrompt, userContent.toString(), 120, 0.95f);

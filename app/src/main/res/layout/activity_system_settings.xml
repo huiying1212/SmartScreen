@@ -9,7 +9,8 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:paddingHorizontal="@dimen/spacing_xl"
+        android:paddingStart="@dimen/spacing_xl"
+        android:paddingEnd="@dimen/spacing_xl"
         android:layout_marginTop="@dimen/spacing_lg"
         android:layout_marginBottom="@dimen/spacing_lg">
 
@@ -49,7 +50,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="@dimen/spacing_xl"
+            android:paddingStart="@dimen/spacing_xl"
+            android:paddingEnd="@dimen/spacing_xl"
             android:paddingBottom="32dp">
 
         <!-- ══════ 数据收集权限控制 ══════ -->

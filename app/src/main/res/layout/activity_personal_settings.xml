@@ -9,7 +9,8 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:paddingHorizontal="@dimen/spacing_xl"
+        android:paddingStart="@dimen/spacing_xl"
+        android:paddingEnd="@dimen/spacing_xl"
         android:layout_marginTop="@dimen/spacing_lg"
         android:layout_marginBottom="@dimen/spacing_lg">
 
@@ -49,7 +50,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="@dimen/spacing_xl"
+            android:paddingStart="@dimen/spacing_xl"
+            android:paddingEnd="@dimen/spacing_xl"
             android:paddingBottom="32dp">
 
         <!-- ══════ 壁纸风格偏好 ══════ -->
@@ -110,7 +112,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="@color/divider"
-                android:layout_marginVertical="@dimen/spacing_lg" />
+                android:layout_marginTop="@dimen/spacing_lg"
+                android:layout_marginBottom="@dimen/spacing_lg" />
 
             <!-- 自动生成时间 -->
             <LinearLayout
@@ -185,7 +188,8 @@
                     android:gravity="center"
                     android:background="@drawable/time_slot_bg"
                     android:padding="@dimen/spacing_lg"
-                    android:layout_marginHorizontal="@dimen/spacing_sm">
+                    android:layout_marginStart="@dimen/spacing_sm"
+                    android:layout_marginEnd="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="wrap_content"

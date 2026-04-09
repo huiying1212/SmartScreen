@@ -101,6 +101,13 @@ public class FloatingOverlayService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // Guard: if onCreate() called stopSelf() (RI4SU disabled / no overlay permission),
+        // snapshotCollector and other fields are null
+        if (snapshotCollector == null) {
+            Log.w(TAG, "Service not initialized, ignoring onStartCommand");
+            return START_NOT_STICKY;
+        }
+
         if (intent != null && ACTION_UPDATE_FACE_STYLE.equals(intent.getAction())) {
             String styleName = intent.getStringExtra(EXTRA_FACE_STYLE);
             if (styleName != null && moodFace != null) {
@@ -154,7 +161,11 @@ public class FloatingOverlayService extends Service {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
-        registerReceiver(screenReceiver, filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            registerReceiver(screenReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(screenReceiver, filter);
+        }
     }
 
     private void createNotificationChannel() {
@@ -183,6 +194,13 @@ public class FloatingOverlayService extends Service {
     // ── 悬浮窗 UI ────────────────────────────────────────────
 
     private void createOverlay() {
+        // Re-check overlay permission in case it was revoked after onCreate
+        if (!Settings.canDrawOverlays(this)) {
+            Log.w(TAG, "Overlay permission revoked, cannot create overlay");
+            stopSelf();
+            return;
+        }
+
         overlayView = LayoutInflater.from(this).inflate(R.layout.floating_overlay, null);
         moodFace = overlayView.findViewById(R.id.overlay_mood_face);
 
@@ -282,18 +300,18 @@ public class FloatingOverlayService extends Service {
                 // 通过中层统一快照构建器采集完整上下文
                 JSONObject snapshot = snapshotCollector.collectFullSnapshot();
 
-                int uutValue = llmScoringEngine.getScore();
+                int llmScore = llmScoringEngine.getScore();
                 Log.i(TAG, "onOverlayClicked: snapshot keys=" + snapshot.length()
-                        + " uut=" + uutValue);
+                        + " score=" + llmScore);
 
-                final String text = deepSeekClient.generateBubbleText(snapshot, uutValue);
+                final String text = deepSeekClient.generateBubbleText(snapshot, llmScore);
 
                 Log.i(TAG, "Bubble text result: " + text);
 
                 final String displayText = (text != null && !text.isEmpty()) ? text : "注意休息一下吧";
                 mainHandler.post(() -> {
                     updateBubbleText(displayText);
-                    logger.log("bubble_show", "score", uutValue,
+                    logger.log("bubble_show", "score", llmScore,
                             "text_length", displayText.length());
                 });
 

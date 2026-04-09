@@ -12,7 +12,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingHorizontal="@dimen/spacing_xl"
+        android:paddingStart="@dimen/spacing_xl"
+        android:paddingEnd="@dimen/spacing_xl"
         android:paddingTop="48dp"
         android:paddingBottom="32dp"
         android:clipChildren="false"
@@ -151,7 +152,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="@color/divider"
-                android:layout_marginVertical="@dimen/spacing_lg" />
+                android:layout_marginTop="@dimen/spacing_lg"
+                android:layout_marginBottom="@dimen/spacing_lg" />
 
             <!-- 壁纸开关 -->
             <LinearLayout

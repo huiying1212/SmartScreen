@@ -22,8 +22,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Calendar;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
- * 壁纸引擎（阶段性反思 - Phased Reflection）。
  *
  * 工作流：
  * 1. 聚合过去一个时间段内的使用数据
@@ -49,7 +50,7 @@ public class WallpaperGenerationManager {
     private final DeepSeekApiClient deepSeekClient;
     private final DataAggregator aggregator;
     private final CollectionConfig config;
-    private volatile boolean isGenerating = false;
+    private final AtomicBoolean isGenerating = new AtomicBoolean(false);
     private static final String ORIGINAL_WALLPAPER_FILE = "original_wallpaper.png";
     private static final Object WALLPAPER_LOCK = new Object();
 
@@ -62,7 +63,7 @@ public class WallpaperGenerationManager {
     }
 
     public boolean isGenerating() {
-        return isGenerating;
+        return isGenerating.get();
     }
 
     /**
@@ -103,11 +104,10 @@ public class WallpaperGenerationManager {
      * 执行完整的壁纸生成流水线（后台线程运行）。
      */
     public void generateAndSetWallpaper(WallpaperGenerationCallback callback) {
-        if (isGenerating) {
+        if (!isGenerating.compareAndSet(false, true)) {
             callback.onError("正在生成中，请稍候");
             return;
         }
-        isGenerating = true;
 
         new Thread(() -> {
             try {
@@ -195,7 +195,7 @@ public class WallpaperGenerationManager {
                 Log.e(TAG, "Wallpaper generation failed", e);
                 callback.onError("壁纸生成出错: " + e.getMessage());
             } finally {
-                isGenerating = false;
+                isGenerating.set(false);
             }
         }).start();
     }
@@ -365,8 +365,15 @@ public class WallpaperGenerationManager {
             Drawable d = wm.getDrawable();
             if (d == null) return;
 
+            // Cap dimensions to prevent OOM on devices with very large wallpapers
+            final int MAX_DIM = 4096;
             int w = Math.max(1, d.getIntrinsicWidth() > 0 ? d.getIntrinsicWidth() : 1080);
             int h = Math.max(1, d.getIntrinsicHeight() > 0 ? d.getIntrinsicHeight() : 1920);
+            if (w > MAX_DIM || h > MAX_DIM) {
+                float scale = Math.min((float) MAX_DIM / w, (float) MAX_DIM / h);
+                w = Math.round(w * scale);
+                h = Math.round(h * scale);
+            }
             Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bmp);
             d.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());

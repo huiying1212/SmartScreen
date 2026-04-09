@@ -8,7 +8,7 @@ import java.util.Map;
 
 /**
  * App 分类器：基于包名规则将 App 分为社交、娱乐、生产力、工具、游戏等类别。
- * 分类结果用于 UUT（无意识使用时间）算法判断和壁纸引擎的 Prompt 组装。
+ * 分类结果用于 LLM 评分引擎的上下文构建和壁纸引擎的 Prompt 组装。
  */
 public class AppCategoryClassifier {
 
@@ -163,7 +163,7 @@ public class AppCategoryClassifier {
     }
 
     /**
-     * 判断该分类是否会触发 UUT 累加（无意识使用类别）
+     * 判断该分类是否属于高风险过度使用类别（社交、娱乐、短视频、游戏）
      */
     public static boolean isUnconsciousCategory(AppCategory category) {
         return category == AppCategory.SOCIAL
@@ -173,7 +173,7 @@ public class AppCategoryClassifier {
     }
 
     /**
-     * 判断该分类是否会引起 UUT 衰减（生产力类别）
+     * 判断该分类是否属于生产力类别（有助于降低评分）
      */
     public static boolean isProductiveCategory(AppCategory category) {
         return category == AppCategory.PRODUCTIVITY

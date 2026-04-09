@@ -215,14 +215,21 @@ public class ExperimentDataUploader {
 
             int code = conn.getResponseCode();
             if (code >= 200 && code < 300) {
-                BufferedReader br = new BufferedReader(
-                        new java.io.InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = br.readLine()) != null) sb.append(line);
-                br.close();
-                return sb.toString();
+                try (BufferedReader br = new BufferedReader(
+                        new java.io.InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                    return sb.toString();
+                }
             } else {
+                // Drain error stream to avoid connection pool exhaustion
+                try (java.io.InputStream es = conn.getErrorStream()) {
+                    if (es != null) {
+                        byte[] buf = new byte[1024];
+                        while (es.read(buf) != -1) { /* discard */ }
+                    }
+                } catch (Exception ignored) {}
                 Log.w(TAG, "HTTP " + code + " from " + urlStr);
                 return null;
             }

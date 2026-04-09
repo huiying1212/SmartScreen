@@ -353,7 +353,7 @@ public class SystemSettingsActivity extends Activity {
         tvGenerationStatus.setTextColor(0xFF8B89B8);
         new Thread(() -> {
             try {
-                new WallpaperGenerationManager(getApplicationContext()).applyPlaceholderWallpaperNow();
+                wallpaperManager.applyPlaceholderWallpaperNow();
                 uiHandler.post(() -> {
                     tvGenerationStatus.setText("已设置初始占位壁纸");
                     tvGenerationStatus.setTextColor(0xFFC3C2F2);
@@ -382,7 +382,7 @@ public class SystemSettingsActivity extends Activity {
     private void applyGlobalEnabledState() {
         boolean globalEnabled = config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true);
         if (!globalEnabled) {
-            new Thread(() -> new WallpaperGenerationManager(getApplicationContext())
+            new Thread(() -> wallpaperManager
                     .restoreOriginalWallpaperIfExists()).start();
             // Force all collection toggles off when globally disabled.
             config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, false);
@@ -470,36 +470,45 @@ public class SystemSettingsActivity extends Activity {
     }
 
     private void testAiReminder() {
-        showTestOutput("正在评分 + 生成 AI 提醒...");
+        showTestOutput("正在生成 AI 提醒...");
         new Thread(() -> {
             try {
-                // Build snapshot
-                JSONObject snapshot = new JSONObject();
-                snapshot.put("timestamp", System.currentTimeMillis());
-                try {
-                    JSONObject screenData = screenUsageCollector.collectData();
-                    if (screenData != null) {
-                        snapshot.put("screen_usage", screenData);
-                        snapshot.put("foreground_app_package",
-                                screenData.optString("foreground_app_package", "unknown"));
+                // 尝试通过 Service 获取完整上下文快照
+                JSONObject snapshot = null;
+                if (serviceBound && dataCollectionService != null) {
+                    try {
+                        snapshot = dataCollectionService.getCompleteContextData();
+                    } catch (Exception e) {
+                        Log.w("SystemSettings", "Service snapshot failed, falling back", e);
                     }
-                } catch (Exception e) {
-                    Log.w("SystemSettings", "Screen usage collection failed", e);
                 }
 
-                // 1) LLM 评分
-                int oldScore = llmScoringEngine.getScore();
-                int newScore = llmScoringEngine.assess(snapshot);
-                String scoreReason = llmScoringEngine.getLastReason();
-                int delta = newScore - oldScore;
+                // Service 不可用或返回 null 时降级：仅采集 screen_usage
+                if (snapshot == null) {
+                    snapshot = new JSONObject();
+                    snapshot.put("timestamp", System.currentTimeMillis());
+                    try {
+                        JSONObject screenData = screenUsageCollector.collectData();
+                        if (screenData != null) {
+                            snapshot.put("screen_usage", screenData);
+                            snapshot.put("foreground_app_package",
+                                    screenData.optString("foreground_app_package", "unknown"));
+                        }
+                    } catch (Exception e) {
+                        Log.w("SystemSettings", "Screen usage collection failed", e);
+                    }
+                }
 
-                // 2) AI 提醒
-                String reminder = deepSeekClient.generateBubbleText(snapshot, newScore);
+                // 读取后台定时更新的 LLM 分数（不触发新的评分）
+                int score = llmScoringEngine.getScore();
+                String scoreReason = llmScoringEngine.getLastReason();
+
+                // 生成 AI 提醒（与首页、浮窗使用同一个 generateBubbleText 路径）
+                String reminder = deepSeekClient.generateBubbleText(snapshot, score);
 
                 StringBuilder sb = new StringBuilder();
-                sb.append("── 使用状态评分 ──\n");
-                sb.append("得分: ").append(newScore).append("/100");
-                sb.append("  (").append(delta >= 0 ? "+" : "").append(delta).append(")\n");
+                sb.append("── 当前 LLM 评分 ──\n");
+                sb.append("得分: ").append(score).append("/100\n");
                 if (scoreReason != null && !scoreReason.isEmpty()) {
                     sb.append("原因: ").append(scoreReason).append("\n");
                 }
@@ -547,7 +556,8 @@ public class SystemSettingsActivity extends Activity {
         sb.append("\n── User Content ──\n");
         sb.append("以下是用户手机的实时采集数据：\n");
         sb.append("{完整采集数据 JSON}\n\n");
-        sb.append("无意识使用指数（UUT）：{UUT}/100\n");
+        sb.append("当前使用状态评分：{score}/100\n");
+        sb.append("（评分由 AI 根据使用行为持续评估）\n");
         sb.append("请生成提醒。\n\n");
 
         sb.append("── Parameters ──\n");

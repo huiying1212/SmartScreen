@@ -20,7 +20,7 @@ import android.view.animation.AccelerateDecelerateInterpolator;
  * A {@link FaceStyle} controls the color palette / visual tone without changing the
  * mood logic, so users pick a *look* rather than a fixed emotion.
  * <p>
- * Usage: call {@link #setStress(float)} whenever the UUT value changes; the view
+ * Usage: call {@link #setStress(float)} whenever the LLM score changes; the view
  * will animate smoothly from its current state to the new target over ~800 ms.
  */
 public class MoodFaceView extends View {

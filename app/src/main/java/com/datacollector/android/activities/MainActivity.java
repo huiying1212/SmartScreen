@@ -52,6 +52,7 @@ public class MainActivity extends Activity {
 
     // ── 中层处理组件 ──
     private ContextSnapshotCollector snapshotCollector;
+    private WallpaperGenerationManager wallpaperManager;
 
     // Module 1: Basic Info
     private TextView tvReminderStatus, tvReminderResult;
@@ -97,6 +98,7 @@ public class MainActivity extends Activity {
         config = CollectionConfig.getInstance(this);
         deepSeekClient = new DeepSeekApiClient(getApplicationContext());
         llmScoringEngine = new LLMScoringEngine(getApplicationContext(), deepSeekClient);
+        wallpaperManager = new WallpaperGenerationManager(getApplicationContext());
         uiHandler = new Handler(Looper.getMainLooper());
         logger = UserInteractionLogger.get(this);
 
@@ -120,11 +122,15 @@ public class MainActivity extends Activity {
         setupModule1();
         setupNavigation();
         loadSavedState();
-        autoGenerateReminder();
 
+        // 仅在 RI4SU 启用时自动生成 AI 提醒
         if (config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) {
+            autoGenerateReminder();
             startDataCollectionService();
             bindDataCollectionService();
+        } else {
+            tvReminderStatus.setText("服务未开启");
+            tvReminderResult.setText("");
         }
     }
 
@@ -148,10 +154,10 @@ public class MainActivity extends Activity {
                 config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, checked);
                 logger.log("toggle_wallpaper", "enabled", checked);
                 if (checked) {
-                    new Thread(() -> new WallpaperGenerationManager(getApplicationContext())
+                    new Thread(() -> wallpaperManager
                             .applyRecentOrPlaceholderWallpaperOnEnable()).start();
                 } else {
-                    new Thread(() -> new WallpaperGenerationManager(getApplicationContext())
+                    new Thread(() -> wallpaperManager
                             .restoreOriginalWallpaperIfExists()).start();
                 }
         });
@@ -218,7 +224,7 @@ public class MainActivity extends Activity {
             config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, false);
             switchOverlay.setChecked(false);
             switchWallpaper.setChecked(false);
-            new Thread(() -> new WallpaperGenerationManager(getApplicationContext())
+            new Thread(() -> wallpaperManager
                     .restoreOriginalWallpaperIfExists()).start();
         }
         switchOverlay.setEnabled(globalEnabled);
@@ -314,6 +320,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         if (serviceBound) { unbindService(serviceConnection); serviceBound = false; }
+        if (wallpaperManager != null) wallpaperManager.shutdown();
         if (deepSeekClient != null) deepSeekClient.shutdown();
     }
 }
