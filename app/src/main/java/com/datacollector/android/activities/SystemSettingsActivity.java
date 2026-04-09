@@ -182,6 +182,7 @@ public class SystemSettingsActivity extends Activity {
             if (checked) {
                 if (ensureLocationPermission()) {
                     config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, true);
+                    logger.log("collection_toggle", "type", "location", "enabled", true);
                 } else {
                     // Permission flow started; keep config off until granted
                     config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, false);
@@ -189,6 +190,7 @@ public class SystemSettingsActivity extends Activity {
                 }
             } else {
                 config.setBoolean(CollectionConfig.KEY_LOCATION_ENABLED, false);
+                logger.log("collection_toggle", "type", "location", "enabled", false);
             }
         });
 
@@ -196,6 +198,7 @@ public class SystemSettingsActivity extends Activity {
         switchActivity.setOnCheckedChangeListener((btn, checked) -> {
             if (isUpdatingToggleUi) return;
             config.setBoolean(CollectionConfig.KEY_ACTIVITY_ENABLED, checked);
+            logger.log("collection_toggle", "type", "activity", "enabled", checked);
         });
 
         switchScreenUsage.setOnCheckedChangeListener((btn, checked) -> {
@@ -203,6 +206,7 @@ public class SystemSettingsActivity extends Activity {
             if (checked) {
                 if (hasUsageStatsPermission()) {
                     config.setBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, true);
+                    logger.log("collection_toggle", "type", "screen_usage", "enabled", true);
                 } else {
                     // Launch system settings; only enable after user grants it
                     pendingPermissionRequest = PendingPermissionRequest.SCREEN_USAGE;
@@ -213,6 +217,7 @@ public class SystemSettingsActivity extends Activity {
                 }
             } else {
                 config.setBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, false);
+                logger.log("collection_toggle", "type", "screen_usage", "enabled", false);
             }
         });
 
@@ -221,12 +226,14 @@ public class SystemSettingsActivity extends Activity {
             if (checked) {
                 if (ensureCalendarPermission()) {
                     config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, true);
+                    logger.log("collection_toggle", "type", "calendar", "enabled", true);
                 } else {
                     config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, false);
                     setToggleCheckedSafely(switchCalendar, false);
                 }
             } else {
                 config.setBoolean(CollectionConfig.KEY_CALENDAR_ENABLED, false);
+                logger.log("collection_toggle", "type", "calendar", "enabled", false);
             }
         });
 
@@ -235,12 +242,14 @@ public class SystemSettingsActivity extends Activity {
             if (checked) {
                 if (ensureWifiPermission()) {
                     config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, true);
+                    logger.log("collection_toggle", "type", "wifi", "enabled", true);
                 } else {
                     config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, false);
                     setToggleCheckedSafely(switchWifi, false);
                 }
             } else {
                 config.setBoolean(CollectionConfig.KEY_WIFI_ENABLED, false);
+                logger.log("collection_toggle", "type", "wifi", "enabled", false);
             }
         });
 
@@ -249,12 +258,14 @@ public class SystemSettingsActivity extends Activity {
             if (checked) {
                 if (ensureBluetoothPermission()) {
                     config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, true);
+                    logger.log("collection_toggle", "type", "bluetooth", "enabled", true);
                 } else {
                     config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, false);
                     setToggleCheckedSafely(switchBluetooth, false);
                 }
             } else {
                 config.setBoolean(CollectionConfig.KEY_BLUETOOTH_ENABLED, false);
+                logger.log("collection_toggle", "type", "bluetooth", "enabled", false);
             }
         });
     }
@@ -338,11 +349,13 @@ public class SystemSettingsActivity extends Activity {
             boolean enabled = config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true);
             if (enabled) {
                 config.setBoolean(CollectionConfig.KEY_RI4SU_ENABLED, false);
+                logger.log("service_toggle", "enabled", false);
                 stopDataCollectionService();
                 stopService(new Intent(this, FloatingOverlayService.class));
                 Toast.makeText(this, "RI4SU 服务已关闭", Toast.LENGTH_SHORT).show();
             } else {
                 config.setBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true);
+                logger.log("service_toggle", "enabled", true);
                 // Usage Stats is only required when "screen usage" collection is enabled.
                 boolean screenUsageEnabled = config.getBoolean(CollectionConfig.KEY_SCREEN_USAGE_ENABLED, true);
                 if (screenUsageEnabled && !hasUsageStatsPermission()) {
@@ -511,6 +524,7 @@ public class SystemSettingsActivity extends Activity {
                             tvGenerationStatus.setTextColor(0xFFC3C2F2);
                             btnTestWallpaper.setEnabled(true);
                             btnTestWallpaper.setText("测试壁纸生成功能");
+                            logger.log("wallpaper_generated", "result", "success");
                             loadUsageHistory();
                         });
                     }
@@ -522,6 +536,7 @@ public class SystemSettingsActivity extends Activity {
                             tvGenerationStatus.setTextColor(0xFFFF5252);
                             btnTestWallpaper.setEnabled(true);
                             btnTestWallpaper.setText("测试壁纸生成功能");
+                            logger.log("wallpaper_generated", "result", "error");
                         });
                     }
 

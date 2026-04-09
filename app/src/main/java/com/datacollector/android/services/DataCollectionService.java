@@ -36,6 +36,7 @@ import com.datacollector.android.utils.CollectionStats;
 import com.datacollector.android.utils.DataCleanupManager;
 import com.datacollector.android.utils.ESMScheduler;
 import com.datacollector.android.utils.ErrorCollector;
+import com.datacollector.android.utils.UserInteractionLogger;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -342,10 +343,17 @@ public class DataCollectionService extends Service implements DataCollectorManag
         if (wallpaperGenerationManager == null || !wallpaperGenerationManager.shouldGenerate()) return;
 
         Log.i(TAG, "Triggering wallpaper generation");
+        UserInteractionLogger logger = UserInteractionLogger.get(this);
         wallpaperGenerationManager.generateAndSetWallpaper(
                 new WallpaperGenerationManager.WallpaperGenerationCallback() {
-                    @Override public void onSuccess(String msg) { Log.i(TAG, "Wallpaper: " + msg); }
-                    @Override public void onError(String err)   { Log.w(TAG, "Wallpaper error: " + err); }
+                    @Override public void onSuccess(String msg) {
+                        Log.i(TAG, "Wallpaper: " + msg);
+                        logger.log("wallpaper_generated", "result", "success");
+                    }
+                    @Override public void onError(String err) {
+                        Log.w(TAG, "Wallpaper error: " + err);
+                        logger.log("wallpaper_generated", "result", "error");
+                    }
                     @Override public void onProgress(String s)  { Log.d(TAG, "Wallpaper: " + s); }
                 });
     }
