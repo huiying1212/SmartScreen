@@ -20,7 +20,10 @@ import org.json.JSONObject;
  *       · 娱乐 App 持续使用 → delta = +1
  *       · 深夜 / 无意识使用迹象 → delta 最高 +5
  *       · 屏幕关闭 / 主动休息 → delta 可为负数，最低 -5
- *   - 分数范围 [0, 100]，每日重置为 0
+ *   - 分数范围 [0, 100]
+ *   - 时间间隔规则（Java 侧预处理，不依赖 LLM）：
+ *       · 距上次快照 ≥ 5h → 判定为睡眠/长时间离开，直接清零
+ *       · 距上次快照 ≥ 1h → 判定为较长休息，先扣 10 分再交给 LLM 评估
  *   - 上一次快照和分数持久化到 SharedPreferences，支持进程重启恢复
  */
 public class LLMScoringEngine {
@@ -30,7 +33,11 @@ public class LLMScoringEngine {
     private static final String KEY_CURRENT_SCORE = "current_score";
     private static final String KEY_LAST_SNAPSHOT = "last_snapshot";
     private static final String KEY_LAST_REASON = "last_reason";
-    private static final String KEY_LAST_DATE = "last_date";
+    private static final String KEY_LAST_SNAPSHOT_TS = "last_snapshot_ts";
+
+    // 时间间隔阈值
+    private static final long SLEEP_GAP_MS   = 5 * 60 * 60 * 1000L; // 5 小时 → 清零
+    private static final long BREAK_GAP_MS   = 1 * 60 * 60 * 1000L; // 1 小时 → 扣 10 分
 
     private final Context appContext;
     private final DeepSeekApiClient deepSeekClient;
@@ -39,6 +46,7 @@ public class LLMScoringEngine {
     private volatile int currentScore;
     private volatile String lastSnapshotJson;
     private volatile String lastReason;
+    private volatile long lastSnapshotTs;   // 上次快照的 Unix 毫秒时间戳
     private volatile boolean isAssessing = false;
 
     public LLMScoringEngine(Context context, DeepSeekApiClient deepSeekClient) {
@@ -49,34 +57,24 @@ public class LLMScoringEngine {
     }
 
     private void restoreState() {
-        // Daily reset: if the stored date differs from today, start fresh
-        String today = new java.text.SimpleDateFormat("yyyy-MM-dd",
-                java.util.Locale.US).format(new java.util.Date());
-        String lastDate = prefs.getString(KEY_LAST_DATE, "");
-
-        if (!today.equals(lastDate)) {
-            currentScore = 0;
-            lastSnapshotJson = null;
-            lastReason = null;
-            prefs.edit()
-                    .putInt(KEY_CURRENT_SCORE, 0)
-                    .putString(KEY_LAST_SNAPSHOT, null)
-                    .putString(KEY_LAST_REASON, null)
-                    .putString(KEY_LAST_DATE, today)
-                    .apply();
-            Log.i(TAG, "New day — score reset to 0");
-        } else {
-            currentScore = prefs.getInt(KEY_CURRENT_SCORE, 0);
-            lastSnapshotJson = prefs.getString(KEY_LAST_SNAPSHOT, null);
-            lastReason = prefs.getString(KEY_LAST_REASON, null);
-            Log.i(TAG, "Restored score=" + currentScore);
-        }
+        currentScore     = prefs.getInt(KEY_CURRENT_SCORE, 0);
+        lastSnapshotJson = prefs.getString(KEY_LAST_SNAPSHOT, null);
+        lastReason       = prefs.getString(KEY_LAST_REASON, null);
+        lastSnapshotTs   = prefs.getLong(KEY_LAST_SNAPSHOT_TS, 0L);
+        Log.i(TAG, "Restored score=" + currentScore
+                + " lastSnapshotTs=" + lastSnapshotTs);
     }
 
     /**
      * 请求 LLM 评估新快照并更新分数。同步调用，需在后台线程执行。
      *
-     * @param newSnapshot 本次最新采集的完整上下文快照
+     * <p>在调用 LLM 之前，Java 侧会先根据时间间隔做预处理：
+     * <ul>
+     *   <li>距上次快照 ≥ 5h → 判定为睡眠/长时间离开，直接清零，跳过 LLM</li>
+     *   <li>距上次快照 ≥ 1h → 判定为较长休息，先扣 10 分，再交给 LLM 评估</li>
+     * </ul>
+     *
+     * @param newSnapshot 本次最新采集的完整上下文快照（需含顶层 "timestamp" 毫秒字段）
      * @return 更新后的分数 (0-100)，如果 LLM 调用失败则返回当前分数不变
      */
     public synchronized int assess(JSONObject newSnapshot) {
@@ -87,11 +85,38 @@ public class LLMScoringEngine {
         isAssessing = true;
 
         try {
+            // ── 时间间隔预处理 ──────────────────────────────────────
+            long newTs = newSnapshot.optLong("timestamp", System.currentTimeMillis());
+            String gapReason = null;
+
+            if (lastSnapshotTs > 0) {
+                long gapMs = newTs - lastSnapshotTs;
+
+                if (gapMs >= SLEEP_GAP_MS) {
+                    long gapHours = gapMs / (60 * 60 * 1000L);
+                    gapReason = "距上次快照 " + gapHours + " 小时，判定为睡眠/长时间离开，分数清零";
+                    Log.i(TAG, "Gap=" + gapHours + "h ≥ 5h → reset to 0, then LLM assess. " + gapReason);
+                    currentScore = 0;
+                    // 继续走 LLM，基于清零后的分数评估当前快照
+
+                } else if (gapMs >= BREAK_GAP_MS) {
+                    long gapMins = gapMs / (60 * 1000L);
+                    gapReason = "距上次快照 " + gapMins + " 分钟，判定为较长休息，预扣 10 分";
+                    Log.i(TAG, "Gap=" + gapMins + "min ≥ 60min → pre-deduct 10. " + gapReason);
+                    currentScore = Math.max(0, currentScore - 10);
+                    // 继续走 LLM，让它在此基础上再评估
+                }
+            }
+
+            // ── LLM 评估 ────────────────────────────────────────────
             String result = deepSeekClient.assessUsageScore(
                     currentScore, lastSnapshotJson, lastReason, newSnapshot);
 
             if (result == null || result.isEmpty()) {
                 Log.w(TAG, "LLM returned empty, keeping score=" + currentScore);
+                // 即使 LLM 失败，也要更新时间戳，避免下次误判间隔
+                lastSnapshotTs = newTs;
+                prefs.edit().putLong(KEY_LAST_SNAPSHOT_TS, lastSnapshotTs).apply();
                 return currentScore;
             }
 
@@ -106,24 +131,27 @@ public class LLMScoringEngine {
             // Apply delta and clamp score to [0, 100]
             int newScore = Math.max(0, Math.min(100, currentScore + delta));
 
+            // 如果有预处理原因，拼接到 LLM 理由前面
+            if (gapReason != null && !gapReason.isEmpty()) {
+                reason = reason.isEmpty() ? gapReason : gapReason + "；" + reason;
+            }
+
             Log.i(TAG, "Score: " + currentScore + " → " + newScore
                     + " (delta=" + delta + ") reason: " + reason);
 
             currentScore = newScore;
-            // 存储到 SharedPreferences 的快照也做脱敏处理
             JSONObject sanitizedForStorage = DataSanitizer.sanitizeSnapshot(newSnapshot);
             lastSnapshotJson = sanitizedForStorage != null
                     ? sanitizedForStorage.toString() : newSnapshot.toString();
             lastReason = reason;
+            lastSnapshotTs = newTs;
 
             // Persist
-            String today = new java.text.SimpleDateFormat("yyyy-MM-dd",
-                    java.util.Locale.US).format(new java.util.Date());
             prefs.edit()
                     .putInt(KEY_CURRENT_SCORE, currentScore)
                     .putString(KEY_LAST_SNAPSHOT, lastSnapshotJson)
                     .putString(KEY_LAST_REASON, lastReason)
-                    .putString(KEY_LAST_DATE, today)
+                    .putLong(KEY_LAST_SNAPSHOT_TS, lastSnapshotTs)
                     .apply();
 
             return currentScore;

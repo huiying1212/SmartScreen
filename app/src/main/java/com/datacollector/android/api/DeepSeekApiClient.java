@@ -62,7 +62,17 @@ public class DeepSeekApiClient {
      *
      * @return 场景关键词字符串（如 "工作电脑、咖啡、闹钟"），失败返回 null
      */
-    public String extractKeywords(JSONObject aggregatedData, String weightDescription) {
+    /** extractKeywords result carrying both keywords and the LLM input summary. */
+    public static class KeywordsResult {
+        public final String keywords;
+        public final String inputSummary;
+        public KeywordsResult(String keywords, String inputSummary) {
+            this.keywords = keywords;
+            this.inputSummary = inputSummary;
+        }
+    }
+
+    public KeywordsResult extractKeywords(JSONObject aggregatedData, String weightDescription) {
         if (!ApiConfig.isDeepSeekApiKeyConfigured()) return null;
 
         try {
@@ -375,11 +385,15 @@ public class DeepSeekApiClient {
         }
 
         String systemPrompt =
-                "你是一个手机使用行为评估引擎。你的任务是根据用户手机的实时采集数据，评估用户当前的「无意识使用程度」并给出分数增量。\n\n"
+                "你是一个手机使用行为评估引擎。你的任务是根据用户手机的实时采集数据，评估用户当前的「过度/无意识使用程度」并给出分数增量。\n\n"
                 + "## 评分规则\n"
                 + "分数范围 0-100。0 = 完全有意识/健康使用，100 = 极度无意识/沉迷使用。\n"
                 + "你每次返回一个 delta（增量），而非绝对分数。delta 范围 [-5, +5]。\n"
                 + "本系统每约 2 分钟调用你一次。\n\n"
+                + "## 重要说明\n"
+                + "时间间隔导致的分数调整（如长时间未使用手机）已由系统在调用你之前自动处理，"
+                + "你收到的「当前分数」已经反映了这些调整。\n"
+                + "你只需根据本次快照与上次快照之间的行为变化来判断 delta，无需再考虑时间间隔本身。\n\n"
                 + "## 默认行为\n"
                 + "默认情况下 delta = +1（即用户正常使用手机，分数缓慢上升）。\n"
                 + "只有当你判断情况明显偏离「普通使用」时，才应给出不同的 delta。\n"
@@ -389,7 +403,6 @@ public class DeepSeekApiClient {
                 + "- 普通使用（无明显好坏信号）→ delta = +1（默认，无需解释）\n"
                 + "- 生产力/工具类 App（办公、学习、编程、阅读、地图、银行等）→ delta = 0（reason: 说明在做什么）\n"
                 + "- 屏幕关闭 / 用户主动休息 / 刚解锁还没开始用 → delta = -1 到 -3（reason: 说明休息情况）\n"
-                + "- 长时间未使用手机后恢复 → delta = -5（reason: 说明离开了多久）\n"
                 + "- 娱乐/社交 App 持续使用（短视频、社交媒体、游戏等）→ delta = +2（reason: 说明在用什么）\n"
                 + "- 深夜（22:00-06:00）使用娱乐 App → delta = +3 到 +4（reason: 说明深夜使用情况）\n"
                 + "- 多个无意识信号叠加（深夜 + 长时间娱乐 + 高频切换 + 忽略日程）→ delta 最高 +5（reason: 说明叠加了哪些信号）\n"
