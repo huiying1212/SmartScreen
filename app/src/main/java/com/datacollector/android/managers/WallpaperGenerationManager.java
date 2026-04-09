@@ -414,12 +414,6 @@ public class WallpaperGenerationManager {
      */
     public void restoreOriginalWallpaperIfExists() {
         try {
-            // If the reflection wallpaper feature is currently enabled, do NOT restore.
-            // This avoids races where an async restore overrides a newly generated wallpaper.
-            if (config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)
-                    && config.getBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, true)) {
-                return;
-            }
             if (!config.getBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false)) return;
             File f = new File(context.getFilesDir(), ORIGINAL_WALLPAPER_FILE);
             if (!f.exists()) return;

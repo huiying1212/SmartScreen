@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
@@ -74,6 +75,8 @@ public class SystemSettingsActivity extends Activity {
     private Button btnPreviewInitialWallpaper;
     private Button btnTestEsm;
     private TextView tvGenerationStatus, tvTestOutput;
+    private TextView tvBatteryStatus;
+    private Button btnBatteryOptimization, btnAutostartSettings;
 
     // Developer test gating
     private static final String DEV_TEST_PASSWORD = "011212";
@@ -138,6 +141,7 @@ public class SystemSettingsActivity extends Activity {
         setupDataCollectionToggles();
         setupPermissionButtons();
         setupTestButtons();
+        setupBackgroundKeepAlive();
         loadSavedState();
 
         bindDataCollectionService();
@@ -174,6 +178,10 @@ public class SystemSettingsActivity extends Activity {
         btnDevTestUnlock = findViewById(R.id.btn_dev_test_unlock);
         tvDevTestUnlockHint = findViewById(R.id.tv_dev_test_unlock_hint);
         devTestContent = findViewById(R.id.dev_test_content);
+
+        tvBatteryStatus = findViewById(R.id.tv_battery_status);
+        btnBatteryOptimization = findViewById(R.id.btn_battery_optimization);
+        btnAutostartSettings = findViewById(R.id.btn_autostart_settings);
     }
 
     private void setupDataCollectionToggles() {
@@ -460,6 +468,102 @@ public class SystemSettingsActivity extends Activity {
         }).start();
     }
 
+    // ── 后台保活引导 ─────────────────────────────────────────
+
+    private void setupBackgroundKeepAlive() {
+        updateBatteryOptimizationStatus();
+
+        if (btnBatteryOptimization != null) {
+            btnBatteryOptimization.setOnClickListener(v -> requestBatteryOptimizationWhitelist());
+        }
+
+        if (btnAutostartSettings != null) {
+            btnAutostartSettings.setOnClickListener(v -> openAutostartSettings());
+        }
+    }
+
+    private void updateBatteryOptimizationStatus() {
+        if (tvBatteryStatus == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null && pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                tvBatteryStatus.setText("电池优化：已关闭（已加入白名单）✓");
+                tvBatteryStatus.setTextColor(0xFF4CAF50);
+                if (btnBatteryOptimization != null) {
+                    btnBatteryOptimization.setText("已关闭电池优化 ✓");
+                    btnBatteryOptimization.setEnabled(false);
+                }
+            } else {
+                tvBatteryStatus.setText("电池优化：未关闭（可能影响后台运行）");
+                tvBatteryStatus.setTextColor(0xFFFF9800);
+            }
+        } else {
+            tvBatteryStatus.setText("电池优化：当前系统版本无需设置");
+            tvBatteryStatus.setTextColor(0xFF4CAF50);
+        }
+    }
+
+    @SuppressWarnings("BatteryLife")
+    private void requestBatteryOptimizationWhitelist() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception e) {
+            // 部分 ROM 不支持，降级到电池设置页
+            try {
+                startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+            } catch (Exception e2) {
+                Toast.makeText(this, "请手动在设置中关闭电池优化", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    /**
+     * 尝试跳转到各品牌的自启动管理页面。
+     * 不同厂商的 Intent 路径不同，逐一尝试。
+     */
+    private void openAutostartSettings() {
+        Intent[] intents = {
+                // 小米 MIUI
+                new Intent().setComponent(new ComponentName(
+                        "com.miui.securitycenter",
+                        "com.miui.permcenter.autostart.AutoStartManagementActivity")),
+                // 华为 EMUI
+                new Intent().setComponent(new ComponentName(
+                        "com.huawei.systemmanager",
+                        "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")),
+                // OPPO ColorOS
+                new Intent().setComponent(new ComponentName(
+                        "com.coloros.safecenter",
+                        "com.coloros.safecenter.startupapp.StartupAppListActivity")),
+                // vivo OriginOS / Funtouch
+                new Intent().setComponent(new ComponentName(
+                        "com.vivo.permissionmanager",
+                        "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")),
+                // 三星
+                new Intent().setComponent(new ComponentName(
+                        "com.samsung.android.lool",
+                        "com.samsung.android.sm.battery.ui.BatteryActivity")),
+                // 通用：应用详情页
+                new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        .setData(Uri.parse("package:" + getPackageName())),
+        };
+
+        for (Intent intent : intents) {
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                return;
+            } catch (Exception ignored) {
+                // 该品牌不适用，尝试下一个
+            }
+        }
+
+        Toast.makeText(this, "请手动在系统设置中找到「自启动管理」并允许 RI4SU", Toast.LENGTH_LONG).show();
+    }
+
     private void loadSavedState() {
         setToggleCheckedSafely(switchLocation, config.getBoolean(CollectionConfig.KEY_LOCATION_ENABLED, true));
         setToggleCheckedSafely(switchActivity, config.getBoolean(CollectionConfig.KEY_ACTIVITY_ENABLED, true));
@@ -475,6 +579,9 @@ public class SystemSettingsActivity extends Activity {
     private void applyGlobalEnabledState() {
         boolean globalEnabled = config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true);
         if (!globalEnabled) {
+            // 先将壁纸/悬浮窗开关置 false，再恢复壁纸，避免 restore 内部状态冲突
+            config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, false);
+            config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, false);
             new Thread(() -> wallpaperManager
                     .restoreOriginalWallpaperIfExists()).start();
             // Force all collection toggles off when globally disabled.
@@ -923,6 +1030,7 @@ public class SystemSettingsActivity extends Activity {
         ensureOverlayServiceRunning();
         applyGlobalEnabledState();
         syncTogglesWithSystemPermissions();
+        updateBatteryOptimizationStatus();
         // Keep toggles consistent with system-granted permissions for flows that require Settings screens.
         if (switchScreenUsage != null) {
             boolean usageGranted = hasUsageStatsPermission();

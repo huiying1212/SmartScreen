@@ -34,7 +34,7 @@ public class LocationDataCollector extends BaseDataCollector<JSONObject> impleme
     private static final float ACCURACY_TOLERANCE_METERS = 200f;
 
     private LocationManager locationManager;
-    private Location lastKnownLocation;
+    private volatile Location lastKnownLocation;
 
     // Geocoder 缓存：坐标变化 < GEOCODE_CACHE_RADIUS_M 时复用上次结果
     private static final double GEOCODE_CACHE_RADIUS_M = 80.0;
@@ -191,6 +191,10 @@ public class LocationDataCollector extends BaseDataCollector<JSONObject> impleme
         }
         try {
             Geocoder geocoder = new Geocoder(context, Locale.getDefault());
+            // Geocoder.getFromLocation(double,double,int) is synchronous and deprecated on API 33+.
+            // The async overload requires a callback and cannot return inline, so we keep the
+            // synchronous call (still functional) but wrap it in a try-catch for safety.
+            @SuppressWarnings("deprecation")
             List<Address> addresses = geocoder.getFromLocation(lat, lng, 1);
             if (addresses != null && !addresses.isEmpty()) {
                 String result = buildReadableAddress(addresses.get(0));

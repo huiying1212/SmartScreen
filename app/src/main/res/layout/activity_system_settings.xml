@@ -380,6 +380,88 @@
                 android:stateListAnimator="@null" />
         </LinearLayout>
 
+        <!-- ══════ 后台保活引导 ══════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/launcher_button_bg"
+            android:padding="@dimen/card_padding"
+            android:elevation="@dimen/card_elevation"
+            android:layout_marginBottom="@dimen/card_margin_bottom">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="@dimen/spacing_xs">
+
+                <View
+                    android:layout_width="@dimen/section_indicator_width"
+                    android:layout_height="@dimen/section_indicator_height"
+                    android:background="@drawable/section_indicator"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="后台保活"
+                    android:textColor="@color/launcher_text_primary"
+                    android:textSize="@dimen/text_section_title"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="部分手机品牌会限制后台运行，请按以下步骤设置"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="@dimen/text_caption"
+                android:layout_marginStart="13dp"
+                android:layout_marginBottom="@dimen/spacing_lg" />
+
+            <TextView
+                android:id="@+id/tv_battery_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="电池优化：检测中..."
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="@dimen/text_small"
+                android:layout_marginBottom="@dimen/spacing_md" />
+
+            <Button
+                android:id="@+id/btn_battery_optimization"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:text="关闭电池优化"
+                android:textSize="13sp"
+                android:textColor="@color/button_secondary_text"
+                android:background="@drawable/button_secondary_bg"
+                android:stateListAnimator="@null"
+                android:layout_marginBottom="@dimen/spacing_sm" />
+
+            <Button
+                android:id="@+id/btn_autostart_settings"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:text="打开自启动设置"
+                android:textSize="13sp"
+                android:textColor="@color/button_secondary_text"
+                android:background="@drawable/button_secondary_bg"
+                android:stateListAnimator="@null"
+                android:layout_marginBottom="@dimen/spacing_xs" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="提示：请在自启动管理中允许 RI4SU 自启动，并在电池/省电设置中将 RI4SU 设为「不限制」或「允许后台运行」。不同品牌路径不同，按钮会尝试跳转到对应设置页。"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="11sp"
+                android:lineSpacingExtra="2dp"
+                android:layout_marginTop="@dimen/spacing_xs" />
+        </LinearLayout>
+
         <!-- ══════ 屏幕使用历史 ══════ -->
         <LinearLayout
             android:layout_width="match_parent"

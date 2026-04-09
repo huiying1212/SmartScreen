@@ -26,8 +26,8 @@ public abstract class BaseDataCollector<T> implements DataCollector<T> {
     protected final String collectorId;
     
     protected JSONObject configuration;
-    protected long lastCollectionTime = 0;
-    protected boolean isCollecting = false;
+    protected volatile long lastCollectionTime = 0;
+    protected volatile boolean isCollecting = false;
     
     public BaseDataCollector(Context context, String collectorId) {
         this.context = context;
@@ -121,10 +121,11 @@ public abstract class BaseDataCollector<T> implements DataCollector<T> {
         
         try {
             doStopCollection();
-            isCollecting = false;
-            Log.i(TAG, "Stopped data collection for " + collectorId);
         } catch (Exception e) {
             Log.e(TAG, "Error stopping collection for " + collectorId, e);
+        } finally {
+            isCollecting = false;
+            Log.i(TAG, "Stopped data collection for " + collectorId);
         }
     }
     

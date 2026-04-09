@@ -126,8 +126,8 @@ public class WeatherDataCollector extends BaseDataCollector<JSONObject> {
         try {
             // 坐标模糊化：截断到小数点后 2 位（约 1.1km 精度），
             // 天气数据在此精度下完全一致，避免向第三方泄露精确位置
-            double fuzzyLat = Math.floor(location.getLatitude() * 100.0) / 100.0;
-            double fuzzyLng = Math.floor(location.getLongitude() * 100.0) / 100.0;
+            double fuzzyLat = (long)(location.getLatitude() * 100.0) / 100.0;
+            double fuzzyLng = (long)(location.getLongitude() * 100.0) / 100.0;
 
             // 使用 Locale.US 确保小数点格式一致（不会因中文 locale 变成逗号）
             String url = String.format(Locale.US, OPEN_METEO_API_URL,
@@ -157,7 +157,7 @@ public class WeatherDataCollector extends BaseDataCollector<JSONObject> {
                             + weatherData.optString("readable_summary"));
                 }
 
-                return weatherData;
+                return weatherData != null ? weatherData : cachedWeatherData;
             }
 
         } catch (Exception e) {

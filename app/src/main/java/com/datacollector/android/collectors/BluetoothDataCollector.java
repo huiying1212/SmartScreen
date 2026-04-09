@@ -49,7 +49,12 @@ public class BluetoothDataCollector extends BaseDataCollector<JSONObject> {
         public void onReceive(Context ctx, Intent intent) {
             String action = intent.getAction();
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                BluetoothDevice device;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice.class);
+                } else {
+                    device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                }
                 if (device == null) return;
 
                 // Android 12+ 需要 BLUETOOTH_CONNECT 才能读 name
@@ -61,9 +66,9 @@ public class BluetoothDataCollector extends BaseDataCollector<JSONObject> {
                     JSONObject entry = new JSONObject();
                     entry.put("mac_address", device.getAddress());
                     entry.put("name", hasConnectPerm ? safeDeviceName(device) : "unknown");
-                    entry.put("device_class", classifyDevice(device.getBluetoothClass()));
+                    entry.put("device_class", hasConnectPerm ? classifyDevice(device.getBluetoothClass()) : "unknown");
                     entry.put("rssi", intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE));
-                    entry.put("bond_state", bondStateName(device.getBondState()));
+                    entry.put("bond_state", hasConnectPerm ? bondStateName(device.getBondState()) : "unknown");
 
                     synchronized (nearbyDeviceCache) {
                         boolean found = false;
@@ -115,7 +120,11 @@ public class BluetoothDataCollector extends BaseDataCollector<JSONObject> {
         IntentFilter filter = new IntentFilter();
         filter.addAction(BluetoothDevice.ACTION_FOUND);
         filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        context.registerReceiver(discoveryReceiver, filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(discoveryReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            context.registerReceiver(discoveryReceiver, filter);
+        }
 
         // 触发一次扫描（需要 BLUETOOTH_SCAN on Android 12+）
         if (bluetoothAdapter != null && !bluetoothAdapter.isDiscovering()) {
@@ -150,6 +159,7 @@ public class BluetoothDataCollector extends BaseDataCollector<JSONObject> {
 
     @Override
     protected JSONObject doCollectData() {
+        if (bluetoothAdapter == null) return null;
         try {
             JSONObject result = new JSONObject();
 
@@ -185,7 +195,13 @@ public class BluetoothDataCollector extends BaseDataCollector<JSONObject> {
             result.put("nearby_devices", nearbyArray);
             result.put("nearby_device_count", nearbyArray.length());
 
-            result.put("is_discovering", bluetoothAdapter.isDiscovering());
+            boolean discovering = false;
+            if (hasConnectPerm) {
+                try {
+                    discovering = bluetoothAdapter.isDiscovering();
+                } catch (SecurityException ignored) {}
+            }
+            result.put("is_discovering", discovering);
             result.put("collector_id", COLLECTOR_ID);
             result.put("data_collection_time", System.currentTimeMillis());
             return result;

@@ -136,7 +136,7 @@ public class ContextSnapshotCollector {
     }
 
     /**
-     * 构建轻量快照（仅 screen_usage + screen_on + timestamp），
+     * 构建轻量快照（仅 screen_usage + user_activity + timestamp），
      * 用于 LLM 定期评分时的最小数据集。
      */
     public JSONObject collectLightSnapshot() {
@@ -152,7 +152,9 @@ public class ContextSnapshotCollector {
                 if (data != null) {
                     snapshot.put("screen_usage", data);
                     String pkg = data.optString("foreground_app_package", null);
-                    AppForegroundTracker.getInstance(context).update(pkg);
+                    if (pkg != null) {
+                        AppForegroundTracker.getInstance(context).update(pkg);
+                    }
                 }
             }
         });
@@ -161,41 +163,6 @@ public class ContextSnapshotCollector {
             if (activityCollector != null && activityCollector.isAvailable()) {
                 JSONObject data = activityCollector.collectData();
                 if (data != null) snapshot.put("user_activity", data);
-            }
-        });
-
-        collectSafely(snapshot, "calendar", () -> {
-            if (calendarCollector != null && calendarCollector.isAvailable()) {
-                JSONObject data = calendarCollector.collectData();
-                if (data != null) snapshot.put("calendar", data);
-            }
-        });
-
-        collectSafely(snapshot, "weather", () -> {
-            if (weatherCollector != null && weatherCollector.isAvailable()) {
-                JSONObject data = weatherCollector.collectData();
-                if (data != null) snapshot.put("weather", data);
-            }
-        });
-
-        collectSafely(snapshot, "location", () -> {
-            if (locationCollector != null && locationCollector.isAvailable()) {
-                JSONObject data = locationCollector.collectData();
-                if (data != null) snapshot.put("location", data);
-            }
-        });
-
-        collectSafely(snapshot, "wifi_info", () -> {
-            if (wifiCollector != null && wifiCollector.isAvailable()) {
-                JSONObject data = wifiCollector.collectData();
-                if (data != null) snapshot.put("wifi_info", data);
-            }
-        });
-
-        collectSafely(snapshot, "bluetooth_devices", () -> {
-            if (bluetoothCollector != null && bluetoothCollector.isAvailable()) {
-                JSONObject data = bluetoothCollector.collectData();
-                if (data != null) snapshot.put("bluetooth_devices", data);
             }
         });
 

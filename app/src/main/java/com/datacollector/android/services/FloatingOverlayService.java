@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ServiceInfo;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.Handler;
@@ -121,7 +122,12 @@ public class FloatingOverlayService extends Service {
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
-        startForeground(NOTIFICATION_ID, buildNotification());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, buildNotification(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification());
+        }
 
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         mainHandler = new Handler(Looper.getMainLooper());
@@ -161,7 +167,7 @@ public class FloatingOverlayService extends Service {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(screenReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(screenReceiver, filter);
@@ -318,6 +324,7 @@ public class FloatingOverlayService extends Service {
                 // Notify MainActivity to sync the reminder text
                 Intent updateIntent = new Intent("com.datacollector.android.BUBBLE_TEXT_UPDATED");
                 updateIntent.putExtra("bubble_text", displayText);
+                updateIntent.setPackage(getPackageName());
                 sendBroadcast(updateIntent);
 
             } catch (Exception e) {
@@ -400,8 +407,8 @@ public class FloatingOverlayService extends Service {
             bubbleAdded = true;
         }
 
-        // Position the bubble relative to the icon
-        positionBubble();
+        // Position the bubble relative to the icon (post to run after layout)
+        bubbleView.post(this::positionBubble);
 
         bubbleView.setVisibility(View.VISIBLE);
 
@@ -482,14 +489,13 @@ public class FloatingOverlayService extends Service {
             mainHandler.removeCallbacks(periodicUpdateRunnable);
         }
 
-        long interval = config.getLong(
-                CollectionConfig.KEY_LIGHT_COLLECTION_INTERVAL_MS, 2 * 60_000L);
-
         periodicUpdateRunnable = new Runnable() {
             @Override
             public void run() {
                 refreshLLMScore();
-                mainHandler.postDelayed(this, interval);
+                long currentInterval = config.getLong(
+                        CollectionConfig.KEY_LIGHT_COLLECTION_INTERVAL_MS, 2 * 60_000L);
+                mainHandler.postDelayed(this, currentInterval);
             }
         };
         // First scoring after 15s to let collectors warm up

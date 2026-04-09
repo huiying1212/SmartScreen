@@ -294,7 +294,7 @@ public class DataSanitizer {
 
     /** GPS 坐标截断到小数点后 2 位（约 1.1km 精度） */
     static double truncateCoord(double coord) {
-        return Math.floor(coord * 100.0) / 100.0;
+        return (long)(coord * 100.0) / 100.0;
     }
 
     /**

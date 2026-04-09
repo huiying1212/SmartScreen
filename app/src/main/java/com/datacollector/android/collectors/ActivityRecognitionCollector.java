@@ -42,7 +42,7 @@ public class ActivityRecognitionCollector extends BaseDataCollector<JSONObject> 
     protected void initializeDefaultConfiguration() {
         super.initializeDefaultConfiguration();
         try {
-            configuration.put("sensor_delay", SensorManager.SENSOR_DELAY_GAME);
+            configuration.put("sensor_delay", SensorManager.SENSOR_DELAY_NORMAL);
             configuration.put("use_accelerometer", true);
             configuration.put("classifier", "decision_tree");
         } catch (JSONException e) {
@@ -74,7 +74,7 @@ public class ActivityRecognitionCollector extends BaseDataCollector<JSONObject> 
             return;
         }
 
-        int sensorDelay = configuration.optInt("sensor_delay", SensorManager.SENSOR_DELAY_GAME);
+        int sensorDelay = configuration.optInt("sensor_delay", SensorManager.SENSOR_DELAY_NORMAL);
 
         if (accelerometer != null) {
             sensorManager.registerListener(this, accelerometer, sensorDelay);

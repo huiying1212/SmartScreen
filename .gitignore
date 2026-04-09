@@ -8,6 +8,8 @@ local.properties
 # Build outputs
 /build/
 app/build/
+app/release/
+*.apk
 /captures/
 
 # Native build

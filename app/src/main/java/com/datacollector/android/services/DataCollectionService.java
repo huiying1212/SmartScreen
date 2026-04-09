@@ -6,9 +6,11 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
@@ -77,6 +79,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
 
     private JSONObject currentContextData;
     private Handler collectionHandler;
+    private HandlerThread collectionThread;
     private Runnable periodicCollectionRunnable;
     private Runnable lightCollectionRunnable;
     private Runnable esmRescheduleRunnable;
@@ -103,7 +106,6 @@ public class DataCollectionService extends Service implements DataCollectorManag
         super.onCreate();
         createNotificationChannel();
         startForegroundService();
-        acquireWakeLock();
 
         collectionConfig = CollectionConfig.getInstance(this);
         if (!collectionConfig.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) {
@@ -112,7 +114,15 @@ public class DataCollectionService extends Service implements DataCollectorManag
             return;
         }
         collectionStats = CollectionStats.getInstance(this);
-        collectionHandler = new Handler(Looper.getMainLooper());
+        collectionThread = new HandlerThread("DataCollectionThread");
+        collectionThread.start();
+        collectionHandler = new Handler(collectionThread.getLooper());
+
+        // 初始化 WakeLock（按需 acquire/release，不在此处持有）
+        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+        if (pm != null) {
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RI4SU::DataCollectionWakeLock");
+        }
 
         // 初始化中层处理组件
         persistenceManager = new DataPersistenceManager(this);
@@ -265,6 +275,7 @@ public class DataCollectionService extends Service implements DataCollectorManag
      * 轻量采集：仅运行 LIGHT 权重的采集器，结果缓存到内存并落盘。
      */
     private void collectLightData() {
+        acquireWakeLock();
         try {
             JSONObject lightData = collectorManager.collectByWeight(
                     BaseDataCollector.CollectionWeight.LIGHT);
@@ -286,12 +297,15 @@ public class DataCollectionService extends Service implements DataCollectorManag
             }
         } catch (Exception e) {
             Log.w(TAG, "Light collection error", e);
+        } finally {
+            releaseWakeLock();
         }
     }
 
     // ── 数据采集（全量落盘）────────────────────────────────
 
     private void collectCurrentContextData(String triggerReason) {
+        acquireWakeLock();
         ErrorCollector errors = new ErrorCollector("data_collection");
 
         try {
@@ -355,6 +369,8 @@ public class DataCollectionService extends Service implements DataCollectorManag
         } catch (JSONException e) {
             Log.e(TAG, "Error collecting context data", e);
             collectionStats.recordCollectionAttempt(false);
+        } finally {
+            releaseWakeLock();
         }
     }
 
@@ -442,19 +458,32 @@ public class DataCollectionService extends Service implements DataCollectorManag
                 .setSound(null)
                 .build();
 
-        startForeground(NOTIFICATION_ID, notification);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+        }
     }
 
+    /**
+     * 按需获取 WakeLock，防止采集期间 CPU 休眠。
+     * 设置 3 分钟超时作为安全阀。
+     */
     private void acquireWakeLock() {
-        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-        if (pm != null) {
-            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RI4SU::DataCollectionWakeLock");
-            wakeLock.acquire(10 * 60 * 1000L); // 10 minutes timeout to prevent indefinite hold
+        if (wakeLock != null && !wakeLock.isHeld()) {
+            wakeLock.acquire(3 * 60 * 1000L); // 3 minutes safety timeout
         }
     }
 
     private void releaseWakeLock() {
-        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+        if (wakeLock != null && wakeLock.isHeld()) {
+            try {
+                wakeLock.release();
+            } catch (RuntimeException e) {
+                Log.w(TAG, "WakeLock release error", e);
+            }
+        }
     }
 
     // ── Binder 暴露的 API ────────────────────────────────────
@@ -496,14 +525,53 @@ public class DataCollectionService extends Service implements DataCollectorManag
     }
 
     @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        // 用户从最近任务划掉 APP 时，尝试重新调度服务
+        scheduleServiceRestart();
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
         if (collectionHandler != null) collectionHandler.removeCallbacksAndMessages(null);
+        if (collectionThread != null) collectionThread.quitSafely();
         if (collectorManager != null) collectorManager.shutdown();
         if (deepSeekApiClient != null) deepSeekApiClient.shutdown();
         if (wallpaperGenerationManager != null) wallpaperGenerationManager.shutdown();
         if (dataCleanupManager != null) dataCleanupManager.stopCleanup();
         releaseWakeLock();
+
+        // 如果 RI4SU 仍然启用，尝试重启服务
+        CollectionConfig cfg = CollectionConfig.getInstance(this);
+        if (cfg.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) {
+            scheduleServiceRestart();
+        }
+
         Log.i(TAG, "DataCollectionService destroyed");
+    }
+
+    /**
+     * 通过 AlarmManager 在 5 秒后重启服务，作为被杀后的兜底恢复机制。
+     */
+    private void scheduleServiceRestart() {
+        try {
+            Intent restartIntent = new Intent(this, DataCollectionService.class);
+            restartIntent.putExtra("action", "trigger_collection");
+            restartIntent.putExtra("trigger_reason", "service_restart");
+            android.app.PendingIntent pi = android.app.PendingIntent.getService(
+                    this, 9999, restartIntent,
+                    android.app.PendingIntent.FLAG_ONE_SHOT | android.app.PendingIntent.FLAG_IMMUTABLE);
+            android.app.AlarmManager am = (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
+            if (am != null) {
+                am.setExactAndAllowWhileIdle(
+                        android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                        android.os.SystemClock.elapsedRealtime() + 5_000L,
+                        pi);
+                Log.i(TAG, "Scheduled service restart in 5s");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to schedule service restart", e);
+        }
     }
 }

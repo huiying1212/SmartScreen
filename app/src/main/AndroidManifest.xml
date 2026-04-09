@@ -13,7 +13,10 @@
     <!-- 前台服务 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Android 14+ 才引入；旧系统解析 Manifest 时可能因未知权限/类型导致安装失败 -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
+        tools:targetApi="34" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
@@ -56,6 +59,9 @@
 
     <!-- 精确闹钟（ESM 调度，Android 12+ 需要） -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- 开机自启 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="false"
@@ -103,6 +109,17 @@
             android:name=".utils.ESMScheduler"
             android:exported="false" />
 
+        <!-- 开机自启 + 应用更新后自启 -->
+        <receiver
+            android:name=".receivers.BootReceiver"
+            android:exported="true"
+            android:directBootAware="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- 数据收集服务 -->
         <service
             android:name=".services.DataCollectionService"
@@ -113,10 +130,12 @@
         <service
             android:name=".services.FloatingOverlayService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
+            android:foregroundServiceType="specialUse"
+            tools:targetApi="34">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="floatingOverlay" />
+                android:value="floatingOverlay"
+                tools:targetApi="34" />
         </service>
 
     </application>

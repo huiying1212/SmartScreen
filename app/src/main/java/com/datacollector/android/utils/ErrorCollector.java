@@ -3,6 +3,7 @@ package com.datacollector.android.utils;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -15,7 +16,7 @@ public class ErrorCollector {
     private static final String TAG = "ErrorCollector";
 
     private final String scope;
-    private final List<ErrorEntry> errors = new ArrayList<>();
+    private final List<ErrorEntry> errors = Collections.synchronizedList(new ArrayList<>());
 
     public ErrorCollector(String scope) {
         this.scope = scope;
@@ -59,16 +60,18 @@ public class ErrorCollector {
     }
 
     public String getSummary() {
-        if (errors.isEmpty()) {
-            return scope + ": no errors";
+        synchronized (errors) {
+            if (errors.isEmpty()) {
+                return scope + ": no errors";
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append(scope).append(": ").append(errors.size()).append(" error(s)\n");
+            for (ErrorEntry entry : errors) {
+                sb.append("  - ").append(entry.operation).append(": ")
+                  .append(entry.exception.getMessage()).append("\n");
+            }
+            return sb.toString();
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append(scope).append(": ").append(errors.size()).append(" error(s)\n");
-        for (ErrorEntry entry : errors) {
-            sb.append("  - ").append(entry.operation).append(": ")
-              .append(entry.exception.getMessage()).append("\n");
-        }
-        return sb.toString();
     }
 
     public void clear() {

@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.Switch;
@@ -62,6 +63,7 @@ public class MainActivity extends Activity {
     // Module 1: Basic Info
     private TextView tvReminderStatus, tvReminderResult;
     private Switch switchOverlay, switchWallpaper;
+    private boolean isUpdatingToggleUi = false;
 
     // Service
     private DataCollectionService dataCollectionService;
@@ -109,6 +111,7 @@ public class MainActivity extends Activity {
 
         logger.log("app_open");
         ensureNotificationPermissionIfNeeded();
+        requestBatteryOptimizationWhitelist();
 
         // 首次启动时弹出参与者 ID 输入框
         ensureParticipantId();
@@ -128,6 +131,15 @@ public class MainActivity extends Activity {
         setupModule1();
         setupNavigation();
         loadSavedState();
+
+        // 首次安装时，壁纸开关默认开启但 listener 不会触发（checked 值未变化），
+        // 需要主动应用一次初始壁纸。
+        if (config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)
+                && config.getBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, true)
+                && config.getLong(CollectionConfig.KEY_LAST_WALLPAPER_GENERATION_TIME, 0) == 0
+                && !config.getBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false)) {
+            new Thread(() -> wallpaperManager.applyRecentOrPlaceholderWallpaperOnEnable()).start();
+        }
 
         // 仅在 RI4SU 启用时自动生成 AI 提醒
         if (config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) {
@@ -151,6 +163,25 @@ public class MainActivity extends Activity {
                 REQUEST_NOTIFICATIONS);
     }
 
+    /**
+     * 请求加入电池优化白名单，防止系统在后台杀掉服务。
+     * 仅在未加入白名单时弹出系统对话框（一次性）。
+     */
+    @SuppressWarnings("BatteryLife")
+    private void requestBatteryOptimizationWhitelist() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+        if (pm == null || pm.isIgnoringBatteryOptimizations(getPackageName())) return;
+
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to request battery optimization whitelist", e);
+        }
+    }
+
     private void initViews() {
         tvReminderStatus = findViewById(R.id.tv_reminder_status);
         tvReminderResult = findViewById(R.id.tv_reminder_result);
@@ -162,11 +193,13 @@ public class MainActivity extends Activity {
 
     private void setupModule1() {
         switchOverlay.setOnCheckedChangeListener((btn, checked) -> {
+            if (isUpdatingToggleUi) return;
             config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, checked);
             if (checked) startOverlayService(); else stopOverlayService();
         });
 
         switchWallpaper.setOnCheckedChangeListener((btn, checked) -> {
+                if (isUpdatingToggleUi) return;
                 config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, checked);
                 if (checked) {
                     new Thread(() -> wallpaperManager
@@ -219,9 +252,11 @@ public class MainActivity extends Activity {
     // ── Load saved state ────────────────────────────────────────
 
     private void loadSavedState() {
+        isUpdatingToggleUi = true;
         switchOverlay.setChecked(config.getBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, true));
         switchWallpaper.setChecked(config.getBoolean(
                 CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, true));
+        isUpdatingToggleUi = false;
         applyGlobalEnabledState();
     }
 
@@ -231,8 +266,10 @@ public class MainActivity extends Activity {
         if (!globalEnabled) {
             config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, false);
             config.setBoolean(CollectionConfig.KEY_WALLPAPER_GENERATION_ENABLED, false);
+            isUpdatingToggleUi = true;
             switchOverlay.setChecked(false);
             switchWallpaper.setChecked(false);
+            isUpdatingToggleUi = false;
             new Thread(() -> wallpaperManager
                     .restoreOriginalWallpaperIfExists()).start();
         }
@@ -302,7 +339,14 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(bubbleTextReceiver, new IntentFilter(ACTION_BUBBLE_TEXT_UPDATED));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(bubbleTextReceiver,
+                    new IntentFilter(ACTION_BUBBLE_TEXT_UPDATED),
+                    Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(bubbleTextReceiver,
+                    new IntentFilter(ACTION_BUBBLE_TEXT_UPDATED));
+        }
         applyGlobalEnabledState();
         if (!config.getBoolean(CollectionConfig.KEY_RI4SU_ENABLED, true)) {
             stopService(new Intent(this, FloatingOverlayService.class));
@@ -310,7 +354,12 @@ public class MainActivity extends Activity {
         }
         boolean overlayEnabled = config.getBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, true);
         boolean overlayGranted = Settings.canDrawOverlays(this);
-        if (overlayEnabled && overlayGranted) {
+        if (overlayGranted && overlayEnabled) {
+            startOverlayService();
+        } else if (overlayGranted && !overlayEnabled) {
+            // 用户刚从系统设置授权回来，自动恢复开关并启动服务
+            config.setBoolean(CollectionConfig.KEY_OVERLAY_ENABLED, true);
+            switchOverlay.setChecked(true);
             startOverlayService();
         } else if (overlayEnabled && !overlayGranted) {
             // Keep UI + config consistent with system permission.

@@ -13,6 +13,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import android.os.HandlerThread;
+
 /**
  * 数据清理管理器
  * 使用CollectionConfig的可配置保留策略（借鉴Beiwe的可配置数据管理）。
@@ -33,16 +35,19 @@ public class DataCleanupManager {
     private static final int MAX_CONTEXT_FILES = 500;
     private static final int MAX_ANALYSIS_FILES = 100;
     
-    private Context context;
+    private final Context context;
     private SharedPreferences prefs;
     private Handler cleanupHandler;
+    private HandlerThread cleanupThread;
     private Runnable cleanupRunnable;
     private boolean isCleanupScheduled = false;
     
     public DataCleanupManager(Context context) {
         this.context = context.getApplicationContext();
-        this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        this.cleanupHandler = new Handler(Looper.getMainLooper());
+        this.prefs = this.context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        this.cleanupThread = new HandlerThread("DataCleanupThread");
+        this.cleanupThread.start();
+        this.cleanupHandler = new Handler(cleanupThread.getLooper());
         
         initializeCleanupTask();
         Log.i(TAG, "DataCleanupManager initialized");
@@ -392,7 +397,7 @@ public class DataCleanupManager {
     }
 
     /**
-     * 计算数据目录的总大小
+     * 递归计算数据目录的总大小
      */
     private long getTotalDataSize(File dataDir) {
         long totalSize = 0;
@@ -402,6 +407,8 @@ public class DataCleanupManager {
             for (File file : files) {
                 if (file.isFile()) {
                     totalSize += file.length();
+                } else if (file.isDirectory()) {
+                    totalSize += getTotalDataSize(file);
                 }
             }
         }
@@ -465,6 +472,9 @@ public class DataCleanupManager {
             cleanupHandler.removeCallbacks(cleanupRunnable);
             isCleanupScheduled = false;
             Log.i(TAG, "数据清理任务已停止");
+        }
+        if (cleanupThread != null) {
+            cleanupThread.quitSafely();
         }
     }
     
