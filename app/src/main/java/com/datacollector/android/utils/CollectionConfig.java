@@ -74,6 +74,10 @@ public class CollectionConfig {
     public static final String KEY_PARTICIPANT_ID = "participant_id";
     public static final String KEY_EXPERIMENT_SERVER_URL = "experiment_server_url";
 
+    // ── 开发者测试（受控入口） ───────────────────────────────
+    /** true = 已解锁“开发者测试”区，可展开并使用 */
+    public static final String KEY_DEV_TEST_UNLOCKED = "dev_test_unlocked";
+
     private final SharedPreferences prefs;
     private static CollectionConfig instance;
 
@@ -145,6 +149,9 @@ public class CollectionConfig {
 
         // 用户实验
         putIfAbsent(editor, KEY_EXPERIMENT_SERVER_URL, "http://47.95.200.45:5000");
+
+        // 开发者测试（默认不解锁）
+        putIfAbsent(editor, KEY_DEV_TEST_UNLOCKED, false);
 
         editor.apply();
     }

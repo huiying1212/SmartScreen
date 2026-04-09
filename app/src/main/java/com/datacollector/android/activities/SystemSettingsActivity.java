@@ -19,6 +19,7 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -69,9 +70,21 @@ public class SystemSettingsActivity extends Activity {
             switchWifi, switchBluetooth;
     private Button btnStartCollection;
     private LinearLayout historyContainer;
-    private Button btnTestData, btnTestAi, btnTestWallpaper, btnTestBubblePrompt, btnTestWallpaperPrompt;
+    private Button btnTestData, btnTestAi, btnTestWallpaper, btnTestBubblePrompt, btnTestWallpaperPrompt, btnTestScorePrompt;
     private Button btnPreviewInitialWallpaper;
     private TextView tvGenerationStatus, tvTestOutput;
+
+    // Developer test gating
+    private static final String DEV_TEST_PASSWORD = "011212";
+    private LinearLayout devTestHeader;
+    private TextView tvDevTestState;
+    private LinearLayout devTestUnlockContainer;
+    private EditText etDevTestPassword;
+    private Button btnDevTestUnlock;
+    private TextView tvDevTestUnlockHint;
+    private LinearLayout devTestContent;
+    private boolean devTestExpanded = false;
+    private boolean devTestUnlockUiVisible = false;
 
     private boolean isUpdatingToggleUi = false;
     private PendingPermissionRequest pendingPermissionRequest = null;
@@ -150,8 +163,17 @@ public class SystemSettingsActivity extends Activity {
         btnPreviewInitialWallpaper = findViewById(R.id.btn_preview_initial_wallpaper);
         btnTestBubblePrompt = findViewById(R.id.btn_test_bubble_prompt);
         btnTestWallpaperPrompt = findViewById(R.id.btn_test_wallpaper_prompt);
+        btnTestScorePrompt = findViewById(R.id.btn_test_score_prompt);
         tvGenerationStatus = findViewById(R.id.tv_generation_status);
         tvTestOutput = findViewById(R.id.tv_test_output);
+
+        devTestHeader = findViewById(R.id.dev_test_header);
+        tvDevTestState = findViewById(R.id.tv_dev_test_state);
+        devTestUnlockContainer = findViewById(R.id.dev_test_unlock_container);
+        etDevTestPassword = findViewById(R.id.et_dev_test_password);
+        btnDevTestUnlock = findViewById(R.id.btn_dev_test_unlock);
+        tvDevTestUnlockHint = findViewById(R.id.tv_dev_test_unlock_hint);
+        devTestContent = findViewById(R.id.dev_test_content);
     }
 
     private void setupDataCollectionToggles() {
@@ -340,12 +362,78 @@ public class SystemSettingsActivity extends Activity {
     }
 
     private void setupTestButtons() {
+        setupDevTestGateUi();
+
         btnTestData.setOnClickListener(v -> testGetData());
         btnTestAi.setOnClickListener(v -> testAiReminder());
         btnTestWallpaper.setOnClickListener(v -> generateWallpaperNow());
         btnPreviewInitialWallpaper.setOnClickListener(v -> previewInitialWallpaper());
         btnTestBubblePrompt.setOnClickListener(v -> showBubblePromptStructure());
         btnTestWallpaperPrompt.setOnClickListener(v -> showWallpaperPromptStructure());
+        btnTestScorePrompt.setOnClickListener(v -> showScorePromptStructure());
+    }
+
+    private void setupDevTestGateUi() {
+        if (devTestHeader == null || devTestContent == null || devTestUnlockContainer == null) return;
+
+        boolean unlocked = config.getBoolean(CollectionConfig.KEY_DEV_TEST_UNLOCKED, false);
+        if (unlocked) {
+            devTestUnlockContainer.setVisibility(View.GONE);
+            devTestUnlockUiVisible = false;
+            setDevTestExpanded(false); // keep folded by default even when unlocked
+        } else {
+            devTestContent.setVisibility(View.GONE);
+            devTestExpanded = false;
+            tvDevTestState.setText("已折叠");
+            devTestUnlockContainer.setVisibility(View.GONE);
+            devTestUnlockUiVisible = false;
+        }
+
+        devTestHeader.setOnClickListener(v -> {
+            boolean isUnlocked = config.getBoolean(CollectionConfig.KEY_DEV_TEST_UNLOCKED, false);
+            if (!isUnlocked) {
+                // Not unlocked: show inline unlock UI only after user taps header.
+                setDevTestExpanded(false);
+                if (devTestUnlockContainer != null) {
+                    devTestUnlockUiVisible = !devTestUnlockUiVisible;
+                    devTestUnlockContainer.setVisibility(devTestUnlockUiVisible ? View.VISIBLE : View.GONE);
+                }
+                if (etDevTestPassword != null) {
+                    etDevTestPassword.requestFocus();
+                }
+                return;
+            }
+            setDevTestExpanded(!devTestExpanded);
+        });
+
+        if (btnDevTestUnlock != null) {
+            btnDevTestUnlock.setOnClickListener(v -> attemptUnlockDevTest());
+        }
+    }
+
+    private void attemptUnlockDevTest() {
+        if (etDevTestPassword == null) return;
+        String input = etDevTestPassword.getText() != null ? etDevTestPassword.getText().toString().trim() : "";
+
+        if (DEV_TEST_PASSWORD.equals(input)) {
+            config.setBoolean(CollectionConfig.KEY_DEV_TEST_UNLOCKED, true);
+            if (tvDevTestUnlockHint != null) tvDevTestUnlockHint.setVisibility(View.GONE);
+            devTestUnlockContainer.setVisibility(View.GONE);
+            devTestUnlockUiVisible = false;
+            setDevTestExpanded(true);
+        } else {
+            if (tvDevTestUnlockHint != null) {
+                tvDevTestUnlockHint.setText("密码不正确");
+                tvDevTestUnlockHint.setVisibility(View.VISIBLE);
+            }
+            setDevTestExpanded(false);
+        }
+    }
+
+    private void setDevTestExpanded(boolean expanded) {
+        devTestExpanded = expanded;
+        if (devTestContent != null) devTestContent.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        if (tvDevTestState != null) tvDevTestState.setText(expanded ? "已展开" : "已折叠");
     }
 
     private void previewInitialWallpaper() {
@@ -530,7 +618,7 @@ public class SystemSettingsActivity extends Activity {
         StringBuilder sb = new StringBuilder();
         sb.append("══ 图标提醒 Prompt 结构 ══\n\n");
 
-        sb.append("── System Prompt ──\n");
+        sb.append("── System Prompt（与 DeepSeekApiClient.generateBubbleText 一致） ──\n");
         sb.append("你是一个手机使用反馈助手，语气温和、像朋友一样关心用户。\n");
         sb.append("根据用户当前的手机使用情况，生成一段简短的中文提醒。\n\n");
         sb.append("你会收到用户手机的实时采集数据（JSON），包含屏幕使用、位置、活动状态、日历、天气、WiFi、蓝牙等信息。\n");
@@ -545,20 +633,20 @@ public class SystemSettingsActivity extends Activity {
         sb.append("- 两部分之间用换行分隔\n");
         sb.append("- 不要加标题、编号或引号\n");
         sb.append("- 语气亲切自然，不要说教\n");
-        sb.append("- 每次回复要有变化，不要重复\n");
+        sb.append("- 每次回复要有变化，不要重复");
         if (hasGoal) {
-            sb.append("\n用户设定的个人目标：\n").append(userGoal.trim());
-            sb.append("\n（请在建议部分适当结合此目标，但不要每次都生硬提及，自然融入即可）\n");
+            sb.append("\n\n用户设定的个人目标：\n").append(userGoal.trim());
+            sb.append("\n（请在建议部分适当结合此目标，但不要每次都生硬提及，自然融入即可）");
         } else {
-            sb.append("\n（用户未设置个人目标）\n");
+            sb.append("\n\n（用户未设置个人目标）");
         }
 
         sb.append("\n── User Content ──\n");
         sb.append("以下是用户手机的实时采集数据：\n");
-        sb.append("{完整采集数据 JSON}\n\n");
+        sb.append("{完整采集数据 JSON（实际发送前会做脱敏：DataSanitizer.sanitizeSnapshot）}\n\n");
         sb.append("当前使用状态评分：{score}/100\n");
-        sb.append("（评分由 AI 根据使用行为持续评估）\n");
-        sb.append("请生成提醒。\n\n");
+        sb.append("（评分由 AI 根据使用行为持续评估，分数越高表示越可能处于无意识/过度使用状态）\n");
+        sb.append("请生成提醒。(t={timestamp_ms})\n\n");
 
         sb.append("── Parameters ──\n");
         sb.append("max_tokens: 120\n");
@@ -568,22 +656,26 @@ public class SystemSettingsActivity extends Activity {
     }
 
     private void showWallpaperPromptStructure() {
-        String style = config.getString(CollectionConfig.KEY_WALLPAPER_STYLE, "唯美艺术");
-        String styleDesc = CollectionConfig.getStyleDescriptionByName(style);
+        String styleDesc = config.getWallpaperStyleDescription();
+        String weightDesc = config.getUserPreferenceDescription();
 
         StringBuilder sb = new StringBuilder();
         sb.append("══ 壁纸生成 Prompt 结构 ══\n\n");
 
         sb.append("── 第一步：场景关键词提取 (DeepSeek) ──\n");
-        sb.append("System Prompt:\n");
-        sb.append("你是一位擅长场景化表达的创意概念提炼师。\n");
+        sb.append("System Prompt（与 DeepSeekApiClient.extractKeywords 一致）:\n");
+        sb.append("你是一位擅长场景化表达的创意概念提炼师。");
         sb.append("根据用户近几小时的手机使用数据，提炼出最能描绘用户这段时间生活场景的纯景物关键词。\n\n");
         sb.append("规则：\n");
         sb.append("1. 关键词数量不限，通常 3-6 个，视数据丰富程度而定\n");
-        sb.append("2. 关键词必须是具体的、有画面感的事物或静物场景元素，且绝对不能包含人物、人群或任何生物\n");
-        sb.append("3. 场景需注重「写实感」和「环境氛围」，避免任何魔幻、超现实或抽象元素\n");
-        sb.append("4. 用中文顿号分隔，不要输出任何解释，只输出关键词\n\n");
-        sb.append("User Content: 用户手机使用数据摘要 (聚合数据)\n");
+        sb.append("2. 关键词必须是具体的、有画面感的事物或静物场景元素，且【绝对不能包含人物、人群或任何生物】\n");
+        sb.append("3. 场景需注重“写实感”和“环境氛围”，避免任何魔幻、超现实或抽象元素\n");
+        sb.append("4. 例如：如果用户在工作，可以是「办公桌、键盘、半杯咖啡、百叶窗透过的光」；");
+        sb.append("如果以娱乐为主，可以是「舒适的沙发、亮着的屏幕、零食、室内暖光」；");
+        sb.append("如果在运动，可以是「空旷的跑道、阳光、树影、运动水壶」\n");
+        sb.append("5. 用中文顿号分隔，不要输出任何解释，只输出关键词\n\n");
+        sb.append("偏好权重说明：\n").append(weightDesc).append("\n\n");
+        sb.append("User Content: 用户手机使用数据摘要（实际发送前会脱敏：DataSanitizer.sanitizeAggregatedData）\n");
         sb.append("max_tokens: 100, temperature: 0.8\n\n");
 
         sb.append("── 第二步：图像生成 (Qwen) ──\n");
@@ -592,10 +684,63 @@ public class SystemSettingsActivity extends Activity {
         sb.append("场景关键词：{提炼出的关键词}\n");
         sb.append("风格要求：").append(styleDesc).append("，注重光影的真实感和材质的写实细节\n");
         sb.append("要求：画面中自然融入以上关键词所描绘的场景氛围，");
-        sb.append("绝对不要包含任何人物、人脸、剪影或动物，");
+        sb.append("【绝对不要包含任何人物、人脸、剪影或动物】，");
         sb.append("不包含文字和 UI 元素，适合作为手机壁纸的高质量纯景物竖屏构图。\n\n");
-        sb.append("Negative Prompt: 低分辨率，低画质，画面过饱和...\n");
-        sb.append("图片尺寸: 928×1664");
+        sb.append("Negative Prompt: 人物，人脸，人影，剪影，动物，低分辨率，低画质，画面过饱和，蜡像感，文字，水印，logo，畸形，魔幻，虚幻，卡通，动漫\n");
+        sb.append("图片尺寸: 928*1664");
+
+        showTestOutput(sb.toString());
+    }
+
+    private void showScorePromptStructure() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("══ LLM 评分 Prompt 结构 ══\n\n");
+        sb.append("对应代码：DeepSeekApiClient.assessUsageScore()\n\n");
+
+        sb.append("── System Prompt ──\n");
+        sb.append("你是一个手机使用行为评估引擎。你的任务是根据用户手机的实时采集数据，评估用户当前的「过度/无意识使用程度」并给出分数增量。\n\n");
+        sb.append("## 评分规则\n");
+        sb.append("分数范围 0-100。0 = 完全有意识/健康使用，100 = 极度无意识/沉迷使用。\n");
+        sb.append("你每次返回一个 delta（增量），而非绝对分数。delta 范围 [-5, +5]。\n");
+        sb.append("本系统每约 2 分钟调用你一次。\n\n");
+        sb.append("## 重要说明\n");
+        sb.append("时间间隔导致的分数调整（如长时间未使用手机）已由系统在调用你之前自动处理，");
+        sb.append("你收到的「当前分数」已经反映了这些调整。\n");
+        sb.append("你只需根据本次快照与上次快照之间的行为变化来判断 delta，无需再考虑时间间隔本身。\n\n");
+        sb.append("## 默认行为\n");
+        sb.append("默认情况下 delta = +1（即用户正常使用手机，分数缓慢上升）。\n");
+        sb.append("只有当你判断情况明显偏离「普通使用」时，才应给出不同的 delta。\n");
+        sb.append("如果 delta ≠ +1，你必须在 reason 中说明为什么偏离默认值。\n");
+        sb.append("如果 delta = +1（默认），reason 可以为空字符串。\n\n");
+        sb.append("## delta 判定标准\n");
+        sb.append("- 普通使用（无明显好坏信号）→ delta = +1（默认，无需解释）\n");
+        sb.append("- 生产力/工具类 App（办公、学习、编程、阅读、地图、银行等）→ delta = 0（reason: 说明在做什么）\n");
+        sb.append("- 屏幕关闭 / 用户主动休息 / 刚解锁还没开始用 → delta = -1 到 -3（reason: 说明休息情况）\n");
+        sb.append("- 娱乐/社交 App 持续使用（短视频、社交媒体、游戏等）→ delta = +2（reason: 说明在用什么）\n");
+        sb.append("- 深夜（22:00-06:00）使用娱乐 App → delta = +3 到 +4（reason: 说明深夜使用情况）\n");
+        sb.append("- 多个无意识信号叠加（深夜 + 长时间娱乐 + 高频切换 + 忽略日程）→ delta 最高 +5（reason: 说明叠加了哪些信号）\n");
+        sb.append("- 用户正在做与日历日程相关的事 → delta = 0 或 -1（reason: 说明与日程的关联）\n");
+        sb.append("- 用户在通勤/移动中短暂使用 → delta = +1（默认）\n\n");
+        sb.append("## 综合考量因素\n");
+        sb.append("你会收到完整的手机采集数据，包括：屏幕使用（当前 App、使用时长、今日总时长）、");
+        sb.append("位置、活动状态（静止/步行/驾车）、日历日程、天气、WiFi、蓝牙设备等。\n");
+        sb.append("请综合所有信息判断用户的使用意图和场景，不要只看单一指标。\n\n");
+        sb.append("## 输出格式\n");
+        sb.append("严格返回 JSON，不要包含任何其他文字：\n");
+        sb.append("{\"delta\": <整数, -5到+5>, \"reason\": \"<delta≠+1时给出一句话中文理由, 20字以内; delta=+1时可为空>\"}\n\n");
+
+        sb.append("── User Content ──\n");
+        sb.append("当前分数：{currentScore}/100\n\n");
+        sb.append("上一次采集数据：\n");
+        sb.append("{lastSnapshotJson（如果存在，实际发送前会脱敏：DataSanitizer.sanitizeSnapshot）}\n\n");
+        sb.append("上一次评估理由：{lastReason（如果存在）}\n\n");
+        sb.append("本次最新采集数据：\n");
+        sb.append("{newSnapshot（实际发送前会脱敏：DataSanitizer.sanitizeSnapshot）}\n\n");
+        sb.append("请评估并返回 JSON。\n\n");
+
+        sb.append("── Parameters ──\n");
+        sb.append("max_tokens: 80\n");
+        sb.append("temperature: 0.3\n");
 
         showTestOutput(sb.toString());
     }

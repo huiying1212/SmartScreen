@@ -428,8 +428,9 @@
                 android:orientation="vertical" />
         </LinearLayout>
 
-        <!-- ══════ 开发者测试 ══════ -->
+        <!-- ══════ 开发者测试（默认折叠，需密码解锁） ══════ -->
         <LinearLayout
+            android:id="@+id/dev_test_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -439,11 +440,14 @@
             android:layout_marginBottom="48dp">
 
             <LinearLayout
+                android:id="@+id/dev_test_header"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="@dimen/spacing_xs">
+                android:layout_marginBottom="@dimen/spacing_xs"
+                android:clickable="true"
+                android:focusable="true">
 
                 <View
                     android:layout_width="@dimen/section_indicator_width"
@@ -458,6 +462,19 @@
                     android:textColor="@color/launcher_text_primary"
                     android:textSize="@dimen/text_section_title"
                     android:textStyle="bold" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/tv_dev_test_state"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="已折叠"
+                    android:textColor="@color/launcher_text_secondary"
+                    android:textSize="@dimen/text_caption" />
             </LinearLayout>
 
             <TextView
@@ -467,7 +484,69 @@
                 android:textColor="@color/launcher_text_secondary"
                 android:textSize="@dimen/text_caption"
                 android:layout_marginStart="13dp"
-                android:layout_marginBottom="@dimen/spacing_lg" />
+                android:layout_marginBottom="@dimen/spacing_md" />
+
+            <!-- 解锁区（内联输入，不弹窗） -->
+            <LinearLayout
+                android:id="@+id/dev_test_unlock_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="@dimen/spacing_md"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <EditText
+                        android:id="@+id/et_dev_test_password"
+                        android:layout_width="0dp"
+                        android:layout_height="42dp"
+                        android:layout_weight="1"
+                        android:hint="输入密码解锁"
+                        android:inputType="numberPassword"
+                        android:maxLines="1"
+                        android:singleLine="true"
+                        android:textSize="12sp"
+                        android:paddingStart="@dimen/spacing_md"
+                        android:paddingEnd="@dimen/spacing_md"
+                        android:background="@drawable/input_bg_rounded"
+                        android:textColor="@color/launcher_text_primary"
+                        android:textColorHint="@color/launcher_text_secondary" />
+
+                    <Button
+                        android:id="@+id/btn_dev_test_unlock"
+                        android:layout_width="wrap_content"
+                        android:layout_height="42dp"
+                        android:text="解锁"
+                        android:textSize="12sp"
+                        android:textColor="@color/button_secondary_text"
+                        android:background="@drawable/button_secondary_bg"
+                        android:stateListAnimator="@null"
+                        android:layout_marginStart="@dimen/spacing_sm" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_dev_test_unlock_hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textColor="#FF5252"
+                    android:textSize="11sp"
+                    android:layout_marginTop="@dimen/spacing_xs"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- 内容区：默认隐藏，解锁后可展开/折叠 -->
+            <LinearLayout
+                android:id="@+id/dev_test_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
 
             <Button
                 android:id="@+id/btn_test_data"
@@ -544,6 +623,17 @@
                 android:stateListAnimator="@null"
                 android:layout_marginBottom="@dimen/spacing_sm" />
 
+            <Button
+                android:id="@+id/btn_test_score_prompt"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:text="查看 LLM 评分 Prompt 结构"
+                android:textSize="13sp"
+                android:textColor="@color/button_secondary_text"
+                android:background="@drawable/button_secondary_bg"
+                android:stateListAnimator="@null"
+                android:layout_marginBottom="@dimen/spacing_sm" />
+
             <TextView
                 android:id="@+id/tv_test_output"
                 android:layout_width="match_parent"
@@ -556,6 +646,7 @@
                 android:padding="@dimen/spacing_md"
                 android:textIsSelectable="true"
                 android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
 
     </LinearLayout>
