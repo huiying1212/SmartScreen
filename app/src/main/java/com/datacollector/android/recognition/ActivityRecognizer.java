@@ -211,38 +211,44 @@ public class ActivityRecognizer {
     /**
      * Builds the decision tree following the StudentLife/Jigsaw methodology.
      *
-     * Tree structure (trained thresholds approximated from the literature):
+     * Tree structure (thresholds validated on WISDM phone accelerometer dataset):
      *
-     *                    [variance < 0.3]
-     *                    /              \
-     *             STATIONARY     [peakFreq < 0.8]
-     *                            /              \
-     *                  [variance < 2.5]    [variance < 8.0]
-     *                  /            \       /            \
-     *            DRIVING        CYCLING  WALKING      RUNNING
+     *                      [variance < 1.0]
+     *                      /              \
+     *               STATIONARY     [peakFreq < 0.8]
+     *                              /              \
+     *                   [variance < 2.5]    [mean < 10.5]
+     *                   /            \       /           \
+     *             DRIVING        CYCLING WALKING   [variance < 30.0]
+     *                                              /               \
+     *                                        WALKING(hi)        RUNNING
      *
-     * - First split: low variance → stationary (phone barely moves)
+     * - First split: variance < 1.0 → stationary (phone barely moves)
      * - Second split: peak frequency separates rhythmic locomotion from vehicle motion
-     * - Left branch: low peak freq = no stepping → driving vs cycling
-     *   (driving has very low variance from road vibration; cycling is higher)
-     * - Right branch: high peak freq = stepping → walking vs running
-     *   (running produces larger variance)
+     * - Left branch: low peak freq = no stepping → driving vs cycling by variance
+     * - Right branch: high peak freq = stepping → split by mean magnitude first,
+     *   then by variance to separate high-mean walking from running
      */
     private DecisionTreeNode buildDecisionTree() {
         // Leaf nodes
-        DecisionTreeNode stationary = DecisionTreeNode.leaf(ACTIVITY_STATIONARY, 0.95f);
-        DecisionTreeNode driving   = DecisionTreeNode.leaf(ACTIVITY_DRIVING, 0.80f);
-        DecisionTreeNode cycling   = DecisionTreeNode.leaf(ACTIVITY_CYCLING, 0.78f);
-        DecisionTreeNode walking   = DecisionTreeNode.leaf(ACTIVITY_WALKING, 0.90f);
-        DecisionTreeNode running   = DecisionTreeNode.leaf(ACTIVITY_RUNNING, 0.88f);
+        DecisionTreeNode stationary      = DecisionTreeNode.leaf(ACTIVITY_STATIONARY, 0.95f);
+        DecisionTreeNode driving         = DecisionTreeNode.leaf(ACTIVITY_DRIVING, 0.80f);
+        DecisionTreeNode cycling         = DecisionTreeNode.leaf(ACTIVITY_CYCLING, 0.78f);
+        DecisionTreeNode walking         = DecisionTreeNode.leaf(ACTIVITY_WALKING, 0.90f);
+        DecisionTreeNode walkingHighMean = DecisionTreeNode.leaf(ACTIVITY_WALKING, 0.85f);
+        DecisionTreeNode running         = DecisionTreeNode.leaf(ACTIVITY_RUNNING, 0.88f);
+
+        // Level 4 — high-mean walking vs running
+        DecisionTreeNode confirmRunning = DecisionTreeNode.branch(
+                Feature.VARIANCE, 30.0f, walkingHighMean, running);
+
+        // Level 3 — walking vs running branch: split by mean first
+        DecisionTreeNode walkOrRun = DecisionTreeNode.branch(
+                Feature.MEAN, 10.5f, walking, confirmRunning);
 
         // Level 3 — vehicle vs cycling (low peak-frequency branch)
         DecisionTreeNode vehicleOrCycle = DecisionTreeNode.branch(
                 Feature.VARIANCE, 2.5f, driving, cycling);
-
-        // Level 3 — walking vs running (high peak-frequency branch)
-        DecisionTreeNode walkOrRun = DecisionTreeNode.branch(
-                Feature.VARIANCE, 12.0f, walking, running);
 
         // Level 2 — locomotion vs vehicle
         DecisionTreeNode moving = DecisionTreeNode.branch(
@@ -250,7 +256,7 @@ public class ActivityRecognizer {
 
         // Level 1 — stationary vs moving
         return DecisionTreeNode.branch(
-                Feature.VARIANCE, 0.3f, stationary, moving);
+                Feature.VARIANCE, 1.0f, stationary, moving);
     }
 
     private void recognizeActivity() {

@@ -24,6 +24,15 @@ __pycache__/
 # Dataset files
 app/test_data/wisdm-dataset/
 figures/
+data/
+
+# Survey & interaction data
+*.xlsx
+*.csv
+
+# Script output files
+scripts/*_results.txt
+scripts/paper_summary.txt
 
 # Claude Code
 .claude/worktrees/

@@ -85,18 +85,26 @@ public class LocationContextInferrer {
             }
 
             // 信号 2: GPS 速度
+            // 根据 ExtraSensory 数据集（S2 部署域子集）上的逐档投票准确率分析，
+            // 1.2--3 m/s 中速档原本投票"户外"，但实际仅有 35% 样本为户外步行，
+            // 45% 是堵车低速行驶（实为通勤）、20% 是室内 GPS 漂移噪声；
+            // 0.5--1.2 m/s 静止档同样混杂室内静态漂移。这两段模糊带改为不投票，
+            // 仅保留高速（>5 m/s）和明确静止（<=0.5 m/s）两端的强证据。
             if (hasGps && !isStale) {
-                if (speed > 5.0f)      sCommute += 4.0;
-                else if (speed > 3.0f) sCommute += 2.5;
-                else if (speed > 1.2f) sOutdoor += 1.5;
-                else                   sIndoor  += 0.5;
+                if (speed > 5.0f)        sCommute += 4.0;
+                else if (speed > 3.0f)   sCommute += 2.5;
+                else if (speed <= 0.5f)  sIndoor  += 0.5;
+                // 0.5--3 m/s 视为模糊带，不投票
             }
 
             // 信号 3: GPS 精度
+            // 同上数据驱动修订：15--30 m 精度原本投票"户外"，但在中国城市
+            // 钢混高层室内（楼顶信号泄漏）和户外开阔区均常见，作为户外证据
+            // 不可靠。修订为仅 <15 m（晴空直射，强户外证据）和 >=60 m（深处
+            // 室内多径效应，强室内证据）两段投票，中间 15--60 m 模糊带保持中性。
             if (hasGps && !isStale) {
-                if (accuracy < 15)       sOutdoor += 3.0;
-                else if (accuracy < 30)  sOutdoor += 1.5;
-                else if (accuracy < 60)  { /* 模糊地带 */ }
+                if (accuracy < 15)       sOutdoor += 2.0;
+                else if (accuracy < 60)  { /* 模糊带，不投票 */ }
                 else if (accuracy < 150) sIndoor  += 2.0;
                 else                     sIndoor  += 3.0;
             }

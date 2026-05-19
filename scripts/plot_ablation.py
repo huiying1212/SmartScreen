@@ -288,24 +288,25 @@ with plt.rc_context({'font.family': _zh_font or 'sans-serif',
 
     fig, ax = plt.subplots(figsize=(6.5, 4.5))
 
-    # Config metadata: (标注文字, 颜色, 标记形状, x偏移, y偏移)
+    # Config metadata: (标注文字, 颜色, 标记形状, 点大小)
+    # A 和 B 坐标完全相同，用大圆(A)叠小方块(B)表示两点重合
     configs_scatter = [
-        ('基线\n（无平滑，无惩罚）',      BASELINE_COLOR, 'o',  0.10,  0.00),  # A — 右移
-        ('仅惩罚',                        PENALTY_COLOR,  's', -0.10,  0.00),  # B — 左移
-        ('平滑(K=3)，无惩罚',             BASE_COLOR,     'o',  0.00,  0.00),  # C
-        ('平滑(K=3) + 惩罚',              SMOOTH3P_COLOR, 's',  0.00,  0.00),  # D — 红色区分B
-        ('平滑(K=5)，无惩罚',             BASE_COLOR,     'D',  0.00,  0.00),  # E — 菱形区分C
-        ('平滑(K=5) + 惩罚\n（完整系统）', FULL_COLOR,    '*',  0.00,  0.00),  # F
+        ('基线\n（无平滑，无惩罚）',        BASELINE_COLOR, 'o', 160),   # A — 大圆，底层
+        ('仅惩罚',                          PENALTY_COLOR,  's',  70),   # B — 小方块叠在A上
+        ('平滑(K=3)，无惩罚',               BASE_COLOR,     'o',  80),   # C
+        ('平滑(K=3) + 惩罚',                SMOOTH3P_COLOR, 's',  80),   # D
+        ('平滑(K=5)，无惩罚',               BASE_COLOR,     'D',  80),   # E
+        ('完整系统 — 平滑(K=5) + 惩罚',    FULL_COLOR,     '*', 200),   # F
     ]
-    SIZES2 = [80, 80, 80, 80, 80, 160]
+    ZORDERS = [4, 5, 4, 4, 4, 4]   # B 的 zorder 高于 A，确保叠在上面
 
-    for i, (desc, col, mk, jx, jy) in enumerate(configs_scatter):
-        ax.scatter(FLICKER[i] + jx, ACCURACY[i] + jy,
-                   color=col, s=SIZES2[i], marker=mk, zorder=4,
+    for i, (desc, col, mk, sz) in enumerate(configs_scatter):
+        ax.scatter(FLICKER[i], ACCURACY[i],
+                   color=col, s=sz, marker=mk, zorder=ZORDERS[i],
                    edgecolors='#333333' if i == N-1 else 'white',
                    linewidths=1.2 if i == N-1 else 0.5)
 
-    # 标注偏移（相对于实际数据点，非抖动后位置）
+    # 标注偏移（相对于实际数据点）
     anno_offsets = [
         ( 0.22, -0.10),   # 基线          → 右
         (-0.50,  0.08),   # 仅惩罚        → 左上
