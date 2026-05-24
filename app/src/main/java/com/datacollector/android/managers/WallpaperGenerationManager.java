@@ -370,67 +370,100 @@ public class WallpaperGenerationManager {
     }
 
     /**
-     * 备份用户原本的系统壁纸（只备份一次，保存在应用私有目录）。
-     * 用于在“反思系统/反思壁纸关闭”时恢复。
+     * 标记“RI4SU 接管了壁纸”。
+     *
+     * <p>从 Android 13（API 33）开始 {@link WallpaperManager#getDrawable()} 需要
+     * 系统签名权限 {@code READ_WALLPAPER_INTERNAL}，普通应用无法读取当前壁纸位图，
+     * 因此无法像旧逻辑那样把用户的原始壁纸备份成 PNG。这里改为仅记录“是否接管过”
+     * 状态，关闭功能时通过 {@link #restoreOriginalWallpaperIfExists()} 调用
+     * {@code WallpaperManager.clear*()} 让系统回退到自带壁纸。
+     *
+     * <p>如果旧版本曾经成功备份过 {@code ORIGINAL_WALLPAPER_FILE}，文件保留可用。
      */
     public void backupOriginalWallpaperIfNeeded() {
-        try {
-            if (config.getBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false)) return;
-            WallpaperManager wm = WallpaperManager.getInstance(context);
-            Drawable d = wm.getDrawable();
-            if (d == null) return;
+        if (config.getBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false)) return;
 
-            // Cap dimensions to prevent OOM on devices with very large wallpapers
-            final int MAX_DIM = 4096;
-            int w = Math.max(1, d.getIntrinsicWidth() > 0 ? d.getIntrinsicWidth() : 1080);
-            int h = Math.max(1, d.getIntrinsicHeight() > 0 ? d.getIntrinsicHeight() : 1920);
-            if (w > MAX_DIM || h > MAX_DIM) {
-                float scale = Math.min((float) MAX_DIM / w, (float) MAX_DIM / h);
-                w = Math.round(w * scale);
-                h = Math.round(h * scale);
-            }
-            Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            // Android 12 及以下：仍可读取当前壁纸位图，做一次真备份。
             try {
-                Canvas canvas = new Canvas(bmp);
-                d.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-                d.draw(canvas);
-
-                File out = new File(context.getFilesDir(), ORIGINAL_WALLPAPER_FILE);
-                try (FileOutputStream fos = new FileOutputStream(out)) {
-                    bmp.compress(Bitmap.CompressFormat.PNG, 95, fos);
+                WallpaperManager wm = WallpaperManager.getInstance(context);
+                Drawable d = wm.getDrawable();
+                if (d != null) {
+                    final int MAX_DIM = 4096;
+                    int w = Math.max(1, d.getIntrinsicWidth() > 0 ? d.getIntrinsicWidth() : 1080);
+                    int h = Math.max(1, d.getIntrinsicHeight() > 0 ? d.getIntrinsicHeight() : 1920);
+                    if (w > MAX_DIM || h > MAX_DIM) {
+                        float scale = Math.min((float) MAX_DIM / w, (float) MAX_DIM / h);
+                        w = Math.round(w * scale);
+                        h = Math.round(h * scale);
+                    }
+                    Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                    try {
+                        Canvas canvas = new Canvas(bmp);
+                        d.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+                        d.draw(canvas);
+                        File out = new File(context.getFilesDir(), ORIGINAL_WALLPAPER_FILE);
+                        try (FileOutputStream fos = new FileOutputStream(out)) {
+                            bmp.compress(Bitmap.CompressFormat.PNG, 95, fos);
+                        }
+                        Log.i(TAG, "Original wallpaper backed up to " + out.getAbsolutePath());
+                    } finally {
+                        bmp.recycle();
+                    }
                 }
-                config.setBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, true);
-                Log.i(TAG, "Original wallpaper backed up to " + out.getAbsolutePath());
-            } finally {
-                bmp.recycle();
+            } catch (Throwable t) {
+                Log.w(TAG, "Skipping original wallpaper backup (no permission or unavailable)", t);
             }
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to backup original wallpaper", e);
+        } else {
+            Log.i(TAG, "Android 13+: skipping original wallpaper bitmap backup "
+                    + "(getDrawable requires system signature permission)");
         }
+
+        // 无论备份位图是否成功，都标记“已接管”。restore 时会按可用手段回退。
+        config.setBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, true);
     }
 
     /**
-     * 恢复备份的原壁纸；如果没有备份则不做任何事。
+     * 关闭“反思壁纸”时的回退策略：
+     * <ol>
+     *   <li>若存在历史备份 PNG（仅 Android 12 及以下旧版本可能产生），优先恢复；</li>
+     *   <li>否则调用 {@link WallpaperManager#clear(int)} 让系统回退到自带壁纸。</li>
+     * </ol>
      */
     public void restoreOriginalWallpaperIfExists() {
+        boolean wasTakenOver = config.getBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false);
+        if (!wasTakenOver) return;
         try {
-            if (!config.getBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false)) return;
             File f = new File(context.getFilesDir(), ORIGINAL_WALLPAPER_FILE);
-            if (!f.exists()) return;
-            Bitmap bmp = android.graphics.BitmapFactory.decodeFile(f.getAbsolutePath());
-            if (bmp == null) return;
-            try {
-                synchronized (WALLPAPER_LOCK) {
-                    setWallpaper(bmp);
+            if (f.exists()) {
+                Bitmap bmp = android.graphics.BitmapFactory.decodeFile(f.getAbsolutePath());
+                if (bmp != null) {
+                    try {
+                        synchronized (WALLPAPER_LOCK) {
+                            setWallpaper(bmp);
+                        }
+                        Log.i(TAG, "Original wallpaper restored from local backup");
+                        config.setBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false);
+                        return;
+                    } finally {
+                        bmp.recycle();
+                    }
                 }
-            } finally {
-                bmp.recycle();
             }
-            // 清除备份标记，下次开启时重新备份当前壁纸
+            // 没有可用备份：让系统清除我们设置过的壁纸，回退到默认壁纸。
+            WallpaperManager wm = WallpaperManager.getInstance(context);
+            synchronized (WALLPAPER_LOCK) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    try { wm.clear(WallpaperManager.FLAG_SYSTEM); } catch (Exception ignored) {}
+                    try { wm.clear(WallpaperManager.FLAG_LOCK); } catch (Exception ignored) {}
+                } else {
+                    try { wm.clear(); } catch (Exception ignored) {}
+                }
+            }
             config.setBoolean(CollectionConfig.KEY_ORIGINAL_WALLPAPER_BACKED_UP, false);
-            Log.i(TAG, "Original wallpaper restored, backup flag cleared");
+            Log.i(TAG, "Reset wallpaper via WallpaperManager.clear()");
         } catch (Exception e) {
-            Log.w(TAG, "Failed to restore original wallpaper", e);
+            Log.w(TAG, "Failed to restore wallpaper", e);
         }
     }
 

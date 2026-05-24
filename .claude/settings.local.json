@@ -4,7 +4,11 @@
       "Bash(python scripts/tuning.py)",
       "Bash(python scripts/run_ablation.py)",
       "Bash(python -c \"import matplotlib; import numpy; print\\(''matplotlib:'', matplotlib.__version__, ''numpy:'', numpy.__version__\\)\")",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(./gradlew :app:compileDebugKotlin -q)",
+      "Bash(./gradlew :app:compileDebugKotlin)",
+      "Bash(./gradlew compileDebugKotlin --rerun-tasks)",
+      "Bash(./gradlew compileDebugKotlin)"
     ]
   }
 }

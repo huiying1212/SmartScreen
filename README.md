@@ -2,6 +2,64 @@
 
 Android 智能屏幕使用反思干预系统。通过前台 Service 周期性采集多维上下文数据（位置、活动、屏幕使用、日历、Wi-Fi、蓝牙等），结合 LLM 增量评分引擎与多维心情评估，以悬浮拟人表情图标和 AI 生成的反思提醒实时引导用户建立健康的手机使用习惯；可选地通过通义千问图像 API 生成隐喻壁纸。
 
+> **3.0 现代化升级**：UI 层迁移到 Kotlin + Jetpack Compose + Material 3，引入 Hilt / Room / DataStore / WorkManager / Coil；新增首启动 Onboarding、反思日记、目标追踪、连续打卡、成就墙、历史趋势可视化、周报、数据导出、本地崩溃日志等。底层数据采集（Java collectors / Service / 悬浮窗）保持稳定不动，通过 Kotlin 桥接层与新 UI 集成。
+
+## 3.0 架构总览
+
+```
+单 Activity (Compose) ──── Bottom Nav ────┬─ Home（表情 + 分数环 + mini 趋势 + 最新反思 + 快捷动作）
+                                          ├─ Reflect（日记 / 目标 / ESM / 成就墙）
+                                          ├─ History（日 / 周 / 月 趋势 + Top App + 位置 + 壁纸时间线 + 周报）
+                                          └─ Settings（功能开关 / 外观 / 个性化 / 数据导出 / 重新引导）
+
+UI (Compose Screens + ViewModel + StateFlow)
+   │
+   └─ Domain (UseCase: GetTodayScore / ComputeStreak / SaveJournal / CheckInGoal / UnlockAchievements / GenerateWeeklyReport)
+         │
+         └─ Data (Repositories → Room DAO + DataStore)
+               │
+               └─ Bridges
+                  • ScoringBridge      ← LLMScoringEngine.ScoreObserver（每次评分写入 score_entry）
+                  • BubbleTextRecorder ← BUBBLE_TEXT_UPDATED Broadcast（写入 reflection_message）
+                  • DataStoreConfigMigrator（旧 SharedPreferences → DataStore，一次性）
+
+Background (WorkManager)
+  • WallpaperWorker        每 2 小时尝试一次，按 shouldGenerate() 自检
+  • WeeklyReportWorker     每周日 20:00
+  • GoalEvaluationWorker   每天 22:00 自动评估目标
+  • DataCleanupWorker      每天清理旧数据
+
+Legacy (Java，保持不动)
+  • DataCollectionService / FloatingOverlayService / 全部 Collector
+  • LLMScoringEngine（已增加 ScoreObserver 钩子）
+  • DeepSeekApiClient / QwenImageApiClient
+  • WallpaperGenerationManager
+```
+
+### Room Schema (v1)
+
+| 表 | 用途 |
+|---|---|
+| `score_entry` | 每次 LLM 评分留点 |
+| `context_summary` | 关键上下文字段，供历史/统计 |
+| `esm_response` | ESM 问卷本地副本 |
+| `journal_entry` | 反思日记 |
+| `goal` / `goal_checkin` | 目标与每日打卡 |
+| `achievement` | 成就解锁 / 进度 |
+| `reflection_message` | LLM 生成的所有反思文案历史（bubble / weekly_report / journal_draft / esm_followup） |
+| `wallpaper_record` | 壁纸生成历史 |
+
+### 主要技术栈
+
+- Kotlin 1.9.24 · Jetpack Compose（BOM 2024.06）· Material 3
+- Hilt 2.51.1 · Room 2.6.1 · DataStore 1.1.1 · WorkManager 2.9.1 · Coil 2.6.0
+- Coroutines 1.8.1 · Navigation Compose 2.7.7
+- Core library desugaring（`java.time` on minSdk 23）
+- Tests: JUnit + MockK + Turbine + Room testing
+- CI: GitHub Actions（lint + unit test + assembleDebug）
+
+
+
 ---
 
 ## 核心功能

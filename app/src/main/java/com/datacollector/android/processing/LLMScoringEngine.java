@@ -28,6 +28,21 @@ import org.json.JSONObject;
  */
 public class LLMScoringEngine {
 
+    /**
+     * Hook for the new Kotlin layer to be notified after each successful score
+     * update. Implementations should be lightweight and non-blocking; heavy work
+     * (Room writes, etc) must be offloaded.
+     */
+    public interface ScoreObserver {
+        void onScoreUpdated(int newScore, int delta, String reason);
+    }
+
+    private static volatile ScoreObserver scoreObserver;
+
+    public static void setScoreObserver(ScoreObserver observer) {
+        scoreObserver = observer;
+    }
+
     private static final String TAG = "LLMScoringEngine";
     private static final String PREFS_NAME = "llm_scoring_state";
     private static final String KEY_CURRENT_SCORE = "current_score";
@@ -153,6 +168,13 @@ public class LLMScoringEngine {
                     .putString(KEY_LAST_REASON, lastReason)
                     .putLong(KEY_LAST_SNAPSHOT_TS, lastSnapshotTs)
                     .apply();
+
+            // Notify Kotlin observer (Room write, etc)
+            ScoreObserver obs = scoreObserver;
+            if (obs != null) {
+                try { obs.onScoreUpdated(currentScore, delta, reason); }
+                catch (Throwable t) { Log.w(TAG, "ScoreObserver threw", t); }
+            }
 
             return currentScore;
 
